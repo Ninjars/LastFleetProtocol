@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.serialization)
+    alias(libs.plugins.ksp)
 }
 kotlin {
     androidTarget {
@@ -30,8 +32,31 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
+
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.jetpack.navigation)
+            implementation(libs.kotlinx.json)
+            implementation(libs.kotlininject.runtime)
+
+            // Kubriko Engine Dependencies
+            // Engine
+            implementation(libs.kubriko.engine)
+
+            // Plugins
+            implementation(libs.kubriko.plugin.audio)
+            implementation(libs.kubriko.plugin.collision)
+            implementation(libs.kubriko.plugin.keyboard)
+            implementation(libs.kubriko.plugin.particles)
+            implementation(libs.kubriko.plugin.persistence)
+            implementation(libs.kubriko.plugin.pointer)
+            implementation(libs.kubriko.plugin.physics)
+            implementation(libs.kubriko.plugin.shaders)
+            implementation(libs.kubriko.plugin.sprites)
+
+            // Tools
+            implementation(libs.kubriko.tool.logger)
+            implementation(libs.kubriko.tool.ui.components)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -41,6 +66,10 @@ kotlin {
             implementation(libs.kotlinx.coroutinesSwing)
         }
     }
+}
+
+dependencies {
+    kspCommonMainMetadata(libs.kotlininject.compiler)
 }
 
 android {
@@ -84,4 +113,24 @@ compose.desktop {
             packageVersion = "1.0.0"
         }
     }
+}
+
+tasks.withType<com.google.devtools.ksp.gradle.KspAATask>().configureEach {
+    // This ensures that the resource generation task runs before KSP
+    dependsOn(
+        // Android
+        "generateActualResourceCollectorsForAndroidMain",
+        "generateResourceAccessorsForAndroidMain",
+        "generateActualResourceCollectorsForAndroidMain",
+        "generateComposeResClass",
+        "generateResourceAccessorsForCommonMain",
+        "generateExpectResourceCollectorsForCommonMain",
+        "generateResourceAccessorsForAndroidDebug",
+        // iOS
+        "generateResourceAccessorsForIosArm64Main",
+        "generateActualResourceCollectorsForIosArm64Main",
+        "generateResourceAccessorsForIosMain",
+        "generateResourceAccessorsForAppleMain",
+        "generateResourceAccessorsForNativeMain",
+    )
 }

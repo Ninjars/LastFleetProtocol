@@ -14,6 +14,12 @@ composeMultiplatform = "1.9.1"
 junit = "4.13.2"
 kotlin = "2.2.20"
 kotlinx-coroutines = "1.10.2"
+serialization = "2.0.21"
+kotlinx-json = "1.7.3"
+kubriko = "0.0.5"
+navigation = "2.9.1"
+ksp = "2.2.20-2.0.3"
+kotlin-inject = "0.8.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -27,6 +33,30 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-json" }
+jetpack-navigation = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigation" }
+
+kubriko-engine = { module = "io.github.pandulapeter.kubriko:engine", version.ref = "kubriko" }
+kubriko-plugin-audio = { module = "io.github.pandulapeter.kubriko:plugin-audio-playback", version.ref = "kubriko" }
+kubriko-plugin-collision = { module = "io.github.pandulapeter.kubriko:plugin-collision", version.ref = "kubriko" }
+kubriko-plugin-keyboard = { module = "io.github.pandulapeter.kubriko:plugin-keyboard-input", version.ref = "kubriko" }
+kubriko-plugin-particles = { module = "io.github.pandulapeter.kubriko:plugin-particles", version.ref = "kubriko" }
+kubriko-plugin-persistence = { module = "io.github.pandulapeter.kubriko:plugin-persistence", version.ref = "kubriko" }
+kubriko-plugin-physics = { module = "io.github.pandulapeter.kubriko:plugin-physics", version.ref = "kubriko" }
+kubriko-plugin-pointer = { module = "io.github.pandulapeter.kubriko:plugin-pointer-input", version.ref = "kubriko" }
+kubriko-plugin-serialization = { module = "io.github.pandulapeter.kubriko:plugin-serialization", version.ref = "kubriko" }
+kubriko-plugin-shaders = { module = "io.github.pandulapeter.kubriko:plugin-shaders", version.ref = "kubriko" }
+kubriko-plugin-sprites = { module = "io.github.pandulapeter.kubriko:plugin-sprites", version.ref = "kubriko" }
+kubriko-tool-debug-menu = { module = "io.github.pandulapeter.kubriko:tool-debug-menu", version.ref = "kubriko" }
+kubriko-tool-debug-menu-api = { module = "io.github.pandulapeter.kubriko:tool-debug-menu-api", version.ref = "kubriko" }
+kubriko-tool-debug-menu-noop = { module = "io.github.pandulapeter.kubriko:tool-debug-menu-noop", version.ref = "kubriko" }
+kubriko-tool-logger = { module = "io.github.pandulapeter.kubriko:tool-logger", version.ref = "kubriko" }
+kubriko-tool-scene-editor = { module = "io.github.pandulapeter.kubriko:tool-scene-editor", version.ref = "kubriko" }
+kubriko-tool-scene-editor-api = { module = "io.github.pandulapeter.kubriko:tool-scene-editor-api", version.ref = "kubriko" }
+kubriko-tool-scene-editor-noop = { module = "io.github.pandulapeter.kubriko:tool-scene-editor-noop", version.ref = "kubriko" }
+kubriko-tool-ui-components = { module = "io.github.pandulapeter.kubriko:tool-ui-components", version.ref = "kubriko" }
+kotlininject-compiler = { module = "me.tatarka.inject:kotlin-inject-compiler-ksp", version.ref = "kotlin-inject" }
+kotlininject-runtime = { module = "me.tatarka.inject:kotlin-inject-runtime-kmp", version.ref = "kotlin-inject" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
@@ -35,3 +65,5 @@ composeHotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "com
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "serialization" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
