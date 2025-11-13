@@ -17,6 +17,17 @@ kotlin {
         }
     }
 
+//    listOf(
+//        iosX64(),
+//        iosArm64(),
+//        iosSimulatorArm64()
+//    ).forEach {
+//        it.binaries.framework {
+//            baseName = "shared"
+//        }
+//    }
+
+
     jvm()
     jvmToolchain(19)
 
@@ -70,6 +81,11 @@ kotlin {
 
 dependencies {
     kspCommonMainMetadata(libs.kotlininject.compiler)
+    add("kspJvm", libs.kotlininject.compiler)
+    add("kspAndroid", libs.kotlininject.compiler)
+//    add("kspIosX64", libs.kotlininject.compiler)
+//    add("kspIosArm64", libs.kotlininject.compiler)
+//    add("kspIosSimulatorArm64", libs.kotlininject.compiler)
 }
 
 android {
@@ -127,10 +143,10 @@ tasks.withType<com.google.devtools.ksp.gradle.KspAATask>().configureEach {
         "generateExpectResourceCollectorsForCommonMain",
         "generateResourceAccessorsForAndroidDebug",
         // iOS
-        "generateResourceAccessorsForIosArm64Main",
-        "generateActualResourceCollectorsForIosArm64Main",
-        "generateResourceAccessorsForIosMain",
-        "generateResourceAccessorsForAppleMain",
-        "generateResourceAccessorsForNativeMain",
+//        "generateResourceAccessorsForIosArm64Main",
+//        "generateActualResourceCollectorsForIosArm64Main",
+//        "generateResourceAccessorsForIosMain",
+//        "generateResourceAccessorsForAppleMain",
+//        "generateResourceAccessorsForNativeMain",
     )
 }
