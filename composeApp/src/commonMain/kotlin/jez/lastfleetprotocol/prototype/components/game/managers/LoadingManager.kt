@@ -21,12 +21,14 @@ import com.pandulapeter.kubriko.uiComponents.utilities.preloadedFont
 import com.pandulapeter.kubriko.uiComponents.utilities.preloadedImageBitmap
 import com.pandulapeter.kubriko.uiComponents.utilities.preloadedImageVector
 import com.pandulapeter.kubriko.uiComponents.utilities.preloadedString
+import jez.lastfleetprotocol.prototype.di.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import lastfleetprotocol.composeapp.generated.resources.*
 import me.tatarka.inject.annotations.Inject
 
+@Singleton
 @Inject
 class LoadingManager() : Manager() {
     private val musicManager by manager<MusicManager>()

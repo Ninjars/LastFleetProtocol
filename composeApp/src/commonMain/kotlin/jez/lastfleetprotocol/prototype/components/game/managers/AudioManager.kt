@@ -7,6 +7,7 @@ import com.pandulapeter.kubriko.manager.Manager
 import com.pandulapeter.kubriko.manager.StateManager
 import jez.lastfleetprotocol.prototype.components.game.audio.MusicTrack
 import jez.lastfleetprotocol.prototype.components.game.audio.SoundEffect
+import jez.lastfleetprotocol.prototype.di.Singleton
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import lastfleetprotocol.composeapp.generated.resources.Res
@@ -19,13 +20,14 @@ private data class AudioState(
     val activeMusicTrack: MusicTrack?,
 )
 
+@Singleton
 @Inject
 class AudioManager(
     private val stateManager: StateManager,
     private val userPreferencesManager: UserPreferencesManager,
+    private val musicManager: MusicManager,
+    private val soundManager: SoundManager,
 ) : Manager() {
-    private val musicManager by manager<MusicManager>()
-    private val soundManager by manager<SoundManager>()
     private val soundsToPlay = mutableSetOf<SoundEffect>()
     private val shouldStopMusic = MutableStateFlow(false)
     private val activeMusicTrack = MutableStateFlow<MusicTrack?>(null)
