@@ -13,7 +13,7 @@ plugins {
 kotlin {
     androidTarget {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_19)
+            jvmTarget.set(JvmTarget.JVM_21)
         }
     }
 
@@ -29,7 +29,7 @@ kotlin {
 
 
     jvm()
-    jvmToolchain(19)
+    jvmToolchain(21)
 
     sourceSets {
         androidMain.dependencies {
