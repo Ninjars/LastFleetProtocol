@@ -18,6 +18,7 @@ fun LFTextButton(
     textRes: StringResource,
     modifier: Modifier = Modifier,
     fillWidth: Boolean = true,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     LFTextButton(
@@ -33,10 +34,12 @@ fun LFTextButton(
     text: String,
     modifier: Modifier = Modifier,
     fillWidth: Boolean = true,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     OutlinedButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier.then(
             if (fillWidth) {
                 Modifier.fillMaxWidth()

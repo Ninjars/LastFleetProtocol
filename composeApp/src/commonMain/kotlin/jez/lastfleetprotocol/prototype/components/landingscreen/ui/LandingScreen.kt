@@ -58,11 +58,12 @@ private fun LandingScreenContent(
         Spacer(modifier = Modifier.weight(5f))
 
         LFTextButton(
-            textRes = if (state.hasSaveGame) {
+            textRes = if (state.hasSaveGame == true) {
                 Res.string.button_continue
             } else {
                 Res.string.button_new_game
-            }
+            },
+            enabled = state.hasSaveGame != null,
         ) {
             eventHandler.accept(LandingEvent.PlayClicked)
         }
