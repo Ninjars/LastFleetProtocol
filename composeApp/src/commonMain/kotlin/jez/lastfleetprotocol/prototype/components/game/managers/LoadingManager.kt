@@ -67,7 +67,16 @@ internal class LoadingManager() : Manager() {
     @Composable
     override fun Composable(windowInsets: WindowInsets) {
         if (!isFontLoaded.collectAsState().value) {
-            isFontLoaded.update { preloadedFont(Res.font.orbitron).value != null }
+            isFontLoaded.update {
+                preloadedFont(Res.font.megrim_regular).value != null
+                        && preloadedFont(Res.font.sairacondensed_bold).value != null
+                        && preloadedFont(Res.font.sairacondensed_black).value != null
+                        && preloadedFont(Res.font.sairacondensed_light).value != null
+                        && preloadedFont(Res.font.sairacondensed_medium).value != null
+                        && preloadedFont(Res.font.sairacondensed_regular).value != null
+                        && preloadedFont(Res.font.sairacondensed_semibold).value != null
+                        && preloadedFont(Res.font.sairacondensed_thin).value != null
+            }
         }
     }
 
