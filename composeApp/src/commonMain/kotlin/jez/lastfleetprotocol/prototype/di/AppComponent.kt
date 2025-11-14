@@ -4,6 +4,7 @@ import com.pandulapeter.kubriko.audioPlayback.MusicManager
 import com.pandulapeter.kubriko.audioPlayback.SoundManager
 import com.pandulapeter.kubriko.manager.StateManager
 import com.pandulapeter.kubriko.persistence.PersistenceManager
+import com.pandulapeter.kubriko.sprites.SpriteManager
 import jez.lastfleetprotocol.prototype.components.landingscreen.ui.LandingScreen
 import jez.lastfleetprotocol.prototype.ui.navigation.LFNavHost
 import jez.lastfleetprotocol.prototype.utils.Constants
@@ -46,6 +47,12 @@ abstract class AppComponent(
 
     @Provides
     protected fun musicManager(): MusicManager = MusicManager.newInstance(
+        isLoggingEnabled = enableLogging,
+        instanceNameForLogging = Constants.GAME_LOG_TAG,
+    )
+
+    @Provides
+    protected fun spriteManager(): SpriteManager = SpriteManager.newInstance(
         isLoggingEnabled = enableLogging,
         instanceNameForLogging = Constants.GAME_LOG_TAG,
     )

@@ -1,12 +1,3 @@
-/*
- * This file is part of Kubriko.
- * Copyright (c) Pandula Péter 2025.
- * https://github.com/pandulapeter/kubriko
- *
- * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
- * If a copy of the MPL was not distributed with this file, You can obtain one at
- * https://mozilla.org/MPL/2.0/.
- */
 package jez.lastfleetprotocol.prototype.components.game.managers
 
 import androidx.compose.foundation.layout.WindowInsets
@@ -30,10 +21,11 @@ import me.tatarka.inject.annotations.Inject
 
 @Singleton
 @Inject
-class LoadingManager() : Manager() {
-    private val musicManager by manager<MusicManager>()
-    private val soundManager by manager<SoundManager>()
-    private val spriteManager by manager<SpriteManager>()
+class LoadingManager(
+    private val musicManager: MusicManager,
+    private val soundManager: SoundManager,
+    private val spriteManager: SpriteManager,
+) : Manager() {
     private val musicUris = AudioManager.getMusicUrisToPreload()
     private val soundUris = AudioManager.getSoundUrisToPreload()
     private val spriteResources = listOf(
