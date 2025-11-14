@@ -52,7 +52,7 @@ private fun LandingScreenContent(
                 drawable = if (state.soundEffectsEnabled) Res.drawable.ic_sound_effects_on else Res.drawable.ic_sound_effects_off,
                 contentDescription = stringResource(Res.string.desc_toggle_sound_effects)
             ) {
-                eventHandler.accept(LandingEvent.ToggleMusicClicked(!state.soundEffectsEnabled))
+                eventHandler.accept(LandingEvent.ToggleSoundEffectsClicked(!state.soundEffectsEnabled))
             }
         }
         Spacer(modifier = Modifier.weight(5f))
