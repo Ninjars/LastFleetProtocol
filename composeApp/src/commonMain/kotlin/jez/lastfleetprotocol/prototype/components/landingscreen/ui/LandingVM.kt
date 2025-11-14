@@ -1,13 +1,14 @@
 package jez.lastfleetprotocol.prototype.components.landingscreen.ui
 
 import androidx.lifecycle.viewModelScope
+import jez.lastfleetprotocol.prototype.components.game.managers.UserPreferencesManager
 import jez.lastfleetprotocol.prototype.components.shared.usecases.SetMusicEnabledUseCase
 import jez.lastfleetprotocol.prototype.components.shared.usecases.SetSoundEffectsEnabledUseCase
 import jez.lastfleetprotocol.prototype.ui.common.LFViewModel
 import jez.lastfleetprotocol.prototype.utils.stateInWhileSubscribed
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import me.tatarka.inject.annotations.Inject
 
@@ -31,8 +32,6 @@ sealed interface LandingSideEffect {
 
 private data class InternalState(
     val saveGame: SaveGameState,
-    val musicEnabled: Boolean,
-    val soundEffectsEnabled: Boolean,
 ) {
     sealed interface SaveGameState {
         data object Checking : SaveGameState
@@ -43,24 +42,32 @@ private data class InternalState(
     companion object {
         val default = InternalState(
             saveGame = SaveGameState.Checking,
-            musicEnabled = false,
-            soundEffectsEnabled = false
         )
     }
 }
 
 @Inject
 class LandingVM(
+    userPreferencesManager: UserPreferencesManager,
     private val setMusicEnabled: SetMusicEnabledUseCase,
     private val setSoundEffectsEnabled: SetSoundEffectsEnabledUseCase,
 ) : LFViewModel<LandingEvent, LandingState, LandingSideEffect>() {
 
     private val internalState = MutableStateFlow(InternalState.default)
 
-    override val state: StateFlow<LandingState>
-        get() = internalState
-            .map { createViewState(it) }
-            .stateInWhileSubscribed(viewModelScope, createViewState(InternalState.default))
+    override val state: StateFlow<LandingState> = combine(
+        internalState,
+        userPreferencesManager.isMusicEnabled,
+        userPreferencesManager.areSoundEffectsEnabled
+    ) { internalState, musicEnabled, soundEffectsEnabled ->
+        createViewState(internalState, musicEnabled, soundEffectsEnabled)
+    }.stateInWhileSubscribed(
+        viewModelScope, createViewState(
+            internalState = InternalState.default,
+            musicEnabled = false,
+            soundEffectsEnabled = false,
+        )
+    )
 
     override fun accept(event: LandingEvent) {
         viewModelScope.launch {
@@ -85,14 +92,15 @@ class LandingVM(
     }
 
     private companion object {
-        fun createViewState(internalState: InternalState) = LandingState(
-            musicEnabled = internalState.musicEnabled,
-            soundEffectsEnabled = internalState.soundEffectsEnabled,
-            hasSaveGame = when (internalState.saveGame) {
-                is InternalState.SaveGameState.Checking -> null
-                is InternalState.SaveGameState.Data -> true
-                is InternalState.SaveGameState.NoSaveGame -> false
-            }
-        )
+        fun createViewState(internalState: InternalState, musicEnabled: Boolean, soundEffectsEnabled: Boolean) =
+            LandingState(
+                musicEnabled = musicEnabled,
+                soundEffectsEnabled = soundEffectsEnabled,
+                hasSaveGame = when (internalState.saveGame) {
+                    is InternalState.SaveGameState.Checking -> null
+                    is InternalState.SaveGameState.Data -> true
+                    is InternalState.SaveGameState.NoSaveGame -> false
+                }
+            )
     }
 }
