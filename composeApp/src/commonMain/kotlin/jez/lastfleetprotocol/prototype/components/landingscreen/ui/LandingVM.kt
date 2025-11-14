@@ -1,6 +1,8 @@
 package jez.lastfleetprotocol.prototype.components.landingscreen.ui
 
 import androidx.lifecycle.viewModelScope
+import jez.lastfleetprotocol.prototype.components.shared.usecases.SetMusicEnabledUseCase
+import jez.lastfleetprotocol.prototype.components.shared.usecases.SetSoundEffectsEnabledUseCase
 import jez.lastfleetprotocol.prototype.ui.common.LFViewModel
 import jez.lastfleetprotocol.prototype.utils.stateInWhileSubscribed
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +24,10 @@ data class LandingState(
     val hasSaveGame: Boolean?,
 )
 
-sealed interface LandingSideEffect
+sealed interface LandingSideEffect {
+    data object StartNewGame : LandingSideEffect
+    data object GoToSettings : LandingSideEffect
+}
 
 private data class InternalState(
     val saveGame: SaveGameState,
@@ -32,7 +37,7 @@ private data class InternalState(
     sealed interface SaveGameState {
         data object Checking : SaveGameState
         data object NoSaveGame : SaveGameState
-        data object Data : SaveGameState // TODO: populate
+        data object Data : SaveGameState // TODO: implement save game loading
     }
 
     companion object {
@@ -45,7 +50,10 @@ private data class InternalState(
 }
 
 @Inject
-class LandingVM() : LFViewModel<LandingEvent, LandingState, LandingSideEffect>() {
+class LandingVM(
+    private val setMusicEnabled: SetMusicEnabledUseCase,
+    private val setSoundEffectsEnabled: SetSoundEffectsEnabledUseCase,
+) : LFViewModel<LandingEvent, LandingState, LandingSideEffect>() {
 
     private val internalState = MutableStateFlow(InternalState.default)
 
@@ -57,11 +65,22 @@ class LandingVM() : LFViewModel<LandingEvent, LandingState, LandingSideEffect>()
     override fun accept(event: LandingEvent) {
         viewModelScope.launch {
             when (event) {
-                is LandingEvent.PlayClicked -> TODO()
-                is LandingEvent.ShowSettingsClicked -> TODO()
-                is LandingEvent.ToggleMusicClicked -> TODO()
-                is LandingEvent.ToggleSoundEffectsClicked -> TODO()
+                is LandingEvent.PlayClicked -> handlePlayClicked(internalState.value.saveGame)
+                is LandingEvent.ShowSettingsClicked -> sendSideEffect(LandingSideEffect.GoToSettings)
+                is LandingEvent.ToggleMusicClicked -> setMusicEnabled(event.setEnabled)
+                is LandingEvent.ToggleSoundEffectsClicked -> setSoundEffectsEnabled(event.setEnabled)
             }
+        }
+    }
+
+    private suspend fun handlePlayClicked(
+        saveGame: InternalState.SaveGameState
+    ) {
+        when (saveGame) {
+            is InternalState.SaveGameState.Checking,
+            is InternalState.SaveGameState.NoSaveGame -> sendSideEffect(LandingSideEffect.StartNewGame)
+
+            is InternalState.SaveGameState.Data -> TODO("implement save game loading")
         }
     }
 
