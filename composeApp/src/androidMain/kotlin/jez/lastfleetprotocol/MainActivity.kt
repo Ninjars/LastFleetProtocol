@@ -13,7 +13,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            App(AppComponent::class.create())
+            App(AppComponent::class.create(enableLogging = true))
         }
     }
 }

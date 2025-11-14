@@ -4,8 +4,10 @@ import com.pandulapeter.kubriko.manager.Manager
 import com.pandulapeter.kubriko.persistence.PersistenceManager
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import me.tatarka.inject.annotations.Inject
 
-internal class UserPreferencesManager(
+@Inject
+class UserPreferencesManager(
     persistenceManager: PersistenceManager,
 ) : Manager() {
     private val _areSoundEffectsEnabled = persistenceManager.boolean("areSoundEffectsEnabled", true)

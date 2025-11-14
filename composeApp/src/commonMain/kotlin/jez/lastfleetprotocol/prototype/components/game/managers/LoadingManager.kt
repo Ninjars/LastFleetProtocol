@@ -25,8 +25,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import lastfleetprotocol.composeapp.generated.resources.*
+import me.tatarka.inject.annotations.Inject
 
-internal class LoadingManager() : Manager() {
+@Inject
+class LoadingManager() : Manager() {
     private val musicManager by manager<MusicManager>()
     private val soundManager by manager<SoundManager>()
     private val spriteManager by manager<SpriteManager>()

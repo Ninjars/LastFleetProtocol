@@ -10,6 +10,7 @@ import jez.lastfleetprotocol.prototype.components.game.audio.SoundEffect
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import lastfleetprotocol.composeapp.generated.resources.Res
+import me.tatarka.inject.annotations.Inject
 
 private data class AudioState(
     val isFocused: Boolean,
@@ -18,7 +19,8 @@ private data class AudioState(
     val activeMusicTrack: MusicTrack?,
 )
 
-internal class AudioManager(
+@Inject
+class AudioManager(
     private val stateManager: StateManager,
     private val userPreferencesManager: UserPreferencesManager,
 ) : Manager() {
