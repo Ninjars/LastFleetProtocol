@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import jez.lastfleetprotocol.prototype.components.landingscreen.ui.LandingScreen
+import jez.lastfleetprotocol.prototype.components.splashscreen.ui.SplashScreen
 import kotlinx.serialization.Serializable
 import me.tatarka.inject.annotations.Inject
 
@@ -28,16 +29,19 @@ sealed interface LFNavDestination {
 @Inject
 @Composable
 fun LFNavHost(
-    landingScreen: LandingScreen
+    splashScreen: SplashScreen,
+    landingScreen: LandingScreen,
 ) {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
-        startDestination = LFNavDestination.Landing
+        startDestination = LFNavDestination.Splash
     ) {
-        composable<LFNavDestination.Splash> {}
+        composable<LFNavDestination.Splash> {
+            splashScreen(navController)
+        }
         composable<LFNavDestination.Landing> {
-            landingScreen()
+            landingScreen(navController)
         }
         composable<LFNavDestination.Game> {}
         composable<LFNavDestination.Settings> {}

@@ -4,6 +4,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import lastfleetprotocol.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.Font
 
@@ -37,7 +38,7 @@ fun appTypography(): Typography {
         headlineLarge = baseline.headlineLarge.copy(fontFamily = title),
         headlineMedium = baseline.headlineMedium.copy(fontFamily = title),
         headlineSmall = baseline.headlineSmall.copy(fontFamily = title),
-        titleLarge = baseline.titleLarge.copy(fontFamily = title),
+        titleLarge = baseline.titleLarge.copy(fontFamily = title, fontSize = 32.sp),
         titleMedium = baseline.titleMedium.copy(fontFamily = title),
         titleSmall = baseline.titleSmall.copy(fontFamily = title),
         bodyLarge = baseline.bodyLarge.copy(fontFamily = body),

@@ -9,7 +9,6 @@ import com.pandulapeter.kubriko.audioPlayback.SoundManager
 import com.pandulapeter.kubriko.manager.Manager
 import com.pandulapeter.kubriko.sprites.SpriteManager
 import com.pandulapeter.kubriko.uiComponents.utilities.preloadedFont
-import com.pandulapeter.kubriko.uiComponents.utilities.preloadedImageBitmap
 import com.pandulapeter.kubriko.uiComponents.utilities.preloadedImageVector
 import com.pandulapeter.kubriko.uiComponents.utilities.preloadedString
 import jez.lastfleetprotocol.prototype.di.Singleton
@@ -91,7 +90,7 @@ class LoadingManager(
             && preloadedImageVector(Res.drawable.ic_back).value != null
 
     @Composable
-    private fun areImageResourcesLoaded() = preloadedImageBitmap(Res.drawable.compose_multiplatform).value != null
+    private fun areImageResourcesLoaded() = true//preloadedImageBitmap(Res.drawable.compose_multiplatform).value != null
 
     @Composable
     private fun areStringResourcesLoaded() = preloadedString(Res.string.button_new_game).value.isNotBlank()

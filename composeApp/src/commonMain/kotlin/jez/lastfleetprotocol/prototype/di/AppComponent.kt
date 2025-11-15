@@ -10,6 +10,7 @@ import jez.lastfleetprotocol.prototype.components.game.GameStateHolder
 import jez.lastfleetprotocol.prototype.components.game.managers.AudioManager
 import jez.lastfleetprotocol.prototype.components.game.managers.LoadingManager
 import jez.lastfleetprotocol.prototype.components.landingscreen.ui.LandingScreen
+import jez.lastfleetprotocol.prototype.components.splashscreen.ui.SplashScreen
 import jez.lastfleetprotocol.prototype.di.DependencyName.KUBRIKO_BACKGROUND
 import jez.lastfleetprotocol.prototype.di.DependencyName.KUBRIKO_GAME
 import jez.lastfleetprotocol.prototype.ui.navigation.LFNavHost
@@ -41,6 +42,8 @@ abstract class AppComponent(
     abstract val gameStateHolder: GameStateHolder
 
     abstract val navHost: LFNavHost
+
+    abstract val splashScreen: SplashScreen
 
     abstract val landingScreen: LandingScreen
 

@@ -9,7 +9,7 @@ import jez.lastfleetprotocol.prototype.ui.theme.LFTheme
 fun PreviewWrapper(
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme {
+    LFTheme {
         Surface(
             color = MaterialTheme.colorScheme.background,
             content = content
