@@ -1,12 +1,17 @@
 package jez.lastfleetprotocol.prototype.components.landingscreen.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pandulapeter.kubriko.Kubriko
+import com.pandulapeter.kubriko.KubrikoViewport
 import jez.lastfleetprotocol.prototype.ui.common.PreviewWrapper
 import jez.lastfleetprotocol.prototype.ui.common.composables.LFIconButton
 import jez.lastfleetprotocol.prototype.ui.common.composables.LFTextButton
@@ -23,10 +28,27 @@ typealias LandingScreen = @Composable () -> Unit
 @Composable
 fun LandingScreen(viewModelFactory: () -> LandingVM) {
     val viewModel = viewModel { viewModelFactory() }
-    LandingScreenContent(
+    LandingScreen(
         state = viewModel.state.collectAsStateWithLifecycle().value,
         eventHandler = viewModel
     )
+}
+
+@Composable
+private fun LandingScreen(
+    state: LandingState,
+    eventHandler: Consumer<LandingEvent>,
+) {
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        KubrikoViewport(
+            kubriko = state.kubriko,
+            modifier = Modifier
+                .fillMaxSize(),
+        )
+        LandingScreenContent(state, eventHandler)
+    }
 }
 
 @Composable
@@ -88,7 +110,8 @@ private fun LandingScreenPreview() {
             state = LandingState(
                 musicEnabled = true,
                 soundEffectsEnabled = false,
-                hasSaveGame = true
+                hasSaveGame = true,
+                kubriko = Kubriko.newInstance(),
             ),
         ) {}
     }

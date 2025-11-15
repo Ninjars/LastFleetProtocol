@@ -1,6 +1,8 @@
 package jez.lastfleetprotocol.prototype.components.landingscreen.ui
 
 import androidx.lifecycle.viewModelScope
+import com.pandulapeter.kubriko.Kubriko
+import jez.lastfleetprotocol.prototype.components.game.GameStateHolder
 import jez.lastfleetprotocol.prototype.components.game.managers.UserPreferencesManager
 import jez.lastfleetprotocol.prototype.components.shared.usecases.SetMusicEnabledUseCase
 import jez.lastfleetprotocol.prototype.components.shared.usecases.SetSoundEffectsEnabledUseCase
@@ -23,6 +25,7 @@ data class LandingState(
     val musicEnabled: Boolean,
     val soundEffectsEnabled: Boolean,
     val hasSaveGame: Boolean?,
+    val kubriko: Kubriko,
 )
 
 sealed interface LandingSideEffect {
@@ -48,6 +51,7 @@ private data class InternalState(
 
 @Inject
 class LandingVM(
+    private val gameStateHolder: GameStateHolder,
     userPreferencesManager: UserPreferencesManager,
     private val setMusicEnabled: SetMusicEnabledUseCase,
     private val setSoundEffectsEnabled: SetSoundEffectsEnabledUseCase,
@@ -60,12 +64,13 @@ class LandingVM(
         userPreferencesManager.isMusicEnabled,
         userPreferencesManager.areSoundEffectsEnabled
     ) { internalState, musicEnabled, soundEffectsEnabled ->
-        createViewState(internalState, musicEnabled, soundEffectsEnabled)
+        createViewState(internalState, musicEnabled, soundEffectsEnabled, gameStateHolder.gameKubriko)
     }.stateInWhileSubscribed(
         viewModelScope, createViewState(
             internalState = InternalState.default,
             musicEnabled = false,
             soundEffectsEnabled = false,
+            kubriko = gameStateHolder.gameKubriko,
         )
     )
 
@@ -92,8 +97,14 @@ class LandingVM(
     }
 
     private companion object {
-        fun createViewState(internalState: InternalState, musicEnabled: Boolean, soundEffectsEnabled: Boolean) =
+        fun createViewState(
+            internalState: InternalState,
+            musicEnabled: Boolean,
+            soundEffectsEnabled: Boolean,
+            kubriko: Kubriko
+        ) =
             LandingState(
+                kubriko = kubriko,
                 musicEnabled = musicEnabled,
                 soundEffectsEnabled = soundEffectsEnabled,
                 hasSaveGame = when (internalState.saveGame) {
