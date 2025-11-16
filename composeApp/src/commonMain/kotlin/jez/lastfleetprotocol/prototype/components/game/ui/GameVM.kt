@@ -9,6 +9,7 @@ import me.tatarka.inject.annotations.Inject
 
 sealed interface GameEvent {
     data object OpenMenuClicked : GameEvent
+    data object BackPressed : GameEvent
 }
 
 data class GameState(

@@ -10,7 +10,7 @@ androidx-espresso = "3.7.0"
 androidx-lifecycle = "2.9.5"
 androidx-testExt = "1.3.0"
 composeHotReload = "1.0.0-rc02"
-composeMultiplatform = "1.9.1"
+composeMultiplatform = "1.9.3"
 junit = "4.13.2"
 kotlin = "2.2.20"
 kotlinx-coroutines = "1.10.2"
@@ -35,6 +35,10 @@ androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 kotlinx-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-json" }
 jetpack-navigation = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigation" }
+backhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", version.ref = "composeMultiplatform" }
+
+kotlininject-compiler = { module = "me.tatarka.inject:kotlin-inject-compiler-ksp", version.ref = "kotlin-inject" }
+kotlininject-runtime = { module = "me.tatarka.inject:kotlin-inject-runtime-kmp", version.ref = "kotlin-inject" }
 
 kubriko-engine = { module = "io.github.pandulapeter.kubriko:engine", version.ref = "kubriko" }
 kubriko-plugin-audio = { module = "io.github.pandulapeter.kubriko:plugin-audio-playback", version.ref = "kubriko" }
@@ -55,8 +59,6 @@ kubriko-tool-scene-editor = { module = "io.github.pandulapeter.kubriko:tool-scen
 kubriko-tool-scene-editor-api = { module = "io.github.pandulapeter.kubriko:tool-scene-editor-api", version.ref = "kubriko" }
 kubriko-tool-scene-editor-noop = { module = "io.github.pandulapeter.kubriko:tool-scene-editor-noop", version.ref = "kubriko" }
 kubriko-tool-ui-components = { module = "io.github.pandulapeter.kubriko:tool-ui-components", version.ref = "kubriko" }
-kotlininject-compiler = { module = "me.tatarka.inject:kotlin-inject-compiler-ksp", version.ref = "kotlin-inject" }
-kotlininject-runtime = { module = "me.tatarka.inject:kotlin-inject-runtime-kmp", version.ref = "kotlin-inject" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

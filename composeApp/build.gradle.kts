@@ -49,6 +49,7 @@ kotlin {
             implementation(libs.jetpack.navigation)
             implementation(libs.kotlinx.json)
             implementation(libs.kotlininject.runtime)
+            implementation(libs.backhandler)
 
             // Kubriko Engine Dependencies
             // Engine

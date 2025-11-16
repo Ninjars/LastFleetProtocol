@@ -3,7 +3,9 @@ package jez.lastfleetprotocol.prototype.components.game.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -19,6 +21,7 @@ import java.util.function.Consumer
 
 typealias GameScreen = @Composable (NavController) -> Unit
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Inject
 @Composable
 fun GameScreen(
@@ -26,6 +29,9 @@ fun GameScreen(
     @Assisted navController: NavController,
 ) {
     val viewModel = viewModel { viewModelFactory() }
+    BackHandler(true) {
+        viewModel.accept(GameEvent.BackPressed)
+    }
     GameScreen(
         state = viewModel.state.collectAsStateWithLifecycle().value,
         eventHandler = viewModel,
