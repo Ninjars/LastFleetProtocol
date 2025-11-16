@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import jez.lastfleetprotocol.prototype.components.game.ui.GameScreen
 import jez.lastfleetprotocol.prototype.components.landingscreen.ui.LandingScreen
 import jez.lastfleetprotocol.prototype.components.splashscreen.ui.SplashScreen
 import kotlinx.serialization.Serializable
@@ -31,6 +32,7 @@ sealed interface LFNavDestination {
 fun LFNavHost(
     splashScreen: SplashScreen,
     landingScreen: LandingScreen,
+    gameScreen: GameScreen,
 ) {
     val navController = rememberNavController()
     NavHost(
@@ -43,7 +45,9 @@ fun LFNavHost(
         composable<LFNavDestination.Landing> {
             landingScreen(navController)
         }
-        composable<LFNavDestination.Game> {}
+        composable<LFNavDestination.Game> {
+            gameScreen(navController)
+        }
         composable<LFNavDestination.Settings> {}
     }
 }

@@ -10,9 +10,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.KubrikoViewport
+import jez.lastfleetprotocol.prototype.ui.common.HandleSideEffect
 import jez.lastfleetprotocol.prototype.ui.common.PreviewWrapper
 import jez.lastfleetprotocol.prototype.ui.common.composables.LFIconButton
 import jez.lastfleetprotocol.prototype.ui.common.composables.LFTextButton
+import jez.lastfleetprotocol.prototype.ui.navigation.LFNavDestination
 import lastfleetprotocol.composeapp.generated.resources.*
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
@@ -30,6 +32,13 @@ fun LandingScreen(
     @Assisted navController: NavController,
 ) {
     val viewModel = viewModel { viewModelFactory() }
+    viewModel.HandleSideEffect {
+        when (it) {
+            is LandingSideEffect.GoToSettings -> navController.navigate(LFNavDestination.Settings)
+            is LandingSideEffect.StartNewGame -> navController.navigate(LFNavDestination.Game)
+        }
+    }
+
     LandingScreen(
         state = viewModel.state.collectAsStateWithLifecycle().value,
         eventHandler = viewModel
