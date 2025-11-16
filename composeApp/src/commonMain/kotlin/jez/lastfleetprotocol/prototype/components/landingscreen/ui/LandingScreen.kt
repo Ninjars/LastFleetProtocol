@@ -69,6 +69,7 @@ private fun LandingScreenContent(
 ) {
     Column(
         modifier = Modifier.fillMaxSize()
+            .windowInsetsPadding(WindowInsets.systemBars)
             .padding(16.dp)
     ) {
         Row(

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -45,8 +46,11 @@ private fun GameScreen(
                 .fillMaxSize(),
         )
         Row(
-            horizontalArrangement = Arrangement.End,
-            modifier = Modifier.fillMaxWidth().align(Alignment.TopStart)
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.End),
+            modifier = Modifier.fillMaxWidth()
+                .align(Alignment.TopStart)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(16.dp)
         ) {
             LFIconButton(
                 drawable = Res.drawable.ic_menu,
