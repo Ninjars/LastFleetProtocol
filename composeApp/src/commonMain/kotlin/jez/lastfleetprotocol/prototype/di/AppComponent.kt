@@ -3,12 +3,15 @@ package jez.lastfleetprotocol.prototype.di
 import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.audioPlayback.MusicManager
 import com.pandulapeter.kubriko.audioPlayback.SoundManager
+import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.StateManager
 import com.pandulapeter.kubriko.persistence.PersistenceManager
 import com.pandulapeter.kubriko.sprites.SpriteManager
 import jez.lastfleetprotocol.prototype.components.game.GameStateHolder
 import jez.lastfleetprotocol.prototype.components.game.managers.AudioManager
+import jez.lastfleetprotocol.prototype.components.game.managers.GameStateManager
 import jez.lastfleetprotocol.prototype.components.game.managers.LoadingManager
+import jez.lastfleetprotocol.prototype.components.game.managers.UiManager
 import jez.lastfleetprotocol.prototype.components.landingscreen.ui.LandingScreen
 import jez.lastfleetprotocol.prototype.components.splashscreen.ui.SplashScreen
 import jez.lastfleetprotocol.prototype.di.DependencyName.KUBRIKO_BACKGROUND
@@ -86,6 +89,13 @@ abstract class AppComponent(
 
     @Singleton
     @Provides
+    protected fun ActorManager(): ActorManager = ActorManager.newInstance(
+        isLoggingEnabled = enableLogging,
+        instanceNameForLogging = Constants.GAME_LOG_TAG,
+    )
+
+    @Singleton
+    @Provides
     protected fun backgroundKubriko(
         stateManager: StateManager,
         musicManager: MusicManager,
@@ -112,6 +122,9 @@ abstract class AppComponent(
         soundManager: SoundManager,
         loadingManager: LoadingManager,
         audioManager: AudioManager,
+        actorManager: ActorManager,
+        uiManager: UiManager,
+        gameStateManager: GameStateManager,
     ): @Named(KUBRIKO_GAME) Kubriko = Kubriko.newInstance(
         stateManager,
         persistenceManager,
@@ -120,6 +133,9 @@ abstract class AppComponent(
         soundManager,
         audioManager,
         loadingManager,
+        actorManager,
+        uiManager,
+        gameStateManager,
         isLoggingEnabled = enableLogging,
         instanceNameForLogging = Constants.GAME_LOG_TAG,
     )
