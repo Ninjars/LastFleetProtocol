@@ -1,6 +1,8 @@
 package jez.lastfleetprotocol.prototype.components.game.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -49,7 +51,8 @@ private fun GameScreen(
         KubrikoViewport(
             kubriko = state.kubriko,
             modifier = Modifier
-                .fillMaxSize(),
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.primary),
         )
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.End),
