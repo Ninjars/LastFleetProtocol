@@ -9,7 +9,10 @@ import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.persistence.PersistenceManager
 import com.pandulapeter.kubriko.sprites.SpriteManager
 import jez.lastfleetprotocol.prototype.components.game.GameStateHolder
-import jez.lastfleetprotocol.prototype.components.game.managers.*
+import jez.lastfleetprotocol.prototype.components.game.managers.AudioManager
+import jez.lastfleetprotocol.prototype.components.game.managers.GameStateManager
+import jez.lastfleetprotocol.prototype.components.game.managers.LoadingManager
+import jez.lastfleetprotocol.prototype.components.game.managers.UiManager
 import jez.lastfleetprotocol.prototype.components.landingscreen.ui.LandingScreen
 import jez.lastfleetprotocol.prototype.components.splashscreen.ui.SplashScreen
 import jez.lastfleetprotocol.prototype.di.DependencyName.KUBRIKO_BACKGROUND
@@ -130,7 +133,6 @@ abstract class AppComponent(
         actorManager: ActorManager,
         uiManager: UiManager,
         gameStateManager: GameStateManager,
-        shipsManager: ShipsManager,
         viewportManager: ViewportManager,
     ): @Named(KUBRIKO_GAME) Kubriko = Kubriko.newInstance(
         stateManager,
@@ -143,7 +145,6 @@ abstract class AppComponent(
         actorManager,
         uiManager,
         gameStateManager,
-        shipsManager,
         viewportManager,
         isLoggingEnabled = enableLogging,
         instanceNameForLogging = Constants.GAME_LOG_TAG,

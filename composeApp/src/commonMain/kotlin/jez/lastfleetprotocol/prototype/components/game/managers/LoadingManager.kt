@@ -32,6 +32,9 @@ class LoadingManager(
         Res.drawable.sprite_alien_ship,
         Res.drawable.sprite_power_up,
         Res.drawable.sprite_shield,
+        Res.drawable.ship_player_1,
+        Res.drawable.ship_enemy_1,
+        Res.drawable.turret_simple_1,
     )
     private val areGameResourcesLoaded by autoInitializingLazy {
         combine(

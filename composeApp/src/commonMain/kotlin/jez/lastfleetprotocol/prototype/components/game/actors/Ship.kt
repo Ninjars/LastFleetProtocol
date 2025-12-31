@@ -1,6 +1,6 @@
 package jez.lastfleetprotocol.prototype.components.game.actors
 
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.actor.body.BoxBody
@@ -8,13 +8,16 @@ import com.pandulapeter.kubriko.actor.traits.Dynamic
 import com.pandulapeter.kubriko.actor.traits.Visible
 import com.pandulapeter.kubriko.collision.Collidable
 import com.pandulapeter.kubriko.collision.CollisionDetector
-import com.pandulapeter.kubriko.collision.mask.BoxCollisionMask
+import com.pandulapeter.kubriko.collision.mask.CircleCollisionMask
 import com.pandulapeter.kubriko.collision.mask.CollisionMask
 import com.pandulapeter.kubriko.helpers.extensions.get
+import com.pandulapeter.kubriko.helpers.extensions.minDimension
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ViewportManager
+import com.pandulapeter.kubriko.sprites.SpriteManager
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
+import org.jetbrains.compose.resources.DrawableResource
 import kotlin.reflect.KClass
 
 /**
@@ -23,37 +26,33 @@ import kotlin.reflect.KClass
  * collisions via corresponding collidableTypes.
  */
 abstract class Ship(
-    private val factionColor: Color,
+    private val drawable: DrawableResource,
     initialPosition: SceneOffset,
 ) : Visible, Dynamic, Collidable, CollisionDetector {
 
     private lateinit var viewportManager: ViewportManager
+    private lateinit var spriteManager: SpriteManager
+    private val sprite: ImageBitmap by lazy {
+        spriteManager.get(drawable) ?: throw RuntimeException("unable to load asset for Ship")
+    }
 
     override val body: BoxBody = BoxBody(
-        initialSize = SceneSize(
-            width = 150.sceneUnit,
-            height = 275.sceneUnit,
-        ),
         initialPosition = initialPosition,
     )
 
-    override val collisionMask: CollisionMask = BoxCollisionMask(
-        initialSize = SceneSize(
-            width = 150.sceneUnit,
-            height = 275.sceneUnit,
-        ),
+    override val collisionMask: CollisionMask = CircleCollisionMask(
         initialPosition = body.position,
     )
 
     override fun DrawScope.draw() {
-        drawOval(
-            color = factionColor,
-            size = body.size.raw,
-        )
+        drawImage(sprite)
     }
 
     override fun onAdded(kubriko: Kubriko) {
         viewportManager = kubriko.get()
+        spriteManager = kubriko.get()
+        body.size = SceneSize(sprite.width.sceneUnit, sprite.height.sceneUnit)
+        (collisionMask as CircleCollisionMask).radius = body.size.minDimension / 2f
     }
 
     override val collidableTypes: List<KClass<out Collidable>>

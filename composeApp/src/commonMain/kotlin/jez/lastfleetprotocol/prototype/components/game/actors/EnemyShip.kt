@@ -1,12 +1,13 @@
 package jez.lastfleetprotocol.prototype.components.game.actors
 
-import androidx.compose.ui.graphics.Color
 import com.pandulapeter.kubriko.types.SceneOffset
+import lastfleetprotocol.composeapp.generated.resources.Res
+import lastfleetprotocol.composeapp.generated.resources.ship_enemy_1
 
 class EnemyShip(
     initialPosition: SceneOffset,
 ) : Ship(
-    factionColor = Color.Red,
+    drawable = Res.drawable.ship_enemy_1,
     initialPosition = initialPosition,
 ) {
 
