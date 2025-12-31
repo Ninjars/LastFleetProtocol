@@ -1,5 +1,6 @@
 package jez.lastfleetprotocol.prototype.components.game.managers
 
+import androidx.compose.ui.geometry.Offset
 import com.pandulapeter.kubriko.actor.traits.Unique
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.Manager
@@ -8,6 +9,7 @@ import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.game.actors.EnemyShip
 import jez.lastfleetprotocol.prototype.components.game.actors.PlayerShip
+import jez.lastfleetprotocol.prototype.components.game.actors.Turret
 import me.tatarka.inject.annotations.Inject
 
 @Inject
@@ -27,14 +29,30 @@ class GameStateManager(
         val bottomRight = viewportManager.bottomRight.value
         val halfWidth = bottomRight.x - topLeft.x
         val height = bottomRight.y - topLeft.y
-        actorManager.add(
-            PlayerShip(
-                SceneOffset(
-                    x = topLeft.x + halfWidth / 2f,
-                    y = bottomRight.y - height / 10f,
-                )
+
+        val playerShip = PlayerShip(
+            SceneOffset(
+                x = topLeft.x + halfWidth / 2f,
+                y = bottomRight.y - height / 10f,
             )
         )
+        actorManager.add(
+            playerShip
+        )
+        Turret(
+            parent = playerShip.body,
+            offsetFromParentPivot = SceneOffset(Offset(-50f, 0f)),
+            pivot = SceneOffset(Offset(32f, 32f)),
+        ).apply {
+            actorManager.add(this)
+        }
+        Turret(
+            parent = playerShip.body,
+            offsetFromParentPivot = SceneOffset(Offset(50f, 0f)),
+            pivot = SceneOffset(Offset(32f, 32f)),
+        ).apply {
+            actorManager.add(this)
+        }
         actorManager.add(
             EnemyShip(
                 SceneOffset(
