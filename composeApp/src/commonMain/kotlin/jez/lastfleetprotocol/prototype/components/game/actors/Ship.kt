@@ -52,6 +52,7 @@ abstract class Ship(
         viewportManager = kubriko.get()
         spriteManager = kubriko.get()
         body.size = SceneSize(sprite.width.sceneUnit, sprite.height.sceneUnit)
+        body.pivot = body.size.center
         (collisionMask as CircleCollisionMask).radius = body.size.minDimension / 2f
     }
 
