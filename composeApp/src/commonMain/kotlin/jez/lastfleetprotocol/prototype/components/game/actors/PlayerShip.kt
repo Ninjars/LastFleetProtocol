@@ -7,9 +7,11 @@ import lastfleetprotocol.composeapp.generated.resources.ship_player_1
 
 class PlayerShip(
     initialPosition: SceneOffset,
+    turrets: List<Turret>,
 ) : Ship(
     drawable = Res.drawable.ship_player_1,
     initialPosition = initialPosition,
+    turrets = turrets,
 ) {
     override val drawingOrder: Float = DrawOrder.PLAYER_SHIP
 }

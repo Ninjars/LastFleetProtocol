@@ -3,8 +3,10 @@ package jez.lastfleetprotocol.prototype.components.game.actors
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.pandulapeter.kubriko.Kubriko
+import com.pandulapeter.kubriko.actor.Actor
 import com.pandulapeter.kubriko.actor.body.BoxBody
 import com.pandulapeter.kubriko.actor.traits.Dynamic
+import com.pandulapeter.kubriko.actor.traits.Group
 import com.pandulapeter.kubriko.actor.traits.Visible
 import com.pandulapeter.kubriko.collision.Collidable
 import com.pandulapeter.kubriko.collision.CollisionDetector
@@ -28,10 +30,13 @@ import kotlin.reflect.KClass
 abstract class Ship(
     private val drawable: DrawableResource,
     initialPosition: SceneOffset,
-) : Visible, Dynamic, Collidable, CollisionDetector {
+    turrets: List<Turret> = emptyList(),
+) : Visible, Dynamic, Collidable, CollisionDetector, Group {
 
     private lateinit var viewportManager: ViewportManager
     private lateinit var spriteManager: SpriteManager
+    override val actors: List<Actor> = turrets
+
     private val sprite: ImageBitmap by lazy {
         spriteManager.get(drawable) ?: throw RuntimeException("unable to load asset for Ship")
     }
@@ -64,6 +69,6 @@ abstract class Ship(
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {
-//        TODO("Not yet implemented")
+//        body.rotation += AngleRadians.TwoPi * deltaTimeInMilliseconds / 1000f / 5f
     }
 }

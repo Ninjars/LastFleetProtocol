@@ -24,6 +24,8 @@ abstract class Child(
 
     override fun onAdded(kubriko: Kubriko) {
         body.position = parent.getRelativePoint(offsetFromParentPivot)
+        body.rotation = parent.rotation
+        body.scale = parent.scale
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {

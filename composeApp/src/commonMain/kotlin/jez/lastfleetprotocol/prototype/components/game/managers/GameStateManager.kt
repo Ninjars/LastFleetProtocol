@@ -30,29 +30,31 @@ class GameStateManager(
         val halfWidth = bottomRight.x - topLeft.x
         val height = bottomRight.y - topLeft.y
 
+        val playerShipTurrets = mutableListOf<Turret>()
         val playerShip = PlayerShip(
             SceneOffset(
                 x = topLeft.x + halfWidth / 2f,
                 y = bottomRight.y - height / 10f,
-            )
-        )
-        actorManager.add(
-            playerShip
+            ),
+            turrets = playerShipTurrets,
         )
         Turret(
             parent = playerShip.body,
             offsetFromParentPivot = SceneOffset(Offset(-50f, 0f)),
             pivot = SceneOffset(Offset(32f, 32f)),
         ).apply {
-            actorManager.add(this)
+            playerShipTurrets.add(this)
         }
         Turret(
             parent = playerShip.body,
             offsetFromParentPivot = SceneOffset(Offset(50f, 0f)),
             pivot = SceneOffset(Offset(32f, 32f)),
         ).apply {
-            actorManager.add(this)
+            playerShipTurrets.add(this)
         }
+        actorManager.add(
+            playerShip
+        )
         actorManager.add(
             EnemyShip(
                 SceneOffset(
