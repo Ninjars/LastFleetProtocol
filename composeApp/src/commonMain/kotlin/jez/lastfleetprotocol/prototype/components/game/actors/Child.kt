@@ -9,6 +9,14 @@ import com.pandulapeter.kubriko.helpers.extensions.sin
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 
+/**
+ * Used to allow actors to position themselves relative to a parent BoxBody.
+ *
+ * Ensure the Child is added to the ActorManager after the parent so its body
+ * parameter updates are updated correctly.
+ *
+ * Ensure extending classes call super.onAdded() and super.update().
+ */
 abstract class Child(
     private val parent: BoxBody,
     private val offsetFromParentPivot: SceneOffset,
