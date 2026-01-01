@@ -18,20 +18,20 @@ import com.pandulapeter.kubriko.types.SceneOffset
  * Ensure extending classes call super.onAdded() and super.update().
  */
 abstract class Child(
-    private val parent: BoxBody,
+    private val parent: Parent,
     private val offsetFromParentPivot: SceneOffset,
 ) : Visible, Dynamic {
 
     override fun onAdded(kubriko: Kubriko) {
-        body.position = parent.getRelativePoint(offsetFromParentPivot)
-        body.rotation = parent.rotation
-        body.scale = parent.scale
+        body.position = parent.body.getRelativePoint(offsetFromParentPivot)
+        body.rotation = parent.body.rotation
+        body.scale = parent.body.scale
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {
-        body.position = parent.getRelativePoint(offsetFromParentPivot)
-        body.rotation = parent.rotation
-        body.scale = parent.scale
+        body.position = parent.body.getRelativePoint(offsetFromParentPivot)
+        body.rotation = parent.body.rotation
+        body.scale = parent.body.scale
     }
 
     private fun BoxBody.getRelativePoint(point: SceneOffset): SceneOffset {

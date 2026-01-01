@@ -6,7 +6,6 @@ import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.actor.Actor
 import com.pandulapeter.kubriko.actor.body.BoxBody
 import com.pandulapeter.kubriko.actor.traits.Dynamic
-import com.pandulapeter.kubriko.actor.traits.Group
 import com.pandulapeter.kubriko.actor.traits.Visible
 import com.pandulapeter.kubriko.collision.Collidable
 import com.pandulapeter.kubriko.collision.CollisionDetector
@@ -32,7 +31,7 @@ abstract class Ship(
     initialPosition: SceneOffset,
     initialVelocity: SceneOffset = SceneOffset.Zero,
     private val turrets: List<Turret> = emptyList(),
-) : Visible, Targetable, Dynamic, Collidable, CollisionDetector, Group {
+) : Visible, Targetable, Dynamic, Collidable, CollisionDetector, Parent {
 
     private lateinit var viewportManager: ViewportManager
     private lateinit var spriteManager: SpriteManager

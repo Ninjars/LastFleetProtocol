@@ -20,7 +20,7 @@ import lastfleetprotocol.composeapp.generated.resources.turret_simple_1
 import kotlin.math.atan2
 
 class Turret(
-    parent: BoxBody,
+    parent: Parent,
     offsetFromParentPivot: SceneOffset,
     private val pivot: SceneOffset,
     private val gunData: GunData,

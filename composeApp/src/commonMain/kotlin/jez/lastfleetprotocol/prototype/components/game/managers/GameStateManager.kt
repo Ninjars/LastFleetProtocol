@@ -40,8 +40,8 @@ class GameStateManager(
             turrets = playerShipTurrets,
         )
         Turret(
-            parent = playerShip.body,
-            offsetFromParentPivot = SceneOffset(Offset(-50f, 0f)),
+            parent = playerShip,
+            offsetFromParentPivot = SceneOffset(Offset(0f, -45f)),
             pivot = SceneOffset(Offset(32f, 32f)),
             gunData = GunData(
                 magazineCapacity = 12,
@@ -54,8 +54,8 @@ class GameStateManager(
             playerShipTurrets.add(this)
         }
         Turret(
-            parent = playerShip.body,
-            offsetFromParentPivot = SceneOffset(Offset(50f, 0f)),
+            parent = playerShip,
+            offsetFromParentPivot = SceneOffset(Offset(0f, 45f)),
             pivot = SceneOffset(Offset(32f, 32f)),
             gunData = GunData(
                 magazineCapacity = 12,
