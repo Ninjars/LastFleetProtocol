@@ -36,7 +36,7 @@ abstract class Child(
 
     private fun BoxBody.getRelativePoint(point: SceneOffset): SceneOffset {
         val scaled = (point - pivot) * scale
-        val rotated = if (rotation == AngleRadians.Zero) scaled else SceneOffset(
+        val rotated = if (rotation == AngleRadians.Zero) scaled + pivot else SceneOffset(
             x = (scaled.x + pivot.x) * rotation.cos - (scaled.y + pivot.y) * rotation.sin,
             y = (scaled.x + pivot.x) * rotation.sin + (scaled.y + pivot.y) * rotation.cos,
         )
