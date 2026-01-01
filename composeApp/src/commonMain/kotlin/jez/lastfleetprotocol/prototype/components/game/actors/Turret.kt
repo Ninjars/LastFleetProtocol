@@ -26,7 +26,7 @@ class Turret(
     offsetFromParentPivot: SceneOffset,
     private val pivot: SceneOffset,
     private val gunData: GunData,
-    private val rotationSpeed: AngleRadians = 0.01f.deg.rad,
+    private val rotationSpeed: AngleRadians = 0.1f.deg.rad,
 ) : Child(
     parent = parent,
     offsetFromParentPivot = offsetFromParentPivot,
@@ -72,14 +72,15 @@ class Turret(
             // TODO: create aim point based on target velocity, projectile velocity, and distance
             val angleToTarget = angleOfLine(body.position, it.body.position)
 
-            currentRotation = currentRotation.rotateTowards(angleToTarget, rotationSpeed * deltaTimeInMilliseconds)
+            val targetRotation = angleToTarget - body.rotation
+            currentRotation = currentRotation.rotateTowards(targetRotation, rotationSpeed * deltaTimeInMilliseconds)
             gun.angleToTarget = angleToTarget - body.rotation - currentRotation
         }
 
         // TODO: return to default facing if no target
         gun.angleToTarget = null
 
-        body.rotation = currentRotation
+        body.rotation += currentRotation
     }
 
     private fun angleOfLine(from: SceneOffset, to: SceneOffset): AngleRadians =
