@@ -37,7 +37,7 @@ class Turret(
 
     override val body = BoxBody()
 
-    var target: Mobile? = null
+    var target: Targetable? = null
 
     private val gun: Gun by lazy {
         Gun(
@@ -60,6 +60,9 @@ class Turret(
 
     override fun update(deltaTimeInMilliseconds: Int) {
         super.update(deltaTimeInMilliseconds)
+        if (target?.isValidTarget()?.not() ?: false) {
+            target = null
+        }
         body.rotation += currentRotation
 
         gun.angleToTarget = target?.let {

@@ -31,8 +31,8 @@ abstract class Ship(
     private val drawable: DrawableResource,
     initialPosition: SceneOffset,
     initialVelocity: SceneOffset = SceneOffset.Zero,
-    turrets: List<Turret> = emptyList(),
-) : Visible, Mobile, Dynamic, Collidable, CollisionDetector, Group {
+    private val turrets: List<Turret> = emptyList(),
+) : Visible, Targetable, Dynamic, Collidable, CollisionDetector, Group {
 
     private lateinit var viewportManager: ViewportManager
     private lateinit var spriteManager: SpriteManager
@@ -73,5 +73,15 @@ abstract class Ship(
 
     override fun update(deltaTimeInMilliseconds: Int) {
 //        body.rotation += AngleRadians.TwoPi * deltaTimeInMilliseconds / 1000f / 5f
+    }
+
+    override fun isValidTarget(): Boolean {
+        return true // TODO: check health
+    }
+
+    fun setTarget(mobile: Targetable?) {
+        for (turret in turrets) {
+            turret.target = mobile
+        }
     }
 }
