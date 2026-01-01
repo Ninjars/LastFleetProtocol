@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.actor.body.BoxBody
+import com.pandulapeter.kubriko.helpers.extensions.deg
 import com.pandulapeter.kubriko.helpers.extensions.get
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
@@ -15,6 +16,7 @@ import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.game.data.Gun
 import jez.lastfleetprotocol.prototype.components.game.data.GunData
+import jez.lastfleetprotocol.prototype.components.game.utils.rotateTowards
 import lastfleetprotocol.composeapp.generated.resources.Res
 import lastfleetprotocol.composeapp.generated.resources.turret_simple_1
 import kotlin.math.atan2
@@ -24,6 +26,7 @@ class Turret(
     offsetFromParentPivot: SceneOffset,
     private val pivot: SceneOffset,
     private val gunData: GunData,
+    private val rotationSpeed: AngleRadians = 0.01f.deg.rad,
 ) : Child(
     parent = parent,
     offsetFromParentPivot = offsetFromParentPivot,
@@ -68,10 +71,8 @@ class Turret(
 
             // TODO: create aim point based on target velocity, projectile velocity, and distance
             val angleToTarget = angleOfLine(body.position, it.body.position)
-            val delta = angleToTarget - currentRotation
 
-            // TODO: utility (or perhaps library update?) to limit rate of rotation by fixed amount per frame
-            currentRotation += delta * deltaTimeInMilliseconds * 0.01f
+            currentRotation = currentRotation.rotateTowards(angleToTarget, rotationSpeed * deltaTimeInMilliseconds)
             gun.angleToTarget = angleToTarget - body.rotation - currentRotation
         }
 
@@ -83,12 +84,6 @@ class Turret(
 
     private fun angleOfLine(from: SceneOffset, to: SceneOffset): AngleRadians =
         atan2((to.y - from.y).raw, (to.x - from.x).raw).rad
-
-    private fun BoxBody.angleTo(point: SceneOffset): AngleRadians =
-        atan2((point.y - pivot.y).raw, (point.x - pivot.x).raw).rad
-
-    private fun BoxBody.relativeAngleTo(point: SceneOffset): AngleRadians =
-        (angleTo(point) - rotation).normalized.rad
 
     override val drawingOrder: Float = DrawOrder.PLAYER_TURRET
 }
