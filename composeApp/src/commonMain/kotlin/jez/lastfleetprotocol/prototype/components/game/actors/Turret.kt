@@ -60,22 +60,35 @@ class Turret(
 
     override fun update(deltaTimeInMilliseconds: Int) {
         super.update(deltaTimeInMilliseconds)
-        if (target?.isValidTarget()?.not() ?: false) {
-            target = null
-        }
-        body.rotation += currentRotation
+        target?.let {
+            if (!it.isValidTarget()) {
+                target = null
+                return
+            }
 
-        gun.angleToTarget = target?.let {
             // TODO: create aim point based on target velocity, projectile velocity, and distance
-            body.angleTo(it.body.position)
+            val angleToTarget = angleOfLine(body.position, it.body.position)
+            val delta = angleToTarget - currentRotation
+
+            // TODO: utility (or perhaps library update?) to limit rate of rotation by fixed amount per frame
+            currentRotation += delta * deltaTimeInMilliseconds * 0.01f
+            gun.angleToTarget = angleToTarget - body.rotation - currentRotation
         }
+
+        // TODO: return to default facing if no target
+        gun.angleToTarget = null
+
+        body.rotation = currentRotation
     }
 
+    private fun angleOfLine(from: SceneOffset, to: SceneOffset): AngleRadians =
+        atan2((to.y - from.y).raw, (to.x - from.x).raw).rad
+
     private fun BoxBody.angleTo(point: SceneOffset): AngleRadians =
-        atan2((point.y - position.y).raw, (point.x - position.x).raw).rad
+        atan2((point.y - pivot.y).raw, (point.x - pivot.x).raw).rad
 
     private fun BoxBody.relativeAngleTo(point: SceneOffset): AngleRadians =
-        (relativeAngleTo(point) - rotation).normalized.rad
+        (angleTo(point) - rotation).normalized.rad
 
     override val drawingOrder: Float = DrawOrder.PLAYER_TURRET
 }

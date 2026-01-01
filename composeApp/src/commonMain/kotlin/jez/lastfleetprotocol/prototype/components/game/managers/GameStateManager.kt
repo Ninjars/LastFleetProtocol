@@ -2,6 +2,7 @@ package jez.lastfleetprotocol.prototype.components.game.managers
 
 import androidx.compose.ui.geometry.Offset
 import com.pandulapeter.kubriko.actor.traits.Unique
+import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.Manager
 import com.pandulapeter.kubriko.manager.StateManager
@@ -28,14 +29,12 @@ class GameStateManager(
     fun startDemoScene() {
         val topLeft = viewportManager.topLeft.value
         val bottomRight = viewportManager.bottomRight.value
-        val halfWidth = bottomRight.x - topLeft.x
-        val height = bottomRight.y - topLeft.y
 
         val playerShipTurrets = mutableListOf<Turret>()
         val playerShip = PlayerShip(
             SceneOffset(
-                x = topLeft.x + halfWidth / 2f,
-                y = bottomRight.y - height / 10f,
+                x = -100f.sceneUnit,
+                y = 0f.sceneUnit,
             ),
             turrets = playerShipTurrets,
         )
@@ -70,13 +69,17 @@ class GameStateManager(
         actorManager.add(
             playerShip
         )
-        actorManager.add(
-            EnemyShip(
-                SceneOffset(
-                    x = topLeft.x + halfWidth / 2f,
-                    y = bottomRight.y - (height / 10f) * 9f,
-                )
+
+        val enemyShip = EnemyShip(
+            SceneOffset(
+                x = 100f.sceneUnit,
+                y = -100f.sceneUnit,
             )
         )
+        actorManager.add(
+            enemyShip
+        )
+
+        playerShip.setTarget(enemyShip)
     }
 }
