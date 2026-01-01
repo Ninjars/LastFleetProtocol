@@ -10,6 +10,7 @@ import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.game.actors.EnemyShip
 import jez.lastfleetprotocol.prototype.components.game.actors.PlayerShip
 import jez.lastfleetprotocol.prototype.components.game.actors.Turret
+import jez.lastfleetprotocol.prototype.components.game.data.GunData
 import me.tatarka.inject.annotations.Inject
 
 @Inject
@@ -42,6 +43,13 @@ class GameStateManager(
             parent = playerShip.body,
             offsetFromParentPivot = SceneOffset(Offset(-50f, 0f)),
             pivot = SceneOffset(Offset(32f, 32f)),
+            gunData = GunData(
+                magazineCapacity = 12,
+                reloadMilliseconds = 5000,
+                cycleMilliseconds = 700,
+                shotsPerBurst = 3,
+                burstCycleMilliseconds = 100,
+            ),
         ).apply {
             playerShipTurrets.add(this)
         }
@@ -49,6 +57,13 @@ class GameStateManager(
             parent = playerShip.body,
             offsetFromParentPivot = SceneOffset(Offset(50f, 0f)),
             pivot = SceneOffset(Offset(32f, 32f)),
+            gunData = GunData(
+                magazineCapacity = 12,
+                reloadMilliseconds = 5000,
+                cycleMilliseconds = 700,
+                shotsPerBurst = 3,
+                burstCycleMilliseconds = 100,
+            ),
         ).apply {
             playerShipTurrets.add(this)
         }

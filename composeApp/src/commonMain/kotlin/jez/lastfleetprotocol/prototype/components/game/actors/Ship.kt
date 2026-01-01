@@ -30,12 +30,15 @@ import kotlin.reflect.KClass
 abstract class Ship(
     private val drawable: DrawableResource,
     initialPosition: SceneOffset,
+    initialVelocity: SceneOffset = SceneOffset.Zero,
     turrets: List<Turret> = emptyList(),
-) : Visible, Dynamic, Collidable, CollisionDetector, Group {
+) : Visible, Mobile, Dynamic, Collidable, CollisionDetector, Group {
 
     private lateinit var viewportManager: ViewportManager
     private lateinit var spriteManager: SpriteManager
     override val actors: List<Actor> = turrets
+
+    override var velocity: SceneOffset = initialVelocity
 
     private val sprite: ImageBitmap by lazy {
         spriteManager.get(drawable) ?: throw RuntimeException("unable to load asset for Ship")
