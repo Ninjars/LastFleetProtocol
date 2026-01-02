@@ -77,8 +77,10 @@ class Turret(
             gun.angleToTarget = angleToTarget - body.rotation - currentRotation
         }
 
-        // TODO: return to default facing if no target
-        gun.angleToTarget = null
+        if (target == null) {
+            gun.angleToTarget = null
+            currentRotation = currentRotation.rotateTowards(0.rad, rotationSpeed * deltaTimeInMilliseconds)
+        }
 
         body.rotation += currentRotation
     }
