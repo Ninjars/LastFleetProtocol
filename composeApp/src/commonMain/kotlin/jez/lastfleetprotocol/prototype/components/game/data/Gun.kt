@@ -1,11 +1,20 @@
 package jez.lastfleetprotocol.prototype.components.game.data
 
 import com.pandulapeter.kubriko.actor.body.BoxBody
+import com.pandulapeter.kubriko.helpers.extensions.rad
+import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
+import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
+import jez.lastfleetprotocol.prototype.components.game.actors.Bullet
+import jez.lastfleetprotocol.prototype.components.game.actors.BulletData
+import jez.lastfleetprotocol.prototype.components.game.utils.getRelativePoint
+import jez.lastfleetprotocol.prototype.components.game.utils.rotate
 import lastfleetprotocol.composeapp.generated.resources.Res
+import lastfleetprotocol.composeapp.generated.resources.bullet_laser_green_10
 import lastfleetprotocol.composeapp.generated.resources.turret_simple_1
 import org.jetbrains.compose.resources.DrawableResource
+import kotlin.math.abs
 
 data class GunData(
     val drawable: DrawableResource = Res.drawable.turret_simple_1,
@@ -42,11 +51,20 @@ class Gun(
     private var magazine: Int = gunData.magazineCapacity
     private var burstCounter: Int = gunData.shotsPerBurst
 
-    fun spawnBullet() {
-        // TODO
+    fun spawnBullet(actorManager: ActorManager) {
+        val bullet = Bullet(
+            initialPosition = turretBody.getRelativePoint(muzzleOffset),
+            initialRotation = turretBody.rotation,
+            velocity = SceneOffset(gunData.bulletSpeed.sceneUnit, 0.sceneUnit).rotate(turretBody.rotation),
+            bulletData = BulletData(
+                drawable = Res.drawable.bullet_laser_green_10,
+            ),
+            collidableTypes = emptyList()
+        )
+        actorManager.add(bullet)
     }
 
-    fun update(deltaTimeInMilliseconds: Int) {
+    fun update(deltaTimeInMilliseconds: Int, actorManager: ActorManager) {
         when (condition) {
             Condition.READY -> if (isMagEmpty()) {
                 condition = Condition.EMPTY_MAG
@@ -66,7 +84,7 @@ class Gun(
             }
 
             Condition.START_BURST -> startBurst()
-            Condition.FIRING -> fire()
+            Condition.FIRING -> fire(actorManager)
             Condition.CYCLING -> cycle(deltaTimeInMilliseconds)
             Condition.EMPTY_MAG -> beginReload()
             Condition.LOADING -> updateReload(deltaTimeInMilliseconds)
@@ -84,7 +102,7 @@ class Gun(
         }
     }
 
-    private fun fire() {
+    private fun fire(actorManager: ActorManager) {
         if (isMagEmpty()) {
             condition = Condition.EMPTY_MAG
             return
@@ -97,7 +115,7 @@ class Gun(
             gunData.cycleMilliseconds
         }
         condition = Condition.CYCLING
-        spawnBullet()
+        spawnBullet(actorManager)
     }
 
     private fun cycle(deltaTimeInMilliseconds: Int) {
@@ -131,5 +149,9 @@ class Gun(
     }
 
     private fun isAligned() =
-        angleToTarget?.let { it < gunData.aimTolerance } ?: false
+        angleToTarget?.let {
+            val normalized = it.normalized
+            val wrappedAround = abs(Math.PI.toFloat() * 2f - normalized)
+            normalized.rad < gunData.aimTolerance || wrappedAround.rad < gunData.aimTolerance
+        } ?: false
 }

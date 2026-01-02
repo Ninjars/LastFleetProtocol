@@ -9,6 +9,7 @@ import com.pandulapeter.kubriko.helpers.extensions.deg
 import com.pandulapeter.kubriko.helpers.extensions.get
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
+import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.sprites.SpriteManager
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
@@ -17,8 +18,6 @@ import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.game.data.Gun
 import jez.lastfleetprotocol.prototype.components.game.data.GunData
 import jez.lastfleetprotocol.prototype.components.game.utils.rotateTowards
-import lastfleetprotocol.composeapp.generated.resources.Res
-import lastfleetprotocol.composeapp.generated.resources.turret_simple_1
 import kotlin.math.atan2
 
 class Turret(
@@ -26,11 +25,12 @@ class Turret(
     offsetFromParentPivot: SceneOffset,
     private val pivot: SceneOffset,
     private val gunData: GunData,
-    private val rotationSpeed: AngleRadians = 0.1f.deg.rad,
+    private val rotationSpeed: AngleRadians = 0.5f.deg.rad,
 ) : Child(
     parent = parent,
     offsetFromParentPivot = offsetFromParentPivot,
 ) {
+    private lateinit var actorManager: ActorManager
     private lateinit var spriteManager: SpriteManager
     private val sprite: ImageBitmap by lazy {
         spriteManager.get(gunData.drawable) ?: throw RuntimeException("unable to load asset for Turret")
@@ -45,7 +45,7 @@ class Turret(
     private val gun: Gun by lazy {
         Gun(
             turretBody = body,
-            muzzleOffset = SceneOffset(Offset(0f, -pivot.y.raw)),
+            muzzleOffset = SceneOffset(Offset(pivot.x.raw, 0f)),
             gunData = gunData
         )
     }
@@ -53,6 +53,7 @@ class Turret(
     override fun onAdded(kubriko: Kubriko) {
         super.onAdded(kubriko)
         spriteManager = kubriko.get()
+        actorManager = kubriko.get()
         body.size = SceneSize(sprite.width.sceneUnit, sprite.height.sceneUnit)
         body.pivot = pivot
     }
@@ -83,6 +84,7 @@ class Turret(
         }
 
         body.rotation += currentRotation
+        gun.update(deltaTimeInMilliseconds, actorManager)
     }
 
     private fun angleOfLine(from: SceneOffset, to: SceneOffset): AngleRadians =

@@ -35,6 +35,7 @@ class LoadingManager(
         Res.drawable.ship_player_1,
         Res.drawable.ship_enemy_1,
         Res.drawable.turret_simple_1,
+        Res.drawable.bullet_laser_green_10,
     )
     private val areGameResourcesLoaded by autoInitializingLazy {
         combine(

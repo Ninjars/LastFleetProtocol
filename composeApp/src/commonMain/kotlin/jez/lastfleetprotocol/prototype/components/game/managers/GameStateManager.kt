@@ -44,7 +44,7 @@ class GameStateManager(
             pivot = SceneOffset(Offset(32f, 32f)),
             gunData = GunData(
                 magazineCapacity = 12,
-                reloadMilliseconds = 5000,
+                reloadMilliseconds = 2000,
                 cycleMilliseconds = 700,
                 shotsPerBurst = 3,
                 burstCycleMilliseconds = 100,
@@ -58,7 +58,7 @@ class GameStateManager(
             pivot = SceneOffset(Offset(32f, 32f)),
             gunData = GunData(
                 magazineCapacity = 12,
-                reloadMilliseconds = 5000,
+                reloadMilliseconds = 2000,
                 cycleMilliseconds = 700,
                 shotsPerBurst = 3,
                 burstCycleMilliseconds = 100,
