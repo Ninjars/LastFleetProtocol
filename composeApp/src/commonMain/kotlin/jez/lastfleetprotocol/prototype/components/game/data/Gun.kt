@@ -3,8 +3,12 @@ package jez.lastfleetprotocol.prototype.components.game.data
 import com.pandulapeter.kubriko.actor.body.BoxBody
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
+import lastfleetprotocol.composeapp.generated.resources.Res
+import lastfleetprotocol.composeapp.generated.resources.turret_simple_1
+import org.jetbrains.compose.resources.DrawableResource
 
 data class GunData(
+    val drawable: DrawableResource = Res.drawable.turret_simple_1,
     val reloadTime: Long = 500L,
     val bulletSpeed: Float = 100f,
     val aimTolerance: AngleRadians = AngleRadians.TwoPi / 1440f,

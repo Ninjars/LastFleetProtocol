@@ -33,7 +33,7 @@ class Turret(
 ) {
     private lateinit var spriteManager: SpriteManager
     private val sprite: ImageBitmap by lazy {
-        spriteManager.get(Res.drawable.turret_simple_1) ?: throw RuntimeException("unable to load asset for Turret")
+        spriteManager.get(gunData.drawable) ?: throw RuntimeException("unable to load asset for Turret")
     }
 
     private var currentRotation: AngleRadians = AngleRadians.Zero
