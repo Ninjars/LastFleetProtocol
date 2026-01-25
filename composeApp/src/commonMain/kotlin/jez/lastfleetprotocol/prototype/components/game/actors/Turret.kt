@@ -5,9 +5,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.actor.body.BoxBody
+import com.pandulapeter.kubriko.helpers.extensions.angleTowards
 import com.pandulapeter.kubriko.helpers.extensions.deg
 import com.pandulapeter.kubriko.helpers.extensions.get
 import com.pandulapeter.kubriko.helpers.extensions.rad
+import com.pandulapeter.kubriko.helpers.extensions.rotateTowards
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.sprites.SpriteManager
@@ -17,15 +19,13 @@ import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.game.data.Gun
 import jez.lastfleetprotocol.prototype.components.game.data.GunData
-import jez.lastfleetprotocol.prototype.components.game.utils.rotateTowards
-import kotlin.math.atan2
 
 class Turret(
     parent: Parent,
     offsetFromParentPivot: SceneOffset,
     private val pivot: SceneOffset,
     private val gunData: GunData,
-    private val rotationSpeed: AngleRadians = 0.5f.deg.rad,
+    private val rotationSpeed: AngleRadians = 10f.deg.rad,
 ) : Child(
     parent = parent,
     offsetFromParentPivot = offsetFromParentPivot,
@@ -33,7 +33,8 @@ class Turret(
     private lateinit var actorManager: ActorManager
     private lateinit var spriteManager: SpriteManager
     private val sprite: ImageBitmap by lazy {
-        spriteManager.get(gunData.drawable) ?: throw RuntimeException("unable to load asset for Turret")
+        spriteManager.get(gunData.drawable)
+            ?: throw RuntimeException("unable to load asset for Turret")
     }
 
     private var currentRotation: AngleRadians = AngleRadians.Zero
@@ -71,24 +72,25 @@ class Turret(
             }
 
             // TODO: create aim point based on target velocity, projectile velocity, and distance
-            val angleToTarget = angleOfLine(body.position, it.body.position)
+            val angleToTarget = body.position.angleTowards(it.body.position)
 
             val targetRotation = angleToTarget - body.rotation
-            currentRotation = currentRotation.rotateTowards(targetRotation, rotationSpeed * deltaTimeInMilliseconds)
+            currentRotation = currentRotation.rotateTowards(
+                targetRotation,
+                rotationSpeed / deltaTimeInMilliseconds
+            )
             gun.angleToTarget = angleToTarget - body.rotation - currentRotation
         }
 
         if (target == null) {
             gun.angleToTarget = null
-            currentRotation = currentRotation.rotateTowards(0.rad, rotationSpeed * deltaTimeInMilliseconds)
+            currentRotation =
+                currentRotation.rotateTowards(0.rad, rotationSpeed * deltaTimeInMilliseconds)
         }
 
         body.rotation += currentRotation
         gun.update(deltaTimeInMilliseconds, actorManager)
     }
-
-    private fun angleOfLine(from: SceneOffset, to: SceneOffset): AngleRadians =
-        atan2((to.y - from.y).raw, (to.x - from.x).raw).rad
 
     override val drawingOrder: Float = DrawOrder.PLAYER_TURRET
 }
