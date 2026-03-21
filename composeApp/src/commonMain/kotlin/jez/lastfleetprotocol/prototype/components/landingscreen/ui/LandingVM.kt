@@ -6,7 +6,7 @@ import jez.lastfleetprotocol.prototype.components.game.GameStateHolder
 import jez.lastfleetprotocol.prototype.components.game.managers.UserPreferencesManager
 import jez.lastfleetprotocol.prototype.components.shared.usecases.SetMusicEnabledUseCase
 import jez.lastfleetprotocol.prototype.components.shared.usecases.SetSoundEffectsEnabledUseCase
-import jez.lastfleetprotocol.prototype.ui.common.LFViewModel
+import jez.lastfleetprotocol.prototype.ui.common.ViewModelContract
 import jez.lastfleetprotocol.prototype.utils.stateInWhileSubscribed
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,7 +55,7 @@ class LandingVM(
     userPreferencesManager: UserPreferencesManager,
     private val setMusicEnabled: SetMusicEnabledUseCase,
     private val setSoundEffectsEnabled: SetSoundEffectsEnabledUseCase,
-) : LFViewModel<LandingIntent, LandingState, LandingSideEffect>() {
+) : ViewModelContract<LandingIntent, LandingState, LandingSideEffect>() {
 
     private val internalState = MutableStateFlow(InternalState.default)
 

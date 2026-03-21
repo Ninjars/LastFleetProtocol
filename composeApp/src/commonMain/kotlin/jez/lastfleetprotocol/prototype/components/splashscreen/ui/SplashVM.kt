@@ -1,7 +1,7 @@
 package jez.lastfleetprotocol.prototype.components.splashscreen.ui
 
 import androidx.lifecycle.viewModelScope
-import jez.lastfleetprotocol.prototype.ui.common.LFViewModel
+import jez.lastfleetprotocol.prototype.ui.common.ViewModelContract
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -21,7 +21,7 @@ sealed interface SplashSideEffect {
 
 @Inject
 class SplashVM(
-) : LFViewModel<SplashIntent, SplashState, SplashSideEffect>() {
+) : ViewModelContract<SplashIntent, SplashState, SplashSideEffect>() {
     override val state: StateFlow<SplashState> =
         MutableStateFlow(SplashState.Loading)
 
