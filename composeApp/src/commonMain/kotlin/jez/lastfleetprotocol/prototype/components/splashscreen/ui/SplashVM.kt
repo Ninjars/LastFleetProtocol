@@ -7,8 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import me.tatarka.inject.annotations.Inject
 
-sealed interface SplashEvent {
-    data object OnKubrikoInitialized : SplashEvent
+sealed interface SplashIntent {
+    data object OnKubrikoInitialized : SplashIntent
 }
 
 sealed interface SplashState {
@@ -21,14 +21,14 @@ sealed interface SplashSideEffect {
 
 @Inject
 class SplashVM(
-) : LFViewModel<SplashEvent, SplashState, SplashSideEffect>() {
+) : LFViewModel<SplashIntent, SplashState, SplashSideEffect>() {
     override val state: StateFlow<SplashState> =
         MutableStateFlow(SplashState.Loading)
 
-    override fun accept(event: SplashEvent) {
+    override fun accept(intent: SplashIntent) {
         viewModelScope.launch {
-            when (event) {
-                SplashEvent.OnKubrikoInitialized -> sendSideEffect(SplashSideEffect.LoadingComplete)
+            when (intent) {
+                SplashIntent.OnKubrikoInitialized -> sendSideEffect(SplashSideEffect.LoadingComplete)
             }
         }
     }

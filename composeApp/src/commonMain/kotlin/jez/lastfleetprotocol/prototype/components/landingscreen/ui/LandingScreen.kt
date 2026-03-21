@@ -1,6 +1,17 @@
 package jez.lastfleetprotocol.prototype.components.landingscreen.ui
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,7 +26,16 @@ import jez.lastfleetprotocol.prototype.ui.common.PreviewWrapper
 import jez.lastfleetprotocol.prototype.ui.common.composables.LFIconButton
 import jez.lastfleetprotocol.prototype.ui.common.composables.LFTextButton
 import jez.lastfleetprotocol.prototype.ui.navigation.LFNavDestination
-import lastfleetprotocol.composeapp.generated.resources.*
+import lastfleetprotocol.composeapp.generated.resources.Res
+import lastfleetprotocol.composeapp.generated.resources.button_continue
+import lastfleetprotocol.composeapp.generated.resources.button_new_game
+import lastfleetprotocol.composeapp.generated.resources.button_settings
+import lastfleetprotocol.composeapp.generated.resources.desc_toggle_music
+import lastfleetprotocol.composeapp.generated.resources.desc_toggle_sound_effects
+import lastfleetprotocol.composeapp.generated.resources.ic_music_off
+import lastfleetprotocol.composeapp.generated.resources.ic_music_on
+import lastfleetprotocol.composeapp.generated.resources.ic_sound_effects_off
+import lastfleetprotocol.composeapp.generated.resources.ic_sound_effects_on
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
 import org.jetbrains.compose.resources.stringResource
@@ -48,7 +68,7 @@ fun LandingScreen(
 @Composable
 private fun LandingScreen(
     state: LandingState,
-    eventHandler: Consumer<LandingEvent>,
+    eventHandler: Consumer<LandingIntent>,
 ) {
     Box(
         modifier = Modifier.fillMaxSize()
@@ -65,7 +85,7 @@ private fun LandingScreen(
 @Composable
 private fun LandingScreenContent(
     state: LandingState,
-    eventHandler: Consumer<LandingEvent>,
+    eventHandler: Consumer<LandingIntent>,
 ) {
     Column(
         modifier = Modifier.fillMaxSize()
@@ -80,13 +100,13 @@ private fun LandingScreenContent(
                 drawable = if (state.musicEnabled) Res.drawable.ic_music_on else Res.drawable.ic_music_off,
                 contentDescription = stringResource(Res.string.desc_toggle_music)
             ) {
-                eventHandler.accept(LandingEvent.ToggleMusicClicked(!state.musicEnabled))
+                eventHandler.accept(LandingIntent.ToggleMusicClicked(!state.musicEnabled))
             }
             LFIconButton(
                 drawable = if (state.soundEffectsEnabled) Res.drawable.ic_sound_effects_on else Res.drawable.ic_sound_effects_off,
                 contentDescription = stringResource(Res.string.desc_toggle_sound_effects)
             ) {
-                eventHandler.accept(LandingEvent.ToggleSoundEffectsClicked(!state.soundEffectsEnabled))
+                eventHandler.accept(LandingIntent.ToggleSoundEffectsClicked(!state.soundEffectsEnabled))
             }
         }
         Spacer(modifier = Modifier.weight(5f))
@@ -99,7 +119,7 @@ private fun LandingScreenContent(
             },
             enabled = state.hasSaveGame != null,
         ) {
-            eventHandler.accept(LandingEvent.PlayClicked)
+            eventHandler.accept(LandingIntent.PlayClicked)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -107,7 +127,7 @@ private fun LandingScreenContent(
         LFTextButton(
             textRes = Res.string.button_settings,
         ) {
-            eventHandler.accept(LandingEvent.ShowSettingsClicked)
+            eventHandler.accept(LandingIntent.ShowSettingsClicked)
         }
 
         Spacer(modifier = Modifier.weight(1f))

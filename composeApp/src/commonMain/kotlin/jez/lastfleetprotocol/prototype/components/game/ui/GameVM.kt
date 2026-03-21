@@ -8,9 +8,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import me.tatarka.inject.annotations.Inject
 
-sealed interface GameEvent {
-    data object OpenMenuClicked : GameEvent
-    data object BackPressed : GameEvent
+sealed interface GameIntent {
+    data object OpenMenuClicked : GameIntent
+    data object BackPressed : GameIntent
 }
 
 data class GameState(
@@ -23,10 +23,11 @@ sealed interface GameSideEffect
 class GameVM(
     gameStateHolder: GameStateHolder,
     gameStateManager: GameStateManager,
-) : LFViewModel<GameEvent, GameState, GameSideEffect>() {
-    override val state: StateFlow<GameState> = MutableStateFlow(GameState(gameStateHolder.gameKubriko))
+) : LFViewModel<GameIntent, GameState, GameSideEffect>() {
+    override val state: StateFlow<GameState> =
+        MutableStateFlow(GameState(gameStateHolder.gameKubriko))
 
-    override fun accept(event: GameEvent) {
+    override fun accept(intent: GameIntent) {
 //        TODO("Not yet implemented")
     }
 

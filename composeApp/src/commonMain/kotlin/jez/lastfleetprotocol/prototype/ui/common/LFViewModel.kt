@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import java.util.function.Consumer
 
 
-abstract class LFViewModel<Event, ViewState, SideEffect>
+abstract class LFViewModel<Intent, ViewState, SideEffect>
     : ViewModel(),
     StateProvider<ViewState>,
-    Consumer<Event>,
+    Consumer<Intent>,
     HasSideEffect<SideEffect> by DefaultSideEffect()

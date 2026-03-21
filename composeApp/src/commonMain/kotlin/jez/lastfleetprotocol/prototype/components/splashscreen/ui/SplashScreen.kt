@@ -34,7 +34,7 @@ fun SplashScreen(
     val viewModel = viewModel { viewModelFactory() }
 
     if (loadingManager.isGameLoaded()) {
-        viewModel.accept(SplashEvent.OnKubrikoInitialized)
+        viewModel.accept(SplashIntent.OnKubrikoInitialized)
     }
 
     viewModel.HandleSideEffect {

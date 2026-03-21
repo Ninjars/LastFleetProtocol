@@ -14,11 +14,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import me.tatarka.inject.annotations.Inject
 
-sealed interface LandingEvent {
-    data class ToggleMusicClicked(val setEnabled: Boolean) : LandingEvent
-    data class ToggleSoundEffectsClicked(val setEnabled: Boolean) : LandingEvent
-    data object ShowSettingsClicked : LandingEvent
-    data object PlayClicked : LandingEvent
+sealed interface LandingIntent {
+    data class ToggleMusicClicked(val setEnabled: Boolean) : LandingIntent
+    data class ToggleSoundEffectsClicked(val setEnabled: Boolean) : LandingIntent
+    data object ShowSettingsClicked : LandingIntent
+    data object PlayClicked : LandingIntent
 }
 
 data class LandingState(
@@ -55,7 +55,7 @@ class LandingVM(
     userPreferencesManager: UserPreferencesManager,
     private val setMusicEnabled: SetMusicEnabledUseCase,
     private val setSoundEffectsEnabled: SetSoundEffectsEnabledUseCase,
-) : LFViewModel<LandingEvent, LandingState, LandingSideEffect>() {
+) : LFViewModel<LandingIntent, LandingState, LandingSideEffect>() {
 
     private val internalState = MutableStateFlow(InternalState.default)
 
@@ -64,7 +64,12 @@ class LandingVM(
         userPreferencesManager.isMusicEnabled,
         userPreferencesManager.areSoundEffectsEnabled
     ) { internalState, musicEnabled, soundEffectsEnabled ->
-        createViewState(internalState, musicEnabled, soundEffectsEnabled, gameStateHolder.gameKubriko)
+        createViewState(
+            internalState,
+            musicEnabled,
+            soundEffectsEnabled,
+            gameStateHolder.gameKubriko
+        )
     }.stateInWhileSubscribed(
         viewModelScope, createViewState(
             internalState = InternalState.default,
@@ -74,13 +79,13 @@ class LandingVM(
         )
     )
 
-    override fun accept(event: LandingEvent) {
+    override fun accept(intent: LandingIntent) {
         viewModelScope.launch {
-            when (event) {
-                is LandingEvent.PlayClicked -> handlePlayClicked(internalState.value.saveGame)
-                is LandingEvent.ShowSettingsClicked -> sendSideEffect(LandingSideEffect.GoToSettings)
-                is LandingEvent.ToggleMusicClicked -> setMusicEnabled(event.setEnabled)
-                is LandingEvent.ToggleSoundEffectsClicked -> setSoundEffectsEnabled(event.setEnabled)
+            when (intent) {
+                is LandingIntent.PlayClicked -> handlePlayClicked(internalState.value.saveGame)
+                is LandingIntent.ShowSettingsClicked -> sendSideEffect(LandingSideEffect.GoToSettings)
+                is LandingIntent.ToggleMusicClicked -> setMusicEnabled(intent.setEnabled)
+                is LandingIntent.ToggleSoundEffectsClicked -> setSoundEffectsEnabled(intent.setEnabled)
             }
         }
     }

@@ -1,7 +1,15 @@
 package jez.lastfleetprotocol.prototype.components.game.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,7 +40,7 @@ fun GameScreen(
 ) {
     val viewModel = viewModel { viewModelFactory() }
     BackHandler(true) {
-        viewModel.accept(GameEvent.BackPressed)
+        viewModel.accept(GameIntent.BackPressed)
     }
     GameScreen(
         state = viewModel.state.collectAsStateWithLifecycle().value,
@@ -43,7 +51,7 @@ fun GameScreen(
 @Composable
 private fun GameScreen(
     state: GameState,
-    eventHandler: Consumer<GameEvent>,
+    eventHandler: Consumer<GameIntent>,
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -64,7 +72,7 @@ private fun GameScreen(
             LFIconButton(
                 drawable = Res.drawable.ic_menu,
             ) {
-                eventHandler.accept(GameEvent.OpenMenuClicked)
+                eventHandler.accept(GameIntent.OpenMenuClicked)
             }
         }
     }
