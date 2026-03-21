@@ -36,3 +36,12 @@ plugins {
 }
 
 include(":composeApp")
+include(":components:design")
+include(":components:shared:api")
+include(":components:shared:impl")
+include(":features:splash:api")
+include(":features:splash:impl")
+include(":features:landing:api")
+include(":features:landing:impl")
+include(":features:game:api")
+include(":features:game:impl")

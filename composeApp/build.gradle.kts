@@ -37,6 +37,15 @@ kotlin {
             implementation(libs.androidx.activity.compose)
         }
         commonMain.dependencies {
+            implementation(project(":components:design"))
+            implementation(project(":components:shared:api"))
+            implementation(project(":features:splash:api"))
+            implementation(project(":features:splash:impl"))
+            implementation(project(":features:landing:api"))
+            implementation(project(":features:landing:impl"))
+            implementation(project(":features:game:api"))
+            implementation(project(":features:game:impl"))
+
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -51,24 +60,12 @@ kotlin {
             implementation(libs.kotlininject.runtime)
             implementation(libs.backhandler)
 
-            // Kubriko Engine Dependencies
-            // Engine
             implementation(libs.kubriko.engine)
-
-            // Plugins
             implementation(libs.kubriko.plugin.audio)
-            implementation(libs.kubriko.plugin.collision)
-            implementation(libs.kubriko.plugin.keyboard)
-            implementation(libs.kubriko.plugin.particles)
             implementation(libs.kubriko.plugin.persistence)
             implementation(libs.kubriko.plugin.pointer)
-            implementation(libs.kubriko.plugin.physics)
-            implementation(libs.kubriko.plugin.shaders)
             implementation(libs.kubriko.plugin.sprites)
-
-            // Tools
             implementation(libs.kubriko.tool.logger)
-            implementation(libs.kubriko.tool.ui.components)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -132,22 +129,3 @@ compose.desktop {
     }
 }
 
-tasks.withType<com.google.devtools.ksp.gradle.KspAATask>().configureEach {
-    // This ensures that the resource generation task runs before KSP
-    dependsOn(
-        // Android
-        "generateActualResourceCollectorsForAndroidMain",
-        "generateResourceAccessorsForAndroidMain",
-        "generateActualResourceCollectorsForAndroidMain",
-        "generateComposeResClass",
-        "generateResourceAccessorsForCommonMain",
-        "generateExpectResourceCollectorsForCommonMain",
-        "generateResourceAccessorsForAndroidDebug",
-        // iOS
-//        "generateResourceAccessorsForIosArm64Main",
-//        "generateActualResourceCollectorsForIosArm64Main",
-//        "generateResourceAccessorsForIosMain",
-//        "generateResourceAccessorsForAppleMain",
-//        "generateResourceAccessorsForNativeMain",
-    )
-}

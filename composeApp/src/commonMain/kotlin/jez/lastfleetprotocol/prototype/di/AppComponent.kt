@@ -14,7 +14,11 @@ import jez.lastfleetprotocol.prototype.components.game.managers.AudioManager
 import jez.lastfleetprotocol.prototype.components.game.managers.GameStateManager
 import jez.lastfleetprotocol.prototype.components.game.managers.LoadingManager
 import jez.lastfleetprotocol.prototype.components.game.managers.UiManager
+import jez.lastfleetprotocol.prototype.components.game.GameScreenEntry
+import jez.lastfleetprotocol.prototype.components.game.ui.GameScreen
+import jez.lastfleetprotocol.prototype.components.landingscreen.LandingScreenEntry
 import jez.lastfleetprotocol.prototype.components.landingscreen.ui.LandingScreen
+import jez.lastfleetprotocol.prototype.components.splashscreen.SplashScreenEntry
 import jez.lastfleetprotocol.prototype.components.splashscreen.ui.SplashScreen
 import jez.lastfleetprotocol.prototype.di.DependencyName.KUBRIKO_BACKGROUND
 import jez.lastfleetprotocol.prototype.di.DependencyName.KUBRIKO_GAME
@@ -22,22 +26,6 @@ import jez.lastfleetprotocol.prototype.ui.navigation.LFNavHost
 import jez.lastfleetprotocol.prototype.utils.Constants
 import me.tatarka.inject.annotations.Component
 import me.tatarka.inject.annotations.Provides
-import me.tatarka.inject.annotations.Qualifier
-import me.tatarka.inject.annotations.Scope
-
-
-@Scope
-@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER)
-annotation class Singleton
-
-@Qualifier
-@Target(
-    AnnotationTarget.PROPERTY_GETTER,
-    AnnotationTarget.FUNCTION,
-    AnnotationTarget.VALUE_PARAMETER,
-    AnnotationTarget.TYPE
-)
-annotation class Named(val value: String)
 
 @Singleton
 @Component
@@ -48,10 +36,14 @@ abstract class AppComponent(
 
     abstract val navHost: LFNavHost
 
-    abstract val splashScreen: SplashScreen
+    @Provides
+    protected fun splashScreenEntry(splashScreen: SplashScreen): SplashScreenEntry = splashScreen
 
-    abstract val landingScreen: LandingScreen
+    @Provides
+    protected fun landingScreenEntry(landingScreen: LandingScreen): LandingScreenEntry = landingScreen
 
+    @Provides
+    protected fun gameScreenEntry(gameScreen: GameScreen): GameScreenEntry = gameScreen
 
     @Singleton
     @Provides
@@ -161,7 +153,3 @@ abstract class AppComponent(
     )
 }
 
-object DependencyName {
-    const val KUBRIKO_GAME = "game"
-    const val KUBRIKO_BACKGROUND = "background"
-}

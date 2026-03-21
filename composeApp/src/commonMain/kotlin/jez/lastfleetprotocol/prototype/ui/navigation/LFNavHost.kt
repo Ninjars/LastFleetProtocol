@@ -4,50 +4,34 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import jez.lastfleetprotocol.prototype.components.game.ui.GameScreen
-import jez.lastfleetprotocol.prototype.components.landingscreen.ui.LandingScreen
-import jez.lastfleetprotocol.prototype.components.splashscreen.ui.SplashScreen
-import kotlinx.serialization.Serializable
+import jez.lastfleetprotocol.prototype.components.game.GameScreenEntry
+import jez.lastfleetprotocol.prototype.components.landingscreen.LandingScreenEntry
+import jez.lastfleetprotocol.prototype.components.splashscreen.SplashScreenEntry
 import me.tatarka.inject.annotations.Inject
 
 typealias LFNavHost = @Composable () -> Unit
 
-@Serializable
-sealed interface LFNavDestination {
-    @Serializable
-    object Splash
-
-    @Serializable
-    object Landing
-
-    @Serializable
-    object Game
-
-    @Serializable
-    object Settings
-}
-
 @Inject
 @Composable
 fun LFNavHost(
-    splashScreen: SplashScreen,
-    landingScreen: LandingScreen,
-    gameScreen: GameScreen,
+    splashScreen: SplashScreenEntry,
+    landingScreen: LandingScreenEntry,
+    gameScreen: GameScreenEntry,
 ) {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
-        startDestination = LFNavDestination.Splash
+        startDestination = LFNavDestination.SPLASH,
     ) {
-        composable<LFNavDestination.Splash> {
+        composable(LFNavDestination.SPLASH) {
             splashScreen(navController)
         }
-        composable<LFNavDestination.Landing> {
+        composable(LFNavDestination.LANDING) {
             landingScreen(navController)
         }
-        composable<LFNavDestination.Game> {
+        composable(LFNavDestination.GAME) {
             gameScreen(navController)
         }
-        composable<LFNavDestination.Settings> {}
+        composable(LFNavDestination.SETTINGS) {}
     }
 }
