@@ -2,6 +2,8 @@ package jez.lastfleetprotocol.prototype.components.game.managers
 
 import androidx.compose.ui.geometry.Offset
 import com.pandulapeter.kubriko.actor.traits.Unique
+import com.pandulapeter.kubriko.helpers.extensions.deg
+import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.Manager
@@ -10,6 +12,7 @@ import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.game.actors.EnemyShip
 import jez.lastfleetprotocol.prototype.components.game.actors.PlayerShip
+import jez.lastfleetprotocol.prototype.components.game.actors.ShipSpec
 import jez.lastfleetprotocol.prototype.components.game.actors.Turret
 import jez.lastfleetprotocol.prototype.components.game.data.GunData
 import me.tatarka.inject.annotations.Inject
@@ -32,7 +35,13 @@ class GameStateManager(
 
         val playerShipTurrets = mutableListOf<Turret>()
         val playerShip = PlayerShip(
-            SceneOffset(
+            spec = ShipSpec(
+                acceleration = 50f.sceneUnit,
+                deceleration = 25f.sceneUnit,
+                maxSpeed = 40f.sceneUnit,
+                rotationRate = 10f.deg.rad,
+            ),
+            initialPosition = SceneOffset(
                 x = -100f.sceneUnit,
                 y = 0f.sceneUnit,
             ),
@@ -71,7 +80,13 @@ class GameStateManager(
         )
 
         val enemyShip = EnemyShip(
-            SceneOffset(
+            spec = ShipSpec(
+                acceleration = 50f.sceneUnit,
+                deceleration = 25f.sceneUnit,
+                maxSpeed = 40f.sceneUnit,
+                rotationRate = 10f.deg.rad,
+            ),
+            initialPosition = SceneOffset(
                 x = 100f.sceneUnit,
                 y = -100f.sceneUnit,
             )

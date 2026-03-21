@@ -7,6 +7,7 @@ import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.StateManager
 import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.persistence.PersistenceManager
+import com.pandulapeter.kubriko.pointerInput.PointerInputManager
 import com.pandulapeter.kubriko.sprites.SpriteManager
 import jez.lastfleetprotocol.prototype.components.game.GameStateHolder
 import jez.lastfleetprotocol.prototype.components.game.managers.AudioManager
@@ -97,6 +98,13 @@ abstract class AppComponent(
 
     @Singleton
     @Provides
+    protected fun PointerInputManager(): PointerInputManager = PointerInputManager.newInstance(
+        isLoggingEnabled = enableLogging,
+        instanceNameForLogging = Constants.GAME_LOG_TAG,
+    )
+
+    @Singleton
+    @Provides
     protected fun ViewportManager(): ViewportManager = ViewportManager.newInstance(
         isLoggingEnabled = enableLogging,
         instanceNameForLogging = Constants.GAME_LOG_TAG,
@@ -134,6 +142,7 @@ abstract class AppComponent(
         uiManager: UiManager,
         gameStateManager: GameStateManager,
         viewportManager: ViewportManager,
+        pointerInputManager: PointerInputManager,
     ): @Named(KUBRIKO_GAME) Kubriko = Kubriko.newInstance(
         stateManager,
         persistenceManager,
@@ -146,6 +155,7 @@ abstract class AppComponent(
         uiManager,
         gameStateManager,
         viewportManager,
+        pointerInputManager,
         isLoggingEnabled = enableLogging,
         instanceNameForLogging = Constants.GAME_LOG_TAG,
     )

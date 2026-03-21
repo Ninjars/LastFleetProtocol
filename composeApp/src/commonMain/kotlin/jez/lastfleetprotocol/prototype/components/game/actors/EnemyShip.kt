@@ -7,7 +7,9 @@ import lastfleetprotocol.composeapp.generated.resources.ship_enemy_1
 
 class EnemyShip(
     initialPosition: SceneOffset,
+    spec: ShipSpec,
 ) : Ship(
+    spec = spec,
     drawable = Res.drawable.ship_enemy_1,
     initialPosition = initialPosition,
 ) {

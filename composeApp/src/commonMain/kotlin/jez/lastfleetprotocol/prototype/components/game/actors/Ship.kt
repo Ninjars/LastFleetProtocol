@@ -6,16 +6,20 @@ import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.actor.Actor
 import com.pandulapeter.kubriko.actor.body.BoxBody
 import com.pandulapeter.kubriko.actor.traits.Dynamic
-import com.pandulapeter.kubriko.actor.traits.Visible
 import com.pandulapeter.kubriko.collision.Collidable
 import com.pandulapeter.kubriko.collision.CollisionDetector
 import com.pandulapeter.kubriko.collision.mask.CircleCollisionMask
 import com.pandulapeter.kubriko.collision.mask.CollisionMask
+import com.pandulapeter.kubriko.helpers.extensions.angleTowards
 import com.pandulapeter.kubriko.helpers.extensions.get
+import com.pandulapeter.kubriko.helpers.extensions.length
 import com.pandulapeter.kubriko.helpers.extensions.minDimension
+import com.pandulapeter.kubriko.helpers.extensions.normalized
+import com.pandulapeter.kubriko.helpers.extensions.rotateTowards
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.sprites.SpriteManager
+import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
 import org.jetbrains.compose.resources.DrawableResource
@@ -27,17 +31,20 @@ import kotlin.reflect.KClass
  * collisions via corresponding collidableTypes.
  */
 abstract class Ship(
+    private val spec: ShipSpec,
     private val drawable: DrawableResource,
     initialPosition: SceneOffset,
     initialVelocity: SceneOffset = SceneOffset.Zero,
     private val turrets: List<Turret> = emptyList(),
-) : Visible, Targetable, Dynamic, Collidable, CollisionDetector, Parent {
+) : Targetable, Dynamic, Collidable, CollisionDetector, Parent {
 
-    private lateinit var viewportManager: ViewportManager
-    private lateinit var spriteManager: SpriteManager
+    protected lateinit var viewportManager: ViewportManager
+    protected lateinit var spriteManager: SpriteManager
     override val actors: List<Actor> = turrets
 
     override var velocity: SceneOffset = initialVelocity
+
+    private var destination: SceneOffset? = null
 
     private val sprite: ImageBitmap by lazy {
         spriteManager.get(drawable) ?: throw RuntimeException("unable to load asset for Ship")
@@ -71,7 +78,9 @@ abstract class Ship(
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {
-//        body.rotation += AngleRadians.TwoPi * deltaTimeInMilliseconds / 1000f / 5f
+        updateFacing(deltaTimeInMilliseconds)
+//        updateMovement(deltaTimeInMilliseconds)
+        body.position += velocity
     }
 
     override fun isValidTarget(): Boolean {
@@ -81,6 +90,79 @@ abstract class Ship(
     fun setTarget(mobile: Targetable?) {
         for (turret in turrets) {
             turret.target = mobile
+        }
+    }
+
+    fun moveTo(destination: SceneOffset) {
+        println("moveTo $destination")
+        this.destination = destination
+    }
+
+    private fun updateFacing(deltaTimeInMilliseconds: Int) {
+        val destination = this.destination ?: return
+
+        val angleToTarget = body.position.angleTowards(destination)
+        val angleDelta = angleToTarget - body.rotation
+        val intendedRotation = if (angleDelta > AngleRadians.Pi) {
+            angleToTarget - AngleRadians.TwoPi
+        } else if (angleDelta < -AngleRadians.Pi) {
+            AngleRadians.TwoPi + angleToTarget
+        } else {
+            angleToTarget
+        }
+        body.rotation =
+            body.rotation.rotateTowards(
+                intendedRotation,
+                spec.rotationRate / deltaTimeInMilliseconds
+            )
+    }
+
+    private fun updateMovement(deltaTimeInMilliseconds: Int) {
+        val destination = this.destination ?: return
+        println("### updateMovement:\ndestination ${this.destination} position: ${body.position}")
+
+        val position = body.position
+        val angleToTarget = position.angleTowards(destination)
+        val vectorToTarget = destination - position
+        val distanceToTarget = vectorToTarget.length()
+
+        println("distance ${distanceToTarget.raw}\nspeed ${velocity.length().raw}")
+        if (distanceToTarget.raw < 0.01f && velocity.length().raw < 0.01f) {
+            println("updateMovement: reached rest at destination")
+            this.destination = null
+            velocity = SceneOffset.Zero
+            return
+        }
+
+        val desiredVelocity = vectorToTarget.normalized() * spec.maxSpeed
+        val steering = desiredVelocity - velocity
+
+        // Calculate the distance required to stop
+        val speed = velocity.length()
+        val stoppingDistance = speed * speed / (spec.deceleration * 2)
+
+        println("stoppingDistance ${stoppingDistance.raw}")
+        println("steering $steering")
+
+        val isWithinStoppingDistance = distanceToTarget <= stoppingDistance
+
+        if (distanceToTarget > stoppingDistance) {
+            // Accelerate
+            println("accelerating")
+            val acceleration = steering.normalized() * spec.acceleration
+            velocity += acceleration * (deltaTimeInMilliseconds / 1000f)
+            if (velocity.length() > spec.maxSpeed) {
+                println("at max speed")
+                velocity = velocity.normalized() * spec.maxSpeed
+            }
+        } else {
+            // Decelerate
+            println("decelerating")
+            val deceleration = (steering.normalized() * -1f) * spec.deceleration
+            velocity += deceleration * (deltaTimeInMilliseconds / 1000f)
+            if (velocity.length().raw < 0) {
+                velocity = SceneOffset.Zero
+            }
         }
     }
 }
