@@ -16,7 +16,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":features:splash:api"))
-            implementation(project(":features:game:impl"))
+            implementation(project(":components:game-core:api"))
             implementation(project(":components:shared:api"))
             implementation(project(":components:design"))
             implementation(compose.runtime)

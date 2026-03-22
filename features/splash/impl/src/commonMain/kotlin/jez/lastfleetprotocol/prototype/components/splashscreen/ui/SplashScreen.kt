@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.navOptions
-import jez.lastfleetprotocol.prototype.components.game.managers.LoadingManager
+import jez.lastfleetprotocol.prototype.components.gamecore.GameLoadingStatus
 import jez.lastfleetprotocol.prototype.ui.common.HandleSideEffect
 import jez.lastfleetprotocol.prototype.ui.common.PreviewWrapper
 import jez.lastfleetprotocol.prototype.ui.navigation.LFNavDestination
@@ -27,12 +27,12 @@ typealias SplashScreen = @Composable (NavController) -> Unit
 @Composable
 fun SplashScreen(
     viewModelFactory: () -> SplashVM,
-    loadingManager: LoadingManager,
+    loadingStatus: GameLoadingStatus,
     @Assisted navController: NavController,
 ) {
     val viewModel = viewModel { viewModelFactory() }
 
-    if (loadingManager.isGameLoaded()) {
+    if (loadingStatus.isGameLoaded()) {
         viewModel.accept(SplashIntent.OnKubrikoInitialized)
     }
 

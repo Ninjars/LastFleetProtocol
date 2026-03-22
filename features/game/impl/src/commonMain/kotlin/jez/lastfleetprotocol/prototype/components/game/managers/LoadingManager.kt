@@ -11,6 +11,7 @@ import com.pandulapeter.kubriko.sprites.SpriteManager
 import com.pandulapeter.kubriko.uiComponents.utilities.preloadedFont
 import com.pandulapeter.kubriko.uiComponents.utilities.preloadedImageVector
 import com.pandulapeter.kubriko.uiComponents.utilities.preloadedString
+import jez.lastfleetprotocol.prototype.components.gamecore.GameLoadingStatus
 import jez.lastfleetprotocol.prototype.di.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -21,10 +22,11 @@ import me.tatarka.inject.annotations.Inject
 @Singleton
 @Inject
 class LoadingManager(
+
     private val musicManager: MusicManager,
     private val soundManager: SoundManager,
     private val spriteManager: SpriteManager,
-) : Manager() {
+) : Manager(), GameLoadingStatus {
     private val musicUris = AudioManager.getMusicUrisToPreload()
     private val soundUris = AudioManager.getSoundUrisToPreload()
     private val spriteResources = listOf(
@@ -57,7 +59,7 @@ class LoadingManager(
     }
 
     @Composable
-    fun isGameLoaded() = (isInitialized.collectAsState().value
+    override fun isGameLoaded() = (isInitialized.collectAsState().value
             && areMenuResourcesLoaded()
             && areGameResourcesLoaded.collectAsState().value).also {
         isLoadingDone = it

@@ -16,8 +16,16 @@ import jez.lastfleetprotocol.prototype.components.game.managers.LoadingManager
 import jez.lastfleetprotocol.prototype.components.game.managers.UiManager
 import jez.lastfleetprotocol.prototype.components.game.GameScreenEntry
 import jez.lastfleetprotocol.prototype.components.game.ui.GameScreen
+import jez.lastfleetprotocol.prototype.components.gamecore.GameLoadingStatus
+import jez.lastfleetprotocol.prototype.components.gamecore.GameSessionState
 import jez.lastfleetprotocol.prototype.components.landingscreen.LandingScreenEntry
 import jez.lastfleetprotocol.prototype.components.landingscreen.ui.LandingScreen
+import jez.lastfleetprotocol.prototype.components.preferences.SetMusicEnabled
+import jez.lastfleetprotocol.prototype.components.preferences.SetSoundEffectsEnabled
+import jez.lastfleetprotocol.prototype.components.preferences.UserPreferences
+import jez.lastfleetprotocol.prototype.components.preferences.internal.UserPreferencesManager
+import jez.lastfleetprotocol.prototype.components.preferences.usecases.SetMusicEnabledUseCase
+import jez.lastfleetprotocol.prototype.components.preferences.usecases.SetSoundEffectsEnabledUseCase
 import jez.lastfleetprotocol.prototype.components.splashscreen.SplashScreenEntry
 import jez.lastfleetprotocol.prototype.components.splashscreen.ui.SplashScreen
 import jez.lastfleetprotocol.prototype.di.DependencyName.KUBRIKO_BACKGROUND
@@ -44,6 +52,21 @@ abstract class AppComponent(
 
     @Provides
     protected fun gameScreenEntry(gameScreen: GameScreen): GameScreenEntry = gameScreen
+
+    @Provides
+    protected fun gameSessionState(gameStateHolder: GameStateHolder): GameSessionState = gameStateHolder
+
+    @Provides
+    protected fun gameLoadingStatus(loadingManager: LoadingManager): GameLoadingStatus = loadingManager
+
+    @Provides
+    protected fun userPreferences(userPreferencesManager: UserPreferencesManager): UserPreferences = userPreferencesManager
+
+    @Provides
+    protected fun setMusicEnabled(setMusicEnabledUseCase: SetMusicEnabledUseCase): SetMusicEnabled = setMusicEnabledUseCase
+
+    @Provides
+    protected fun setSoundEffectsEnabled(setSoundEffectsEnabledUseCase: SetSoundEffectsEnabledUseCase): SetSoundEffectsEnabled = setSoundEffectsEnabledUseCase
 
     @Singleton
     @Provides

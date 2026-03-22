@@ -3,8 +3,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
-    alias(libs.plugins.composeMultiplatform)
-    alias(libs.plugins.composeCompiler)
     alias(libs.plugins.ksp)
 }
 
@@ -15,25 +13,12 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":features:landing:api"))
-            implementation(project(":components:game-core:api"))
             implementation(project(":components:preferences:api"))
             implementation(project(":components:shared:api"))
-            implementation(project(":components:design"))
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(libs.jetpack.navigation)
+            implementation(project(":components:game-core:api"))
             implementation(libs.kotlininject.runtime)
             implementation(libs.kubriko.engine)
-        }
-        androidMain.dependencies {
-            implementation(compose.preview)
+            implementation(libs.kubriko.plugin.persistence)
         }
     }
 }
@@ -45,7 +30,7 @@ dependencies {
 }
 
 android {
-    namespace = "jez.lastfleetprotocol.features.landing"
+    namespace = "jez.lastfleetprotocol.components.preferences"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig { minSdk = libs.versions.android.minSdk.get().toInt() }
 }

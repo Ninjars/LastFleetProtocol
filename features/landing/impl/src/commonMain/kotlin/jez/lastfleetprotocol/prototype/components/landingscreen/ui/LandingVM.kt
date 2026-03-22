@@ -2,10 +2,10 @@ package jez.lastfleetprotocol.prototype.components.landingscreen.ui
 
 import androidx.lifecycle.viewModelScope
 import com.pandulapeter.kubriko.Kubriko
-import jez.lastfleetprotocol.prototype.components.game.GameStateHolder
-import jez.lastfleetprotocol.prototype.components.game.managers.UserPreferencesManager
-import jez.lastfleetprotocol.prototype.components.shared.usecases.SetMusicEnabledUseCase
-import jez.lastfleetprotocol.prototype.components.shared.usecases.SetSoundEffectsEnabledUseCase
+import jez.lastfleetprotocol.prototype.components.gamecore.GameSessionState
+import jez.lastfleetprotocol.prototype.components.preferences.SetMusicEnabled
+import jez.lastfleetprotocol.prototype.components.preferences.SetSoundEffectsEnabled
+import jez.lastfleetprotocol.prototype.components.preferences.UserPreferences
 import jez.lastfleetprotocol.prototype.ui.common.ViewModelContract
 import jez.lastfleetprotocol.prototype.utils.stateInWhileSubscribed
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,18 +51,18 @@ private data class InternalState(
 
 @Inject
 class LandingVM(
-    private val gameStateHolder: GameStateHolder,
-    userPreferencesManager: UserPreferencesManager,
-    private val setMusicEnabled: SetMusicEnabledUseCase,
-    private val setSoundEffectsEnabled: SetSoundEffectsEnabledUseCase,
+    private val gameStateHolder: GameSessionState,
+    userPreferences: UserPreferences,
+    private val setMusicEnabled: SetMusicEnabled,
+    private val setSoundEffectsEnabled: SetSoundEffectsEnabled,
 ) : ViewModelContract<LandingIntent, LandingState, LandingSideEffect>() {
 
     private val internalState = MutableStateFlow(InternalState.default)
 
     override val state: StateFlow<LandingState> = combine(
         internalState,
-        userPreferencesManager.isMusicEnabled,
-        userPreferencesManager.areSoundEffectsEnabled
+        userPreferences.isMusicEnabled,
+        userPreferences.areSoundEffectsEnabled
     ) { internalState, musicEnabled, soundEffectsEnabled ->
         createViewState(
             internalState,

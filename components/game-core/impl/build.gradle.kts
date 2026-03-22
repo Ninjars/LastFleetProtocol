@@ -16,11 +16,11 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":features:game:api"))
             implementation(project(":components:game-core:api"))
+            implementation(project(":features:game:impl"))
             implementation(project(":components:preferences:api"))
-            implementation(project(":components:shared:api"))
             implementation(project(":components:design"))
+            implementation(project(":components:shared:api"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -59,7 +59,7 @@ dependencies {
 }
 
 android {
-    namespace = "jez.lastfleetprotocol.features.game"
+    namespace = "jez.lastfleetprotocol.components.gamecore"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig { minSdk = libs.versions.android.minSdk.get().toInt() }
 }

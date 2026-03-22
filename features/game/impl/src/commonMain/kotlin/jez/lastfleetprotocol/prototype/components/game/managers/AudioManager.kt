@@ -7,6 +7,7 @@ import com.pandulapeter.kubriko.manager.Manager
 import com.pandulapeter.kubriko.manager.StateManager
 import jez.lastfleetprotocol.prototype.components.game.audio.MusicTrack
 import jez.lastfleetprotocol.prototype.components.game.audio.SoundEffect
+import jez.lastfleetprotocol.prototype.components.preferences.UserPreferences
 import jez.lastfleetprotocol.prototype.di.Singleton
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +32,7 @@ private data class AudioState(
 @Inject
 class AudioManager(
     private val stateManager: StateManager,
-    private val userPreferencesManager: UserPreferencesManager,
+    private val userPreferences: UserPreferences,
     private val musicManager: MusicManager,
     private val soundManager: SoundManager,
 ) : Manager() {
@@ -43,7 +44,7 @@ class AudioManager(
     override fun onInitialize(kubriko: Kubriko) {
         combine(
             stateManager.isFocused.debounce(100),
-            userPreferencesManager.isMusicEnabled,
+            userPreferences.isMusicEnabled,
             shouldStopMusic,
             activeMusicTrack,
         ) { isFocused, isMusicEnabled, shouldStopMusic, track ->
@@ -81,7 +82,7 @@ class AudioManager(
     }
 
     fun playSoundEffect(effect: SoundEffect) {
-        if (userPreferencesManager.areSoundEffectsEnabled.value) {
+        if (userPreferences.areSoundEffectsEnabled.value) {
             soundsToPlay.add(effect)
         }
     }

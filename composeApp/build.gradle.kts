@@ -39,6 +39,10 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":components:design"))
             implementation(project(":components:shared:api"))
+            implementation(project(":components:game-core:api"))
+            implementation(project(":components:game-core:impl"))
+            implementation(project(":components:preferences:api"))
+            implementation(project(":components:preferences:impl"))
             implementation(project(":features:splash:api"))
             implementation(project(":features:splash:impl"))
             implementation(project(":features:landing:api"))
