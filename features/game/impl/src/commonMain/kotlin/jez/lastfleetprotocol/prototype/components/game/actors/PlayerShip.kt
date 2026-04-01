@@ -1,11 +1,8 @@
 package jez.lastfleetprotocol.prototype.components.game.actors
 
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerId
 import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.helpers.extensions.get
 import com.pandulapeter.kubriko.helpers.extensions.toSceneOffset
-import com.pandulapeter.kubriko.pointerInput.PointerInputAware
 import com.pandulapeter.kubriko.pointerInput.PointerInputManager
 import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
@@ -16,7 +13,7 @@ class PlayerShip(
     spec: ShipSpec,
     initialPosition: SceneOffset,
     turrets: List<Turret>,
-) : PointerInputAware, Ship(
+) : Ship(
     spec = spec,
     drawable = Res.drawable.ship_player_1,
     initialPosition = initialPosition,
@@ -29,12 +26,6 @@ class PlayerShip(
     override fun onAdded(kubriko: Kubriko) {
         super<Ship>.onAdded(kubriko)
         pointerInputManager = kubriko.get()
-    }
-
-    override fun onPointerPressed(pointerId: PointerId, screenOffset: Offset) {
-//        super.onPointerPressed(pointerId, screenOffset)
-//
-//        moveTo(screenOffset.toSceneOffset(viewportManager))
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {

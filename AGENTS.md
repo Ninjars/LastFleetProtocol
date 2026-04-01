@@ -37,9 +37,3 @@
 - Then there is the game feature, which has multiple sub-screens and a real-time simulation engine
 - The game feature relies heavily on Kubriko for managing state and providing functionality such as
   sound playback
-
-## Testing
-
-- Write unit tests for ViewModels and use cases
-- Use MockK for mocking
-- Prefer property-based testing where applicable
