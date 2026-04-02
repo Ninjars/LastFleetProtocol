@@ -23,13 +23,18 @@ Use for splash/landing/settings/common UI and standard app logic.
 ## Workflow 3: Game Logic / Simulation Change
 
 1. Read domain context first:
-   - `docs/game_design.md`
-   - `docs/ship.md`
-   - `docs/weapons.md`
+    - `docs/game_engine_principles.md`
+    - `docs/game_design.md`
+    - `docs/ship.md`
+    - `docs/weapons.md`
 2. Confirm whether change affects deterministic simulation, rendering, loading, or audio.
 3. Keep simulation rules separate from UI concerns.
 4. Make minimal Kubriko-aligned edits.
 5. Validate for regressions in update/render behavior and side effects.
+6. Document new features in appropriate `docs/` .md files, either updating existing documents or
+   creating new .md files specific to that feature, system or functionality. This documentation will
+   be to help AI agents in the future have appropriate context for continuing developing that
+   feature, or for understanding how to interact with it.
 
 ## Workflow 4: Balance/Data Tuning
 

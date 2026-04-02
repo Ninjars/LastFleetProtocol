@@ -34,6 +34,7 @@ Defined in `settings.gradle.kts`:
   composition/integration.
 - Some dependency edges are pragmatic rather than ideal (for example, there are places where `api`/
   `impl` layering is not strict).
+- `:feature:game` currently contains logic that should be in `:components:game-core`.
 
 When working on ordinary feature tasks, preserve existing behavior and module wiring unless the task
 explicitly requests architecture refactoring.
