@@ -55,7 +55,9 @@ abstract class Ship(
         get() = physics.velocity
         set(value) { physics.velocity = value }
 
-    private var destination: SceneOffset? = null
+    /** Current movement destination, exposed for debug visualisation. */
+    var destination: SceneOffset? = null
+        private set
 
     internal val physics: ShipPhysics = ShipPhysics(
         mass = spec.totalMass,
@@ -195,11 +197,12 @@ abstract class Ship(
             if (absAngleEffective > LARGE_ANGLE_THRESHOLD) {
                 // Large angle: prioritize rotation, use lateral thrust
                 if (spec.movementConfig.lateralThrust > 0f) {
-                    // Apply lateral thrust perpendicular to facing, toward target
+                    // Apply lateral thrust perpendicular to facing, toward target.
+                    // In atan2 convention, perpendicular to +X facing is ±Y.
                     val lateralSign = if (angleDelta > AngleRadians.Zero) 1f else -1f
                     val lateralDir = SceneOffset(
-                        x = lateralSign.sceneUnit,
-                        y = 0f.sceneUnit,
+                        x = 0f.sceneUnit,
+                        y = lateralSign.sceneUnit,
                     )
                     physics.applyThrust(
                         lateralDir,
@@ -208,10 +211,11 @@ abstract class Ship(
                     )
                 }
             } else {
-                // Small angle: apply forward thrust (strongest), fine-tune heading
+                // Small angle: apply forward thrust (strongest), fine-tune heading.
+                // angleTowards uses atan2(dy,dx), so forward = +X in local space.
                 val forwardDir = SceneOffset(
-                    x = 0f.sceneUnit,
-                    y = (-1f).sceneUnit, // Ship faces along -Y in local space
+                    x = 1f.sceneUnit,
+                    y = 0f.sceneUnit,
                 )
                 physics.applyThrust(
                     forwardDir,

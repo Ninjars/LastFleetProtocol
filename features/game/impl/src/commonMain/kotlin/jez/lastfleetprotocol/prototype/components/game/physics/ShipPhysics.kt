@@ -27,6 +27,10 @@ class ShipPhysics(
     // Accumulated torque
     private var accumulatedTorque: Float = 0f
 
+    /** Last computed acceleration for debug visualisation. */
+    var lastAcceleration: SceneOffset = SceneOffset.Zero
+        private set
+
     /**
      * Apply thrust in a local-space direction, converted to world space via facing angle.
      *
@@ -100,6 +104,7 @@ class ShipPhysics(
 
         // Linear: a = F/m, v += a*dt, dx = v*dt
         val acceleration = accumulatedForce * (1f / mass)
+        lastAcceleration = acceleration
         velocity += acceleration * dt
 
         val positionDelta = velocity * dt

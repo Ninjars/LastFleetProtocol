@@ -14,6 +14,7 @@ import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.actors.ShipSpec
 import jez.lastfleetprotocol.prototype.components.game.actors.Turret
 import jez.lastfleetprotocol.prototype.components.game.data.DemoScenarioConfig
+import jez.lastfleetprotocol.prototype.components.game.debug.DebugVisualiser
 import jez.lastfleetprotocol.prototype.components.game.data.ShipConfig
 import jez.lastfleetprotocol.prototype.components.game.input.InputController
 import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems
@@ -86,6 +87,13 @@ class GameStateManager(
         for (enemy in enemyShips) {
             enemy.registerPlayerShips(playerShips.toList())
         }
+
+        // Add debug visualiser for all ships
+        val debugVisualiser = DebugVisualiser()
+        for (ship in playerShips + enemyShips) {
+            debugVisualiser.registerShip(ship)
+        }
+        actorManager.add(debugVisualiser)
     }
 
     private fun createPlayerShip(config: ShipConfig, position: SceneOffset): PlayerShip {
