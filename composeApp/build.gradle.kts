@@ -66,6 +66,7 @@ kotlin {
 
             implementation(libs.kubriko.engine)
             implementation(libs.kubriko.plugin.audio)
+            implementation(libs.kubriko.plugin.collision)
             implementation(libs.kubriko.plugin.persistence)
             implementation(libs.kubriko.plugin.pointer)
             implementation(libs.kubriko.plugin.sprites)

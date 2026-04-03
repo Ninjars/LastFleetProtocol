@@ -18,8 +18,13 @@ import kotlin.math.abs
 
 data class GunData(
     val drawable: DrawableResource = Res.drawable.turret_simple_1,
-    val reloadTime: Long = 500L,
-    val bulletSpeed: Float = 100f,
+    val projectileStats: ProjectileStats = ProjectileStats(
+        damage = 10f,
+        armourPiercing = 5f,
+        toHitModifier = 0.1f,
+        speed = 100f,
+        lifetimeMs = 5000,
+    ),
     val aimTolerance: AngleRadians = AngleRadians.TwoPi / 1440f,
     val magazineCapacity: Int,
     val reloadMilliseconds: Int,
@@ -56,12 +61,13 @@ class Gun(
             initialPosition = turretBody.getRelativePoint(muzzleOffset),
             initialRotation = turretBody.rotation,
             velocity = SceneOffset(
-                gunData.bulletSpeed.sceneUnit,
+                gunData.projectileStats.speed.sceneUnit,
                 0.sceneUnit
             ).rotate(turretBody.rotation),
             bulletData = BulletData(
                 drawable = Res.drawable.bullet_laser_green_10,
             ),
+            projectileStats = gunData.projectileStats,
             collidableTypes = emptyList()
         )
         actorManager.add(bullet)

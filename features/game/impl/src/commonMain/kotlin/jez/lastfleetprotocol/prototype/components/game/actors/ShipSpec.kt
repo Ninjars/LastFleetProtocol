@@ -1,11 +1,26 @@
 package jez.lastfleetprotocol.prototype.components.game.actors
 
-import com.pandulapeter.kubriko.types.AngleRadians
-import com.pandulapeter.kubriko.types.SceneUnit
+import jez.lastfleetprotocol.prototype.components.game.data.CombatStats
+import jez.lastfleetprotocol.prototype.components.game.data.HullDefinition
+import jez.lastfleetprotocol.prototype.components.game.data.MovementConfig
+import jez.lastfleetprotocol.prototype.components.game.data.ShipConfig
 
+/**
+ * Runtime-computed ship specification derived from ShipConfig.
+ * Contains the pre-computed values needed during gameplay.
+ */
 data class ShipSpec(
-    val acceleration: SceneUnit,
-    val deceleration: SceneUnit,
-    val maxSpeed: SceneUnit,
-    val rotationRate: AngleRadians,
-)
+    val totalMass: Float,
+    val movementConfig: MovementConfig,
+    val combatStats: CombatStats,
+    val hull: HullDefinition,
+) {
+    companion object {
+        fun fromConfig(config: ShipConfig): ShipSpec = ShipSpec(
+            totalMass = config.totalMass,
+            movementConfig = config.movementConfig,
+            combatStats = config.combatStats,
+            hull = config.hull,
+        )
+    }
+}

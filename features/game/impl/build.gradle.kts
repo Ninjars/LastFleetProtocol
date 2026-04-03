@@ -46,6 +46,9 @@ kotlin {
             implementation(libs.kubriko.tool.logger)
             implementation(libs.kubriko.tool.ui.components)
         }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
         androidMain.dependencies {
             implementation(compose.preview)
         }

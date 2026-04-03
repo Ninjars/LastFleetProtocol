@@ -1,7 +1,7 @@
 ---
 title: "feat: Combat vertical slice — physics movement, kinetic weapons, damage pipeline"
 type: feat
-status: active
+status: completed
 date: 2026-04-03
 origin: docs/brainstorms/2026-04-03-combat-vertical-slice-requirements.md
 ---
