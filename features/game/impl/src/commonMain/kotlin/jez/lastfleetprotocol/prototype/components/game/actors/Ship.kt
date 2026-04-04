@@ -26,6 +26,7 @@ import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.ai.AIModule
 import jez.lastfleetprotocol.prototype.components.game.physics.ShipPhysics
 import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems
+import jez.lastfleetprotocol.prototype.components.game.utils.PidController
 import org.jetbrains.compose.resources.DrawableResource
 import kotlin.reflect.KClass
 
@@ -87,6 +88,14 @@ class Ship(
 
     override val collisionMask: PolygonCollisionMask = PolygonCollisionMask(
         vertices = spec.hull.vertices,
+    )
+
+    /** PID controller for smooth rotation toward a target heading. */
+    private val rotationPid = PidController(
+        kp = ROTATION_PID_KP,
+        ki = ROTATION_PID_KI,
+        kd = ROTATION_PID_KD,
+        integralLimit = ROTATION_PID_INTEGRAL_LIMIT,
     )
 
     /** Average distance from ship centre to hull vertices, used as a proximity radius. */
@@ -547,8 +556,12 @@ class Ship(
     }
 
     /**
-     * Apply angular force to rotate toward the desired heading.
-     * Uses angular stopping distance to prevent overshoot.
+     * Apply angular force to rotate toward the desired heading using a PID controller.
+     *
+     * The PID controller takes the signed angle error and outputs a normalised torque
+     * signal in [-1, 1]. This provides proportional response (large errors get full
+     * thrust), derivative damping (reduces overshoot by opposing rapid angular changes),
+     * and a small integral term to correct persistent steady-state error.
      */
     private fun applyRotationToward(
         angleDelta: AngleRadians,
@@ -557,22 +570,25 @@ class Ship(
     ) {
         if (absAngle < ANGULAR_ARRIVAL_THRESHOLD) {
             physics.decelerateAngular(spec.movementConfig.angularThrust, deltaMs)
+            rotationPid.reset()
             return
         }
 
-        val sign = if (angleDelta > AngleRadians.Zero) 1f else -1f
-        physics.applyAngularForce(sign * spec.movementConfig.angularThrust)
-
-        val angularDecel = spec.movementConfig.angularThrust / spec.totalMass
-        val angularStoppingDistance = if (angularDecel > 0f) {
-            (physics.angularVelocity * physics.angularVelocity) / (2f * angularDecel)
+        val dt = deltaMs * 0.001f
+        // Signed error: positive = need to rotate in positive direction
+        val signedError = if (angleDelta > AngleRadians.Pi) {
+            angleDelta.normalized - (2.0 * kotlin.math.PI).toFloat()
+        } else if (angleDelta < -AngleRadians.Pi) {
+            angleDelta.normalized + (2.0 * kotlin.math.PI).toFloat()
         } else {
-            0f
+            angleDelta.normalized
         }
 
-        if (angularStoppingDistance >= absAngle) {
-            physics.decelerateAngular(spec.movementConfig.angularThrust, deltaMs)
-        }
+        val pidOutput = rotationPid.update(signedError, dt)
+
+        // Clamp to [-1, 1] and scale by max angular thrust
+        val torqueScale = pidOutput.coerceIn(-1f, 1f)
+        physics.applyAngularForce(torqueScale * spec.movementConfig.angularThrust)
     }
 
     companion object {
@@ -601,5 +617,14 @@ class Ship(
 
         /** Speed threshold for snap-to-stop as a multiple of hullRadius (scene units/sec) */
         private const val SLOW_SPEED_FACTOR = 1.0f
+
+        // PID controller gains for rotation.
+        // kp: proportional response to angle error (full thrust at ~1 radian error)
+        // ki: small integral to correct persistent drift
+        // kd: derivative damping to oppose angular velocity and reduce overshoot
+        private const val ROTATION_PID_KP = 3.0f
+        private const val ROTATION_PID_KI = 0.1f
+        private const val ROTATION_PID_KD = 2.0f
+        private const val ROTATION_PID_INTEGRAL_LIMIT = 2.0f
     }
 }
