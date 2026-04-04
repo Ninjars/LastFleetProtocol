@@ -9,11 +9,13 @@ import com.pandulapeter.kubriko.actor.traits.Dynamic
 import com.pandulapeter.kubriko.collision.Collidable
 import com.pandulapeter.kubriko.collision.CollisionDetector
 import com.pandulapeter.kubriko.collision.mask.PolygonCollisionMask
-import com.pandulapeter.kubriko.helpers.extensions.angleTowards
+import com.pandulapeter.kubriko.helpers.extensions.cos
 import com.pandulapeter.kubriko.helpers.extensions.get
 import com.pandulapeter.kubriko.helpers.extensions.length
+import com.pandulapeter.kubriko.helpers.extensions.normalized
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
+import com.pandulapeter.kubriko.helpers.extensions.sin
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.sprites.SpriteManager
@@ -148,7 +150,15 @@ class Ship(
     }
 
     /**
-     * Navigation logic: steer and thrust toward destination, or drift with drag.
+     * Navigation logic: velocity-aware steering toward destination.
+     *
+     * Rather than thrusting directly toward the target position, this computes
+     * a desired velocity that would carry the ship to the target, then applies
+     * thrust to correct the difference between current and desired velocity.
+     * This prevents orbiting by accounting for lateral drift.
+     *
+     * The ship rotates to face the correction vector (not the target) and uses
+     * lateral thrust to counter perpendicular velocity error while rotating.
      */
     private fun navigateToDestination(deltaMs: Int) {
         val dest = destination
@@ -168,9 +178,13 @@ class Ship(
             return
         }
 
-        val speed = physics.speed()
         val facing = body.rotation
+        val velocity = physics.velocity
+        val speed = physics.speed()
 
+        // Calculate desired velocity: direction toward target, with speed scaled
+        // down as we approach (to allow smooth deceleration).
+        val maxSpeed = spec.movementConfig.forwardThrust / spec.totalMass * MAX_SPEED_FACTOR
         val deceleration = spec.movementConfig.reverseThrust / spec.totalMass
         val stoppingDistance = if (deceleration > 0f) {
             (speed.raw * speed.raw) / (2f * deceleration)
@@ -178,55 +192,99 @@ class Ship(
             0f
         }
 
-        val targetAngle = body.position.angleTowards(dest)
-        val rawDelta = targetAngle - facing
-        val angleDelta = if (rawDelta > AngleRadians.Pi) {
+        val targetDirection = toTarget.normalized()
+        val desiredSpeed = if (stoppingDistance >= distanceToTarget.raw * BRAKING_MARGIN) {
+            // Within braking zone: desired speed proportional to remaining distance
+            kotlin.math.sqrt(2f * deceleration * distanceToTarget.raw).coerceAtMost(maxSpeed)
+        } else {
+            maxSpeed
+        }
+        val desiredVelocity = targetDirection * desiredSpeed
+
+        // Correction vector: what we need to change about our velocity
+        val correction = desiredVelocity - velocity
+        val correctionMagnitude = correction.length().raw
+
+        if (correctionMagnitude < CORRECTION_EPSILON) {
+            // Velocity is already close to desired — just maintain heading toward target
+            physics.decelerateAngular(ANGULAR_DRAG, deltaMs)
+            return
+        }
+
+        // Determine the angle of the correction vector in world space,
+        // and the angle difference from our current facing
+        val correctionAngle = kotlin.math.atan2(
+            correction.y.raw,
+            correction.x.raw,
+        ).rad
+        val rawDelta = correctionAngle - facing
+        val angleDelta = normalizeAngle(rawDelta)
+        val absAngle = kotlin.math.abs(angleDelta.normalized.let {
+            if (it > kotlin.math.PI.toFloat()) (2.0 * kotlin.math.PI).toFloat() - it else it
+        })
+
+        // Decompose the correction into forward and lateral components
+        // relative to the ship's current facing
+        val facingCos = facing.cos
+        val facingSin = facing.sin
+        // Forward component: dot(correction, facingDir)
+        val forwardComponent = correction.x.raw * facingCos + correction.y.raw * facingSin
+        // Lateral component: dot(correction, perpDir) where perp = (−sin, cos)
+        val lateralComponent = -correction.x.raw * facingSin + correction.y.raw * facingCos
+
+        // Apply forward thrust when the correction has a forward component
+        if (forwardComponent > CORRECTION_EPSILON) {
+            val thrustFraction = (forwardComponent / correctionMagnitude).coerceIn(0f, 1f)
+            physics.applyThrust(
+                SceneOffset(1f.sceneUnit, 0f.sceneUnit), // Forward = +X
+                spec.movementConfig.forwardThrust * thrustFraction,
+                facing,
+            )
+        } else if (forwardComponent < -CORRECTION_EPSILON) {
+            // Need to slow down or reverse — apply braking
+            val brakeFraction = (-forwardComponent / correctionMagnitude).coerceIn(0f, 1f)
+            physics.applyThrust(
+                SceneOffset((-1f).sceneUnit, 0f.sceneUnit), // Reverse = -X
+                spec.movementConfig.reverseThrust * brakeFraction,
+                facing,
+            )
+        }
+
+        // Apply lateral thrust to counter perpendicular drift while rotating
+        if (kotlin.math.abs(lateralComponent) > CORRECTION_EPSILON &&
+            spec.movementConfig.lateralThrust > 0f
+        ) {
+            val lateralSign = if (lateralComponent > 0f) 1f else -1f
+            val lateralFraction = (kotlin.math.abs(lateralComponent) / correctionMagnitude)
+                .coerceIn(0f, 1f)
+            physics.applyThrust(
+                SceneOffset(0f.sceneUnit, lateralSign.sceneUnit), // Lateral = ±Y
+                spec.movementConfig.lateralThrust * lateralFraction,
+                facing,
+            )
+        }
+
+        // Rotate toward the correction vector direction
+        applyRotationToward(angleDelta, absAngle, deltaMs)
+    }
+
+    /**
+     * Normalize an angle delta to the range (-PI, PI].
+     */
+    private fun normalizeAngle(rawDelta: AngleRadians): AngleRadians {
+        return if (rawDelta > AngleRadians.Pi) {
             rawDelta - AngleRadians.TwoPi
         } else if (rawDelta < -AngleRadians.Pi) {
             rawDelta + AngleRadians.TwoPi
         } else {
             rawDelta
         }
-        val absAngle = angleDelta.normalized
-        val absAngleEffective = if (absAngle > kotlin.math.PI.toFloat()) {
-            (2.0 * kotlin.math.PI).toFloat() - absAngle
-        } else {
-            absAngle
-        }
-
-        if (stoppingDistance >= distanceToTarget.raw && speed.raw > SPEED_STOP_THRESHOLD) {
-            physics.decelerate(spec.movementConfig.reverseThrust, deltaMs)
-        } else {
-            if (absAngleEffective > LARGE_ANGLE_THRESHOLD) {
-                if (spec.movementConfig.lateralThrust > 0f) {
-                    val lateralSign = if (angleDelta > AngleRadians.Zero) 1f else -1f
-                    val lateralDir = SceneOffset(
-                        x = 0f.sceneUnit,
-                        y = lateralSign.sceneUnit,
-                    )
-                    physics.applyThrust(
-                        lateralDir,
-                        spec.movementConfig.lateralThrust,
-                        facing,
-                    )
-                }
-            } else {
-                // Forward = +X in atan2/Kubriko convention
-                val forwardDir = SceneOffset(
-                    x = 1f.sceneUnit,
-                    y = 0f.sceneUnit,
-                )
-                physics.applyThrust(
-                    forwardDir,
-                    spec.movementConfig.forwardThrust,
-                    facing,
-                )
-            }
-        }
-
-        applyRotationToward(angleDelta, absAngleEffective, deltaMs)
     }
 
+    /**
+     * Apply angular force to rotate toward the desired heading.
+     * Uses angular stopping distance to prevent overshoot.
+     */
     private fun applyRotationToward(
         angleDelta: AngleRadians,
         absAngle: Float,
@@ -259,8 +317,12 @@ class Ship(
         private const val DRIFT_DRAG = 50f
         private const val ANGULAR_DRAG = 200f
         private const val ARRIVAL_THRESHOLD = 5f
-        private const val SPEED_STOP_THRESHOLD = 0.1f
-        private const val LARGE_ANGLE_THRESHOLD = 0.785f
         private const val ANGULAR_ARRIVAL_THRESHOLD = 0.01f
+        /** Correction vectors smaller than this are treated as zero */
+        private const val CORRECTION_EPSILON = 0.1f
+        /** Factor to derive max approach speed from forward acceleration */
+        private const val MAX_SPEED_FACTOR = 3f
+        /** Start braking when stopping distance >= this fraction of remaining distance */
+        private const val BRAKING_MARGIN = 0.8f
     }
 }
