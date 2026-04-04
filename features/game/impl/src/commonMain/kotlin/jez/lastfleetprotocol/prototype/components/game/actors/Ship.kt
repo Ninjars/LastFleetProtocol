@@ -9,6 +9,7 @@ import com.pandulapeter.kubriko.actor.traits.Dynamic
 import com.pandulapeter.kubriko.collision.Collidable
 import com.pandulapeter.kubriko.collision.CollisionDetector
 import com.pandulapeter.kubriko.collision.mask.PolygonCollisionMask
+import com.pandulapeter.kubriko.helpers.extensions.angleTowards
 import com.pandulapeter.kubriko.helpers.extensions.cos
 import com.pandulapeter.kubriko.helpers.extensions.get
 import com.pandulapeter.kubriko.helpers.extensions.length
@@ -139,7 +140,12 @@ class Ship(
         }
     }
 
+    /** The ship's current combat target, used for facing between manoeuvres. */
+    var combatTarget: Targetable? = null
+        private set
+
     fun setTarget(mobile: Targetable?) {
+        combatTarget = mobile
         for (turret in turrets) {
             turret.target = mobile
         }
@@ -150,21 +156,25 @@ class Ship(
     }
 
     /**
-     * Navigation logic: velocity-aware steering toward destination.
+     * Navigation: aggressive acceleration/deceleration with combat-aware facing.
      *
-     * Rather than thrusting directly toward the target position, this computes
-     * a desired velocity that would carry the ship to the target, then applies
-     * thrust to correct the difference between current and desired velocity.
-     * This prevents orbiting by accounting for lateral drift.
+     * The ship manoeuvres in two phases:
+     * 1. **Thrust phase**: accelerate hard toward destination using all available axes.
+     *    Forward thrust at full power along the correction vector, lateral thrust to
+     *    cancel perpendicular drift. No fractional scaling — always full force.
+     * 2. **Brake phase**: when within stopping distance, decelerate aggressively.
      *
-     * The ship rotates to face the correction vector (not the target) and uses
-     * lateral thrust to counter perpendicular velocity error while rotating.
+     * Between active thrust manoeuvres (braking, coasting near destination, or when
+     * velocity correction is small), the ship rotates to face its combat target.
+     * This presents the armoured prow toward threats and protects engines/reactor.
+     * When no combat target exists, it faces the movement direction.
      */
     private fun navigateToDestination(deltaMs: Int) {
         val dest = destination
         if (dest == null) {
+            // No destination: drift and face combat target
             physics.decelerate(DRIFT_DRAG, deltaMs)
-            physics.decelerateAngular(ANGULAR_DRAG, deltaMs)
+            rotateToCombatTarget(deltaMs)
             return
         }
 
@@ -174,7 +184,7 @@ class Ship(
         if (distanceToTarget.raw < ARRIVAL_THRESHOLD) {
             destination = null
             physics.decelerate(spec.movementConfig.reverseThrust, deltaMs)
-            physics.decelerateAngular(ANGULAR_DRAG, deltaMs)
+            rotateToCombatTarget(deltaMs)
             return
         }
 
@@ -182,8 +192,7 @@ class Ship(
         val velocity = physics.velocity
         val speed = physics.speed()
 
-        // Calculate desired velocity: direction toward target, with speed scaled
-        // down as we approach (to allow smooth deceleration).
+        // Desired velocity: full speed toward target, scaled down in braking zone
         val maxSpeed = spec.movementConfig.forwardThrust / spec.totalMass * MAX_SPEED_FACTOR
         val deceleration = spec.movementConfig.reverseThrust / spec.totalMass
         val stoppingDistance = if (deceleration > 0f) {
@@ -193,78 +202,110 @@ class Ship(
         }
 
         val targetDirection = toTarget.normalized()
-        val desiredSpeed = if (stoppingDistance >= distanceToTarget.raw * BRAKING_MARGIN) {
-            // Within braking zone: desired speed proportional to remaining distance
+        val isBraking = stoppingDistance >= distanceToTarget.raw * BRAKING_MARGIN
+
+        val desiredSpeed = if (isBraking) {
             kotlin.math.sqrt(2f * deceleration * distanceToTarget.raw).coerceAtMost(maxSpeed)
         } else {
             maxSpeed
         }
         val desiredVelocity = targetDirection * desiredSpeed
 
-        // Correction vector: what we need to change about our velocity
+        // Correction = what we need to change about our velocity
         val correction = desiredVelocity - velocity
         val correctionMagnitude = correction.length().raw
 
         if (correctionMagnitude < CORRECTION_EPSILON) {
-            // Velocity is already close to desired — just maintain heading toward target
-            physics.decelerateAngular(ANGULAR_DRAG, deltaMs)
+            // Velocity already matches desired — face combat target while coasting
+            rotateToCombatTarget(deltaMs)
             return
         }
 
-        // Determine the angle of the correction vector in world space,
-        // and the angle difference from our current facing
-        val correctionAngle = kotlin.math.atan2(
-            correction.y.raw,
-            correction.x.raw,
-        ).rad
-        val rawDelta = correctionAngle - facing
-        val angleDelta = normalizeAngle(rawDelta)
-        val absAngle = kotlin.math.abs(angleDelta.normalized.let {
-            if (it > kotlin.math.PI.toFloat()) (2.0 * kotlin.math.PI).toFloat() - it else it
-        })
-
-        // Decompose the correction into forward and lateral components
-        // relative to the ship's current facing
+        // Decompose correction into forward/lateral relative to current facing
         val facingCos = facing.cos
         val facingSin = facing.sin
-        // Forward component: dot(correction, facingDir)
         val forwardComponent = correction.x.raw * facingCos + correction.y.raw * facingSin
-        // Lateral component: dot(correction, perpDir) where perp = (−sin, cos)
         val lateralComponent = -correction.x.raw * facingSin + correction.y.raw * facingCos
 
-        // Apply forward thrust when the correction has a forward component
+        // --- Thrust: always at full power, no fractional scaling ---
+
         if (forwardComponent > CORRECTION_EPSILON) {
-            val thrustFraction = (forwardComponent / correctionMagnitude).coerceIn(0f, 1f)
+            // Full forward thrust
             physics.applyThrust(
-                SceneOffset(1f.sceneUnit, 0f.sceneUnit), // Forward = +X
-                spec.movementConfig.forwardThrust * thrustFraction,
+                SceneOffset(1f.sceneUnit, 0f.sceneUnit),
+                spec.movementConfig.forwardThrust,
                 facing,
             )
         } else if (forwardComponent < -CORRECTION_EPSILON) {
-            // Need to slow down or reverse — apply braking
-            val brakeFraction = (-forwardComponent / correctionMagnitude).coerceIn(0f, 1f)
+            // Full reverse thrust (braking)
             physics.applyThrust(
-                SceneOffset((-1f).sceneUnit, 0f.sceneUnit), // Reverse = -X
-                spec.movementConfig.reverseThrust * brakeFraction,
+                SceneOffset((-1f).sceneUnit, 0f.sceneUnit),
+                spec.movementConfig.reverseThrust,
                 facing,
             )
         }
 
-        // Apply lateral thrust to counter perpendicular drift while rotating
+        // Full lateral thrust to cancel perpendicular drift
         if (kotlin.math.abs(lateralComponent) > CORRECTION_EPSILON &&
             spec.movementConfig.lateralThrust > 0f
         ) {
             val lateralSign = if (lateralComponent > 0f) 1f else -1f
-            val lateralFraction = (kotlin.math.abs(lateralComponent) / correctionMagnitude)
-                .coerceIn(0f, 1f)
             physics.applyThrust(
-                SceneOffset(0f.sceneUnit, lateralSign.sceneUnit), // Lateral = ±Y
-                spec.movementConfig.lateralThrust * lateralFraction,
+                SceneOffset(0f.sceneUnit, lateralSign.sceneUnit),
+                spec.movementConfig.lateralThrust,
                 facing,
             )
         }
 
-        // Rotate toward the correction vector direction
+        // --- Rotation priority ---
+        // During braking or low-correction coasting: face combat target
+        // During active acceleration: face the correction vector for efficient thrust
+        if (isBraking || correctionMagnitude < maxSpeed * 0.3f) {
+            rotateToCombatTarget(deltaMs)
+        } else {
+            val correctionAngle = kotlin.math.atan2(
+                correction.y.raw,
+                correction.x.raw,
+            ).rad
+            val rawDelta = correctionAngle - facing
+            val angleDelta = normalizeAngle(rawDelta)
+            val absAngle = kotlin.math.abs(angleDelta.normalized.let {
+                if (it > kotlin.math.PI.toFloat()) (2.0 * kotlin.math.PI).toFloat() - it
+                else it
+            })
+            applyRotationToward(angleDelta, absAngle, deltaMs)
+        }
+    }
+
+    /**
+     * Rotate to face the combat target if one exists, otherwise face velocity direction.
+     * This presents the armoured prow toward threats between manoeuvres.
+     */
+    private fun rotateToCombatTarget(deltaMs: Int) {
+        val target = combatTarget
+        val facing = body.rotation
+
+        val desiredAngle = if (target != null && target.isValidTarget()) {
+            // Face the combat target
+            body.position.angleTowards(target.body.position)
+        } else if (physics.speed().raw > CORRECTION_EPSILON) {
+            // No combat target: face velocity direction
+            kotlin.math.atan2(
+                physics.velocity.y.raw,
+                physics.velocity.x.raw,
+            ).rad
+        } else {
+            // Stationary, no target: just damp rotation
+            physics.decelerateAngular(ANGULAR_DRAG, deltaMs)
+            return
+        }
+
+        val rawDelta = desiredAngle - facing
+        val angleDelta = normalizeAngle(rawDelta)
+        val absAngle = kotlin.math.abs(angleDelta.normalized.let {
+            if (it > kotlin.math.PI.toFloat()) (2.0 * kotlin.math.PI).toFloat() - it
+            else it
+        })
         applyRotationToward(angleDelta, absAngle, deltaMs)
     }
 
