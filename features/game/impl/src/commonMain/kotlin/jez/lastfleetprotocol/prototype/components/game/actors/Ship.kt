@@ -89,6 +89,13 @@ class Ship(
         vertices = spec.hull.vertices,
     )
 
+    /** Average distance from ship centre to hull vertices, used as a proximity radius. */
+    private val hullRadius: Float = if (spec.hull.vertices.isNotEmpty()) {
+        spec.hull.vertices.map { it.length().raw }.average().toFloat()
+    } else {
+        ARRIVAL_THRESHOLD
+    }
+
     override val isAlwaysActive: Boolean = true
     override val drawingOrder: Float = drawOrder
 
@@ -177,17 +184,29 @@ class Ship(
 
         val toTarget = dest - body.position
         val distanceToTarget = toTarget.length()
+        val speed = physics.speed()
 
+        // Snap-to-stop: when close to destination (proportional to ship size)
+        // and moving slowly, decelerate to a stop rather than risking overshoot.
+        val proximityRadius = hullRadius * PROXIMITY_RADIUS_FACTOR
+        val slowThreshold = hullRadius * SLOW_SPEED_FACTOR
+        if (distanceToTarget.raw < proximityRadius && speed.raw < slowThreshold) {
+            destination = null
+            physics.decelerate(spec.movementConfig.forwardThrust, deltaMs)
+            rotateToCombatTarget(deltaMs)
+            return
+        }
+
+        // Hard arrival: within a very small radius, stop regardless of speed
         if (distanceToTarget.raw < ARRIVAL_THRESHOLD) {
             destination = null
-            physics.decelerate(spec.movementConfig.reverseThrust, deltaMs)
+            physics.decelerate(spec.movementConfig.forwardThrust, deltaMs)
             rotateToCombatTarget(deltaMs)
             return
         }
 
         val facing = body.rotation
         val velocity = physics.velocity
-        val speed = physics.speed()
 
         val maxSpeed = spec.movementConfig.forwardThrust / spec.totalMass * MAX_SPEED_FACTOR
 
@@ -576,5 +595,11 @@ class Ship(
 
         /** Rotation braking must be this much faster than current-facing braking to trigger */
         private const val ROTATION_BRAKE_THRESHOLD = 0.75f
+
+        /** Snap-to-stop proximity as a multiple of hullRadius */
+        private const val PROXIMITY_RADIUS_FACTOR = 1.5f
+
+        /** Speed threshold for snap-to-stop as a multiple of hullRadius (scene units/sec) */
+        private const val SLOW_SPEED_FACTOR = 1.0f
     }
 }
