@@ -8,17 +8,19 @@ import com.pandulapeter.kubriko.helpers.extensions.toSceneOffset
 import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.pointerInput.PointerInputAware
 import androidx.compose.ui.input.pointer.PointerId
-import jez.lastfleetprotocol.prototype.components.game.actors.PlayerShip
+import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import kotlin.time.TimeSource
 
-class InputController : PointerInputAware, Dynamic {
+class InputController(
+    private val selectableTeamId: String,
+) : PointerInputAware, Dynamic {
 
     override val isAlwaysActive: Boolean = true
 
     private lateinit var viewportManager: ViewportManager
 
-    private val playerShips = mutableListOf<PlayerShip>()
-    private var selectedShip: PlayerShip? = null
+    private val selectableShips = mutableListOf<Ship>()
+    private var selectedShip: Ship? = null
 
     private val timeSource = TimeSource.Monotonic
     private val pointerPressPositions = mutableMapOf<PointerId, Offset>()
@@ -30,8 +32,8 @@ class InputController : PointerInputAware, Dynamic {
 
     override fun update(deltaTimeInMilliseconds: Int) = Unit
 
-    fun registerPlayerShip(ship: PlayerShip) {
-        playerShips.add(ship)
+    fun registerShip(ship: Ship) {
+        selectableShips.add(ship)
     }
 
     override fun onPointerPressed(pointerId: PointerId, screenOffset: Offset) {
@@ -62,8 +64,8 @@ class InputController : PointerInputAware, Dynamic {
     private fun handleTap(screenOffset: Offset) {
         val scenePos = screenOffset.toSceneOffset(viewportManager)
 
-        val hitShip = playerShips.firstOrNull { ship ->
-            ship.collisionMask.isSceneOffsetInside(scenePos)
+        val hitShip = selectableShips.firstOrNull { ship ->
+            !ship.isDestroyed && ship.collisionMask.isSceneOffsetInside(scenePos)
         }
 
         if (hitShip != null) {

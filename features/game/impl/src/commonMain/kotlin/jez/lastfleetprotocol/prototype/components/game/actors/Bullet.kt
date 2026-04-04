@@ -38,6 +38,7 @@ internal class Bullet(
     private val velocity: SceneOffset,
     private val bulletData: BulletData,
     val projectileStats: ProjectileStats,
+    val teamId: String,
     override val collidableTypes: List<KClass<out Collidable>>,
 ) : Visible, Dynamic, CollisionDetector {
     override val isAlwaysActive: Boolean = true
@@ -87,6 +88,7 @@ internal class Bullet(
     override fun onCollisionDetected(collidables: List<Collidable>) {
         for (collidable in collidables) {
             val ship = collidable as? Ship ?: continue
+            if (ship.teamId == teamId) continue // Skip friendly ships
             if (!ship.isValidTarget()) continue
 
             // Approximate contact normal: direction from bullet to ship centre, inverted

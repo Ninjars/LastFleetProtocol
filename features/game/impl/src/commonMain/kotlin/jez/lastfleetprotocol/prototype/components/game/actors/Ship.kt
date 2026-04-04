@@ -20,23 +20,33 @@ import com.pandulapeter.kubriko.sprites.SpriteManager
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
+import jez.lastfleetprotocol.prototype.components.game.ai.AIModule
 import jez.lastfleetprotocol.prototype.components.game.physics.ShipPhysics
 import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems
 import org.jetbrains.compose.resources.DrawableResource
 import kotlin.reflect.KClass
 
 /**
- * Base class for ships. Used for Player and Enemy ships alike, but with
- * different parent classes in order to allow for simpler management of
- * collisions via corresponding collidableTypes.
+ * A ship in the game world. Can be player-controlled or AI-controlled depending
+ * on the [aiModules] provided. Team membership is identified by [teamId], which
+ * is propagated to projectiles to prevent friendly fire.
+ *
+ * @param teamId Identifier for the ship's team (e.g., "player", "enemy").
+ * @param targetProvider Provides the list of ships this ship should consider as targets.
+ * @param aiModules AI behaviours to run each frame. Empty = player-controlled.
+ * @param drawOrder Drawing order for rendering. Lower = drawn on top.
  */
-abstract class Ship(
+class Ship(
     internal val spec: ShipSpec,
     private val drawable: DrawableResource,
     initialPosition: SceneOffset,
+    val teamId: String,
+    val targetProvider: () -> List<Ship> = { emptyList() },
+    private val aiModules: List<AIModule> = emptyList(),
     initialVelocity: SceneOffset = SceneOffset.Zero,
     private val turrets: List<Turret> = emptyList(),
     val shipSystems: ShipSystems = ShipSystems(emptyList()),
+    private val drawOrder: Float = 0f,
 ) : Targetable, Dynamic, Collidable, CollisionDetector, Parent {
 
     var isDestroyed: Boolean = false
@@ -44,8 +54,8 @@ abstract class Ship(
 
     var onDestroyedCallback: ((Ship) -> Unit)? = null
 
-    protected lateinit var viewportManager: ViewportManager
-    protected lateinit var spriteManager: SpriteManager
+    private lateinit var viewportManager: ViewportManager
+    private lateinit var spriteManager: SpriteManager
     private lateinit var actorManager: ActorManager
     override val actors: List<Actor> = turrets
 
@@ -77,6 +87,7 @@ abstract class Ship(
     )
 
     override val isAlwaysActive: Boolean = true
+    override val drawingOrder: Float = drawOrder
 
     override fun DrawScope.draw() {
         drawImage(sprite)
@@ -94,10 +105,14 @@ abstract class Ship(
         get() = emptyList()
 
     override fun onCollisionDetected(collidables: List<Collidable>) {
-//        TODO("Not yet implemented")
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {
+        // Run AI modules
+        for (ai in aiModules) {
+            ai.update(this, deltaTimeInMilliseconds)
+        }
+
         navigateToDestination(deltaTimeInMilliseconds)
 
         val result = physics.integrate(deltaTimeInMilliseconds)
@@ -138,7 +153,6 @@ abstract class Ship(
     private fun navigateToDestination(deltaMs: Int) {
         val dest = destination
         if (dest == null) {
-            // No destination: apply drag to slow down over time
             physics.decelerate(DRIFT_DRAG, deltaMs)
             physics.decelerateAngular(ANGULAR_DRAG, deltaMs)
             return
@@ -147,7 +161,6 @@ abstract class Ship(
         val toTarget = dest - body.position
         val distanceToTarget = toTarget.length()
 
-        // If close enough to destination, clear it and decelerate
         if (distanceToTarget.raw < ARRIVAL_THRESHOLD) {
             destination = null
             physics.decelerate(spec.movementConfig.reverseThrust, deltaMs)
@@ -158,8 +171,6 @@ abstract class Ship(
         val speed = physics.speed()
         val facing = body.rotation
 
-        // Calculate stopping distance: v^2 / (2 * deceleration)
-        // deceleration = reverseThrust / mass
         val deceleration = spec.movementConfig.reverseThrust / spec.totalMass
         val stoppingDistance = if (deceleration > 0f) {
             (speed.raw * speed.raw) / (2f * deceleration)
@@ -167,11 +178,8 @@ abstract class Ship(
             0f
         }
 
-        // Calculate angle from ship facing to target using the same pattern
-        // as the original facing code: normalize the delta to (-PI, PI].
         val targetAngle = body.position.angleTowards(dest)
         val rawDelta = targetAngle - facing
-        // Normalize to (-PI, PI] range
         val angleDelta = if (rawDelta > AngleRadians.Pi) {
             rawDelta - AngleRadians.TwoPi
         } else if (rawDelta < -AngleRadians.Pi) {
@@ -179,9 +187,7 @@ abstract class Ship(
         } else {
             rawDelta
         }
-        // .normalized gives the absolute radian value in [0, 2PI); use it for magnitude checks
         val absAngle = angleDelta.normalized
-        // Handle wrap: if > PI, the actual angle is 2PI - normalized
         val absAngleEffective = if (absAngle > kotlin.math.PI.toFloat()) {
             (2.0 * kotlin.math.PI).toFloat() - absAngle
         } else {
@@ -189,15 +195,10 @@ abstract class Ship(
         }
 
         if (stoppingDistance >= distanceToTarget.raw && speed.raw > SPEED_STOP_THRESHOLD) {
-            // Within stopping distance: decelerate
             physics.decelerate(spec.movementConfig.reverseThrust, deltaMs)
         } else {
-            // Not within stopping distance: thrust toward target
             if (absAngleEffective > LARGE_ANGLE_THRESHOLD) {
-                // Large angle: prioritize rotation, use lateral thrust
                 if (spec.movementConfig.lateralThrust > 0f) {
-                    // Apply lateral thrust perpendicular to facing, toward target.
-                    // In atan2 convention, perpendicular to +X facing is ±Y.
                     val lateralSign = if (angleDelta > AngleRadians.Zero) 1f else -1f
                     val lateralDir = SceneOffset(
                         x = 0f.sceneUnit,
@@ -210,8 +211,7 @@ abstract class Ship(
                     )
                 }
             } else {
-                // Small angle: apply forward thrust (strongest), fine-tune heading.
-                // angleTowards uses atan2(dy,dx), so forward = +X in local space.
+                // Forward = +X in atan2/Kubriko convention
                 val forwardDir = SceneOffset(
                     x = 1f.sceneUnit,
                     y = 0f.sceneUnit,
@@ -224,20 +224,15 @@ abstract class Ship(
             }
         }
 
-        // Apply angular force to rotate toward destination
         applyRotationToward(angleDelta, absAngleEffective, deltaMs)
     }
 
-    /**
-     * Apply angular force to rotate toward the desired heading.
-     */
     private fun applyRotationToward(
         angleDelta: AngleRadians,
         absAngle: Float,
         deltaMs: Int,
     ) {
         if (absAngle < ANGULAR_ARRIVAL_THRESHOLD) {
-            // Close enough to target heading: just damp angular velocity
             physics.decelerateAngular(spec.movementConfig.angularThrust, deltaMs)
             return
         }
@@ -245,7 +240,6 @@ abstract class Ship(
         val sign = if (angleDelta > AngleRadians.Zero) 1f else -1f
         physics.applyAngularForce(sign * spec.movementConfig.angularThrust)
 
-        // Apply angular drag when approaching target heading to prevent overshoot
         val angularDecel = spec.movementConfig.angularThrust / spec.totalMass
         val angularStoppingDistance = if (angularDecel > 0f) {
             (physics.angularVelocity * physics.angularVelocity) / (2f * angularDecel)
@@ -259,22 +253,14 @@ abstract class Ship(
     }
 
     companion object {
-        /** Drag applied when drifting with no destination */
+        const val TEAM_PLAYER = "player"
+        const val TEAM_ENEMY = "enemy"
+
         private const val DRIFT_DRAG = 50f
-
-        /** Angular drag for damping rotation */
         private const val ANGULAR_DRAG = 200f
-
-        /** Distance at which the ship considers itself "arrived" */
         private const val ARRIVAL_THRESHOLD = 5f
-
-        /** Speed below which we consider the ship stopped for braking purposes */
         private const val SPEED_STOP_THRESHOLD = 0.1f
-
-        /** Angle (radians) above which we prioritize rotation over forward thrust (~45 degrees) */
         private const val LARGE_ANGLE_THRESHOLD = 0.785f
-
-        /** Angle (radians) below which we consider heading aligned */
         private const val ANGULAR_ARRIVAL_THRESHOLD = 0.01f
     }
 }

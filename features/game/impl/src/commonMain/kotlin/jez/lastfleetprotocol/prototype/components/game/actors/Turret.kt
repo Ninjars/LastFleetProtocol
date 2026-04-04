@@ -25,6 +25,7 @@ class Turret(
     offsetFromParentPivot: SceneOffset,
     private val pivot: SceneOffset,
     private val gunData: GunData,
+    val teamId: String,
     private val rotationSpeed: AngleRadians = 10f.deg.rad,
 ) : Child(
     parent = parent,
@@ -47,7 +48,8 @@ class Turret(
         Gun(
             turretBody = body,
             muzzleOffset = SceneOffset(Offset(pivot.x.raw, 0f)),
-            gunData = gunData
+            gunData = gunData,
+            teamId = teamId,
         )
     }
 

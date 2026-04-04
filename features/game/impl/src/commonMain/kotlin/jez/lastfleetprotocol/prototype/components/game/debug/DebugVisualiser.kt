@@ -11,8 +11,6 @@ import com.pandulapeter.kubriko.helpers.extensions.length
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
-import jez.lastfleetprotocol.prototype.components.game.actors.EnemyShip
-import jez.lastfleetprotocol.prototype.components.game.actors.PlayerShip
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.utils.rotate
 import kotlin.math.cos
@@ -67,7 +65,7 @@ class DebugVisualiser : Visible, Dynamic {
         ship.destination?.let { dest ->
             val destX = dest.x.raw
             val destY = dest.y.raw
-            val color = if (ship is PlayerShip) Color.White else Color.Red
+            val color = if (ship.teamId == Ship.TEAM_PLAYER) Color.White else Color.Red
             drawCircle(
                 color = color,
                 radius = DEST_CIRCLE_RADIUS,

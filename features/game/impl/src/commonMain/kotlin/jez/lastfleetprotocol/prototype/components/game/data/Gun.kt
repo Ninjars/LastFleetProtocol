@@ -38,6 +38,7 @@ class Gun(
     private val turretBody: BoxBody,
     private val muzzleOffset: SceneOffset,
     private val gunData: GunData,
+    private val teamId: String,
 ) {
 
     enum class Condition {
@@ -71,6 +72,7 @@ class Gun(
                 drawable = Res.drawable.bullet_laser_green_10,
             ),
             projectileStats = gunData.projectileStats,
+            teamId = teamId,
             collidableTypes = listOf(Ship::class),
         )
         actorManager.add(bullet)
