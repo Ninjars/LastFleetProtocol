@@ -20,11 +20,9 @@ import com.pandulapeter.kubriko.sprites.SpriteManager
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
-import jez.lastfleetprotocol.prototype.components.game.data.ShipConfig
 import jez.lastfleetprotocol.prototype.components.game.physics.ShipPhysics
 import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems
 import org.jetbrains.compose.resources.DrawableResource
-import kotlin.math.abs
 import kotlin.reflect.KClass
 
 /**
@@ -53,7 +51,9 @@ abstract class Ship(
 
     override var velocity: SceneOffset
         get() = physics.velocity
-        set(value) { physics.velocity = value }
+        set(value) {
+            physics.velocity = value
+        }
 
     /** Current movement destination, exposed for debug visualisation. */
     var destination: SceneOffset? = null
@@ -129,7 +129,6 @@ abstract class Ship(
     }
 
     fun moveTo(destination: SceneOffset) {
-        println("moveTo $destination")
         this.destination = destination
     }
 
@@ -262,14 +261,19 @@ abstract class Ship(
     companion object {
         /** Drag applied when drifting with no destination */
         private const val DRIFT_DRAG = 50f
+
         /** Angular drag for damping rotation */
         private const val ANGULAR_DRAG = 200f
+
         /** Distance at which the ship considers itself "arrived" */
         private const val ARRIVAL_THRESHOLD = 5f
+
         /** Speed below which we consider the ship stopped for braking purposes */
         private const val SPEED_STOP_THRESHOLD = 0.1f
+
         /** Angle (radians) above which we prioritize rotation over forward thrust (~45 degrees) */
         private const val LARGE_ANGLE_THRESHOLD = 0.785f
+
         /** Angle (radians) below which we consider heading aligned */
         private const val ANGULAR_ARRIVAL_THRESHOLD = 0.01f
     }
