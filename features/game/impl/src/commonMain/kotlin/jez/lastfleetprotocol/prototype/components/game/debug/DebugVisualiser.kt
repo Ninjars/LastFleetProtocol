@@ -61,6 +61,31 @@ class DebugVisualiser : Visible, Dynamic {
         val shipX = shipPos.x.raw
         val shipY = shipPos.y.raw
 
+        // White outline: hull collision polygon edges (armour segments)
+        val mask = ship.collisionMask
+        val hullVertices = mask.vertices
+        if (hullVertices.size >= 2) {
+            val rotation = mask.rotation
+            val maskPos = mask.position
+            for (i in hullVertices.indices) {
+                val v0 = hullVertices[i].rotate(rotation)
+                val v1 = hullVertices[(i + 1) % hullVertices.size].rotate(rotation)
+                drawLine(
+                    color = Color.White,
+                    start = Offset(
+                        maskPos.x.raw + v0.x.raw,
+                        maskPos.y.raw + v0.y.raw,
+                    ),
+                    end = Offset(
+                        maskPos.x.raw + v1.x.raw,
+                        maskPos.y.raw + v1.y.raw,
+                    ),
+                    strokeWidth = 1.5f,
+                    alpha = 0.6f,
+                )
+            }
+        }
+
         // Draw destination circle
         ship.destination?.let { dest ->
             val destX = dest.x.raw
@@ -120,38 +145,13 @@ class DebugVisualiser : Visible, Dynamic {
                 strokeWidth = 2f,
             )
         }
-
-        // White outline: hull collision polygon edges (armour segments)
-        val mask = ship.collisionMask
-        val hullVertices = mask.vertices
-        if (hullVertices.size >= 2) {
-            val rotation = mask.rotation
-            val maskPos = mask.position
-            for (i in hullVertices.indices) {
-                val v0 = hullVertices[i].rotate(rotation)
-                val v1 = hullVertices[(i + 1) % hullVertices.size].rotate(rotation)
-                drawLine(
-                    color = Color.White,
-                    start = Offset(
-                        maskPos.x.raw + v0.x.raw,
-                        maskPos.y.raw + v0.y.raw,
-                    ),
-                    end = Offset(
-                        maskPos.x.raw + v1.x.raw,
-                        maskPos.y.raw + v1.y.raw,
-                    ),
-                    strokeWidth = 1.5f,
-                    alpha = 0.6f,
-                )
-            }
-        }
     }
 
     companion object {
         private const val DEST_CIRCLE_RADIUS = 15f
         private const val FACING_LINE_LENGTH = 80f
-        private const val VECTOR_LINE_LENGTH = 60f
+        private const val VECTOR_LINE_LENGTH = 300f
         private const val MAX_DISPLAY_SPEED = 200f
-        private const val MAX_DISPLAY_ACCEL = 50f
+        private const val MAX_DISPLAY_ACCEL = 25f
     }
 }
