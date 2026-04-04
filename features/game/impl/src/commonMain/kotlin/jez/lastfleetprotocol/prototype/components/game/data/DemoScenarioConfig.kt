@@ -173,10 +173,10 @@ object DemoScenarioConfig {
         hull = playerHull,
         combatStats = CombatStats(evasionModifier = 0.1f),
         movementConfig = MovementConfig(
-            forwardThrust = 800f,
-            lateralThrust = 200f,
-            reverseThrust = 300f,
-            angularThrust = 150f,
+            forwardThrust = 1200f,
+            lateralThrust = 500f,
+            reverseThrust = 500f,
+            angularThrust = 300f,
         ),
         internalSystems = playerSystems,
         turretConfigs = listOf(

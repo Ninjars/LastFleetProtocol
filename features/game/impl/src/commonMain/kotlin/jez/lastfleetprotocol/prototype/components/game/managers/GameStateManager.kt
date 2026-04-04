@@ -58,7 +58,7 @@ class GameStateManager(
         // Create 2 player ships (no AI modules — player-controlled)
         val player1 = createShip(
             config = DemoScenarioConfig.playerShipConfig,
-            position = SceneOffset((-200f).sceneUnit, (-50f).sceneUnit),
+            position = SceneOffset((-300f).sceneUnit, (-50f).sceneUnit),
             teamId = Ship.TEAM_PLAYER,
             targetProvider = { enemyShips },
             aiModules = emptyList(),
@@ -66,7 +66,7 @@ class GameStateManager(
         )
         val player2 = createShip(
             config = DemoScenarioConfig.playerShipConfig,
-            position = SceneOffset((-200f).sceneUnit, 50f.sceneUnit),
+            position = SceneOffset((-300f).sceneUnit, 50f.sceneUnit),
             teamId = Ship.TEAM_PLAYER,
             targetProvider = { enemyShips },
             aiModules = emptyList(),
@@ -76,7 +76,7 @@ class GameStateManager(
         // Create 3 enemy ships with BasicAI
         createShip(
             config = DemoScenarioConfig.enemyShipLightConfig,
-            position = SceneOffset(200f.sceneUnit, (-120f).sceneUnit),
+            position = SceneOffset(300f.sceneUnit, (-120f).sceneUnit),
             teamId = Ship.TEAM_ENEMY,
             targetProvider = { playerShips },
             aiModules = listOf(BasicAI()),
@@ -84,7 +84,7 @@ class GameStateManager(
         )
         createShip(
             config = DemoScenarioConfig.enemyShipMediumConfig,
-            position = SceneOffset(250f.sceneUnit, 0f.sceneUnit),
+            position = SceneOffset(350f.sceneUnit, 0f.sceneUnit),
             teamId = Ship.TEAM_ENEMY,
             targetProvider = { playerShips },
             aiModules = listOf(BasicAI()),
@@ -92,7 +92,7 @@ class GameStateManager(
         )
         createShip(
             config = DemoScenarioConfig.enemyShipHeavyConfig,
-            position = SceneOffset(200f.sceneUnit, 120f.sceneUnit),
+            position = SceneOffset(300f.sceneUnit, 120f.sceneUnit),
             teamId = Ship.TEAM_ENEMY,
             targetProvider = { playerShips },
             aiModules = listOf(BasicAI()),
