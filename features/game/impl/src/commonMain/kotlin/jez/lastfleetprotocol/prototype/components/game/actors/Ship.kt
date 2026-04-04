@@ -575,13 +575,15 @@ class Ship(
         }
 
         val dt = deltaMs * 0.001f
-        // Signed error: positive = need to rotate in positive direction
-        val signedError = if (angleDelta > AngleRadians.Pi) {
-            angleDelta.normalized - (2.0 * kotlin.math.PI).toFloat()
-        } else if (angleDelta < -AngleRadians.Pi) {
-            angleDelta.normalized + (2.0 * kotlin.math.PI).toFloat()
+        // angleDelta is already in (-PI, PI] from normalizeAngle().
+        // Extract the raw signed float value for the PID.
+        // AngleRadians.normalized maps to [0, 2PI) which loses the sign,
+        // so we convert back: values > PI represent negative angles.
+        val normalized = angleDelta.normalized
+        val signedError = if (normalized > kotlin.math.PI.toFloat()) {
+            normalized - (2.0 * kotlin.math.PI).toFloat()
         } else {
-            angleDelta.normalized
+            normalized
         }
 
         val pidOutput = rotationPid.update(signedError, dt)
