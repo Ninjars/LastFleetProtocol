@@ -16,7 +16,7 @@ import kotlin.random.Random
  * Stateless utility that routes penetrating kinetic damage to internal systems
  * based on the arc (direction) from which the hit arrived.
  *
- * Arc layout (relative to ship forward = -Y in sprite space):
+ * Arc layout (relative to ship forward = +X in atan2/Kubriko convention):
  * - Forward 90 arc (within 45 of forward) -> BRIDGE
  * - Rear 90 arc (within 45 of rear) -> MAIN_ENGINE
  * - Side arcs (everything else) -> REACTOR
@@ -31,7 +31,7 @@ object ArcDamageRouter {
      *
      * @param impactWorld Impact point in world coordinates.
      * @param shipPosition Ship centre in world coordinates.
-     * @param shipRotation Ship facing rotation (radians). Ship forward is -Y in local space.
+     * @param shipRotation Ship facing rotation (radians). Ship forward is +X in local space (atan2 convention).
      * @param shipSystems The ship's internal systems to receive damage.
      * @param damage Total penetrating damage.
      * @param armourPiercing Armour-piercing value for damage absorption calculation.
@@ -88,11 +88,10 @@ object ArcDamageRouter {
         val localX = dx * cosR + dy * sinR
         val localY = -dx * sinR + dy * cosR
 
-        // Ship forward is -Y in local/sprite space.
-        // Calculate angle from forward (-Y axis) to the impact direction.
-        // atan2 gives angle from +X axis; we want angle from -Y axis.
-        // Angle from -Y: atan2(localX, -localY) gives 0 when impact is directly ahead.
-        val angleFromForward = atan2(localX, -localY)
+        // Ship forward is +X in local space (atan2/Kubriko convention).
+        // atan2(y, x) gives angle from +X axis, which is the forward direction.
+        // So atan2(localY, localX) gives 0 when impact is directly ahead.
+        val angleFromForward = atan2(localY, localX)
         val absAngle = abs(angleFromForward)
 
         return when {

@@ -32,35 +32,36 @@ class ArcDamageRouterTest {
     private val noRotation = AngleRadians.Zero
 
     // --- Arc determination tests ---
+    // Forward = +X in atan2/Kubriko convention (rotation=0 means facing right)
 
     @Test
     fun forwardHit_targetsBridge() {
-        // Ship at origin, facing up (-Y). Impact from directly ahead (above the ship).
-        val impactWorld = SceneOffset(0f.sceneUnit, (-10f).sceneUnit)
+        // Impact from directly ahead (+X direction)
+        val impactWorld = SceneOffset(10f.sceneUnit, 0f.sceneUnit)
         val arc = ArcDamageRouter.determineArc(impactWorld, shipPosition, noRotation)
         assertEquals(InternalSystemType.BRIDGE, arc)
     }
 
     @Test
     fun rearHit_targetsMainEngine() {
-        // Impact from directly behind (below the ship, +Y direction)
-        val impactWorld = SceneOffset(0f.sceneUnit, 10f.sceneUnit)
+        // Impact from directly behind (-X direction)
+        val impactWorld = SceneOffset((-10f).sceneUnit, 0f.sceneUnit)
         val arc = ArcDamageRouter.determineArc(impactWorld, shipPosition, noRotation)
         assertEquals(InternalSystemType.MAIN_ENGINE, arc)
     }
 
     @Test
-    fun rightSideHit_targetsReactor() {
-        // Impact from the right side (+X)
-        val impactWorld = SceneOffset(10f.sceneUnit, 0f.sceneUnit)
+    fun topSideHit_targetsReactor() {
+        // Impact from above (-Y direction, perpendicular to forward)
+        val impactWorld = SceneOffset(0f.sceneUnit, (-10f).sceneUnit)
         val arc = ArcDamageRouter.determineArc(impactWorld, shipPosition, noRotation)
         assertEquals(InternalSystemType.REACTOR, arc)
     }
 
     @Test
-    fun leftSideHit_targetsReactor() {
-        // Impact from the left side (-X)
-        val impactWorld = SceneOffset((-10f).sceneUnit, 0f.sceneUnit)
+    fun bottomSideHit_targetsReactor() {
+        // Impact from below (+Y direction, perpendicular to forward)
+        val impactWorld = SceneOffset(0f.sceneUnit, 10f.sceneUnit)
         val arc = ArcDamageRouter.determineArc(impactWorld, shipPosition, noRotation)
         assertEquals(InternalSystemType.REACTOR, arc)
     }
@@ -69,9 +70,8 @@ class ArcDamageRouterTest {
 
     @Test
     fun arcBoundary_45degrees_isBridgeOrReactor() {
-        // Exactly at 45 degrees from forward: should be on the boundary.
-        // Forward arc is <= 45 degrees, so exactly at 45 should be BRIDGE.
-        val impactWorld = SceneOffset(10f.sceneUnit, (-10f).sceneUnit) // 45 degrees from -Y
+        // Exactly at 45 degrees from forward (+X): impact at (10, 10)
+        val impactWorld = SceneOffset(10f.sceneUnit, 10f.sceneUnit)
         val arc = ArcDamageRouter.determineArc(impactWorld, shipPosition, noRotation)
         assertEquals(InternalSystemType.BRIDGE, arc, "At exactly 45 degrees, should be in forward arc")
     }
@@ -80,10 +80,9 @@ class ArcDamageRouterTest {
 
     @Test
     fun rotatedShip_forwardHit_targetsBridge() {
-        // Ship rotated PI/2 CCW: local -Y (forward) maps to +X in world space.
-        // So a forward hit comes from +X direction.
+        // Ship rotated PI/2 (facing +Y). Forward hit comes from +Y direction.
         val rotation = (PI / 2.0).toFloat()
-        val impactWorld = SceneOffset(10f.sceneUnit, 0f.sceneUnit)
+        val impactWorld = SceneOffset(0f.sceneUnit, 10f.sceneUnit)
         val arc = ArcDamageRouter.determineArc(impactWorld, shipPosition, rotation.rad)
         assertEquals(InternalSystemType.BRIDGE, arc)
     }
@@ -93,9 +92,9 @@ class ArcDamageRouterTest {
     @Test
     fun routeDamage_allAbsorbedByPrimary() {
         val systems = ShipSystems(defaultSpecs())
-        // Forward hit → BRIDGE. Damage=30, AP=10, density=10 → absorbs all
+        // Forward hit (+X) → BRIDGE. Damage=30, AP=10, density=10 → absorbs all
         ArcDamageRouter.routeDamage(
-            impactWorld = SceneOffset(0f.sceneUnit, (-10f).sceneUnit),
+            impactWorld = SceneOffset(10f.sceneUnit, 0f.sceneUnit),
             shipPosition = shipPosition,
             shipRotation = noRotation,
             shipSystems = systems,
@@ -110,7 +109,6 @@ class ArcDamageRouterTest {
 
     @Test
     fun routeDamage_overPenetration_damageSpillsToSecondaries() {
-        // Use low density so primary only absorbs partial damage
         val specs = listOf(
             makeSpec(InternalSystemType.REACTOR, maxHp = 100f, density = 5f),
             makeSpec(InternalSystemType.MAIN_ENGINE, maxHp = 100f, density = 5f),
@@ -118,12 +116,10 @@ class ArcDamageRouterTest {
         )
         val systems = ShipSystems(specs)
 
-        // Forward hit → BRIDGE primary. AP=20, density=5 → effective = damage * (5/20) = 25% absorbed
-        // Damage=100: BRIDGE absorbs 100 * (5/20) = 25, remaining = 75
-        // Secondary systems also absorb 25 each, remaining = 25
+        // Forward hit (+X) → BRIDGE primary. AP=20, density=5 → effective = damage * (5/20) = 25% absorbed
         val seededRandom = Random(42)
         ArcDamageRouter.routeDamage(
-            impactWorld = SceneOffset(0f.sceneUnit, (-10f).sceneUnit),
+            impactWorld = SceneOffset(10f.sceneUnit, 0f.sceneUnit),
             shipPosition = shipPosition,
             shipRotation = noRotation,
             shipSystems = systems,

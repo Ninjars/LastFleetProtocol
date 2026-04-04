@@ -34,7 +34,7 @@ class ShipPhysics(
     /**
      * Apply thrust in a local-space direction, converted to world space via facing angle.
      *
-     * @param localDirection direction in ship-local space (e.g., (0, -1) for forward)
+     * @param localDirection direction in ship-local space (e.g., (1, 0) for forward in atan2 convention)
      * @param magnitude force magnitude
      * @param facing ship's current facing angle
      */

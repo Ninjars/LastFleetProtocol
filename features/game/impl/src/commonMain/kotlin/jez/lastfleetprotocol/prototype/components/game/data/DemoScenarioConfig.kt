@@ -16,14 +16,15 @@ object DemoScenarioConfig {
     // -- Hull definitions --
     // Vertices approximate sprite silhouettes as convex polygons.
     // Coordinates are relative to center, in scene units matching pixel scale.
+    // Forward = +X axis (atan2/Kubriko convention). Y axis is perpendicular (port/starboard).
 
     private val playerHull = HullDefinition(
         vertices = listOf(
-            SceneOffset(0f.sceneUnit, (-56f).sceneUnit),    // nose (top)
-            SceneOffset(37f.sceneUnit, 30f.sceneUnit),      // right wing
-            SceneOffset(20f.sceneUnit, 56f.sceneUnit),      // right rear
-            SceneOffset((-20f).sceneUnit, 56f.sceneUnit),   // left rear
-            SceneOffset((-37f).sceneUnit, 30f.sceneUnit),   // left wing
+            SceneOffset(56f.sceneUnit, 0f.sceneUnit),       // nose (forward)
+            SceneOffset((-30f).sceneUnit, 37f.sceneUnit),   // starboard wing
+            SceneOffset((-56f).sceneUnit, 20f.sceneUnit),   // starboard rear
+            SceneOffset((-56f).sceneUnit, (-20f).sceneUnit), // port rear
+            SceneOffset((-30f).sceneUnit, (-37f).sceneUnit), // port wing
         ),
         armour = ArmourStats(hardness = 5f, density = 2f),
         mass = 50f,
@@ -31,11 +32,11 @@ object DemoScenarioConfig {
 
     private val enemyHullLight = HullDefinition(
         vertices = listOf(
-            SceneOffset(0f.sceneUnit, (-42f).sceneUnit),
-            SceneOffset(30f.sceneUnit, 20f.sceneUnit),
-            SceneOffset(15f.sceneUnit, 42f.sceneUnit),
-            SceneOffset((-15f).sceneUnit, 42f.sceneUnit),
-            SceneOffset((-30f).sceneUnit, 20f.sceneUnit),
+            SceneOffset(42f.sceneUnit, 0f.sceneUnit),
+            SceneOffset((-20f).sceneUnit, 30f.sceneUnit),
+            SceneOffset((-42f).sceneUnit, 15f.sceneUnit),
+            SceneOffset((-42f).sceneUnit, (-15f).sceneUnit),
+            SceneOffset((-20f).sceneUnit, (-30f).sceneUnit),
         ),
         armour = ArmourStats(hardness = 3f, density = 1f),
         mass = 30f,
@@ -43,11 +44,11 @@ object DemoScenarioConfig {
 
     private val enemyHullMedium = HullDefinition(
         vertices = listOf(
-            SceneOffset(0f.sceneUnit, (-52f).sceneUnit),
-            SceneOffset(42f.sceneUnit, 25f.sceneUnit),
-            SceneOffset(25f.sceneUnit, 52f.sceneUnit),
-            SceneOffset((-25f).sceneUnit, 52f.sceneUnit),
-            SceneOffset((-42f).sceneUnit, 25f.sceneUnit),
+            SceneOffset(52f.sceneUnit, 0f.sceneUnit),
+            SceneOffset((-25f).sceneUnit, 42f.sceneUnit),
+            SceneOffset((-52f).sceneUnit, 25f.sceneUnit),
+            SceneOffset((-52f).sceneUnit, (-25f).sceneUnit),
+            SceneOffset((-25f).sceneUnit, (-42f).sceneUnit),
         ),
         armour = ArmourStats(hardness = 5f, density = 2f),
         mass = 50f,
@@ -55,11 +56,11 @@ object DemoScenarioConfig {
 
     private val enemyHullHeavy = HullDefinition(
         vertices = listOf(
-            SceneOffset(0f.sceneUnit, (-52f).sceneUnit),
-            SceneOffset(50f.sceneUnit, 20f.sceneUnit),
-            SceneOffset(35f.sceneUnit, 52f.sceneUnit),
-            SceneOffset((-35f).sceneUnit, 52f.sceneUnit),
-            SceneOffset((-50f).sceneUnit, 20f.sceneUnit),
+            SceneOffset(52f.sceneUnit, 0f.sceneUnit),
+            SceneOffset((-20f).sceneUnit, 50f.sceneUnit),
+            SceneOffset((-52f).sceneUnit, 35f.sceneUnit),
+            SceneOffset((-52f).sceneUnit, (-35f).sceneUnit),
+            SceneOffset((-20f).sceneUnit, (-50f).sceneUnit),
         ),
         armour = ArmourStats(hardness = 8f, density = 4f),
         mass = 100f,
