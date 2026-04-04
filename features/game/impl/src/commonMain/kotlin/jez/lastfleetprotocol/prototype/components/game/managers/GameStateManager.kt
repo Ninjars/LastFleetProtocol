@@ -175,8 +175,7 @@ class GameStateManager(
     }
 
     fun clearScene() {
-        playerShips.forEach { actorManager.remove(it) }
-        enemyShips.forEach { actorManager.remove(it) }
+        actorManager.removeAll()
         playerShips.clear()
         enemyShips.clear()
     }
