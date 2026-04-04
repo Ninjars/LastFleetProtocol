@@ -156,23 +156,20 @@ class Ship(
     }
 
     /**
-     * Navigation: aggressive acceleration/deceleration with combat-aware facing.
+     * Navigation: aggressive acceleration/deceleration with combat-aware facing
+     * and optimal braking orientation.
      *
-     * The ship manoeuvres in two phases:
-     * 1. **Thrust phase**: accelerate hard toward destination using all available axes.
-     *    Forward thrust at full power along the correction vector, lateral thrust to
-     *    cancel perpendicular drift. No fractional scaling — always full force.
-     * 2. **Brake phase**: when within stopping distance, decelerate aggressively.
+     * Thrust phase: accelerate hard toward destination at full power on all axes.
+     * Brake phase: choose the most efficient braking orientation by comparing
+     * time-to-stop using current facing vs rotating to present the strongest
+     * available thrust axis against velocity. Accounts for disabled engines.
      *
-     * Between active thrust manoeuvres (braking, coasting near destination, or when
-     * velocity correction is small), the ship rotates to face its combat target.
-     * This presents the armoured prow toward threats and protects engines/reactor.
-     * When no combat target exists, it faces the movement direction.
+     * Between manoeuvres, rotates to face the combat target (armoured prow
+     * toward threats). When no combat target exists, faces movement direction.
      */
     private fun navigateToDestination(deltaMs: Int) {
         val dest = destination
         if (dest == null) {
-            // No destination: drift and face combat target
             physics.decelerate(DRIFT_DRAG, deltaMs)
             rotateToCombatTarget(deltaMs)
             return
@@ -192,31 +189,30 @@ class Ship(
         val velocity = physics.velocity
         val speed = physics.speed()
 
-        // Desired velocity: full speed toward target, scaled down in braking zone
         val maxSpeed = spec.movementConfig.forwardThrust / spec.totalMass * MAX_SPEED_FACTOR
-        val deceleration = spec.movementConfig.reverseThrust / spec.totalMass
-        val stoppingDistance = if (deceleration > 0f) {
-            (speed.raw * speed.raw) / (2f * deceleration)
-        } else {
-            0f
-        }
+
+        // Determine optimal braking strategy
+        val braking = computeBrakingStrategy(speed.raw, facing)
+
+        val isBraking = braking.stoppingDistance >= distanceToTarget.raw * BRAKING_MARGIN
 
         val targetDirection = toTarget.normalized()
-        val isBraking = stoppingDistance >= distanceToTarget.raw * BRAKING_MARGIN
-
         val desiredSpeed = if (isBraking) {
-            kotlin.math.sqrt(2f * deceleration * distanceToTarget.raw).coerceAtMost(maxSpeed)
+            val decel = braking.effectiveDeceleration
+            if (decel > 0f) {
+                kotlin.math.sqrt(2f * decel * distanceToTarget.raw).coerceAtMost(maxSpeed)
+            } else {
+                0f
+            }
         } else {
             maxSpeed
         }
         val desiredVelocity = targetDirection * desiredSpeed
 
-        // Correction = what we need to change about our velocity
         val correction = desiredVelocity - velocity
         val correctionMagnitude = correction.length().raw
 
         if (correctionMagnitude < CORRECTION_EPSILON) {
-            // Velocity already matches desired — face combat target while coasting
             rotateToCombatTarget(deltaMs)
             return
         }
@@ -227,17 +223,31 @@ class Ship(
         val forwardComponent = correction.x.raw * facingCos + correction.y.raw * facingSin
         val lateralComponent = -correction.x.raw * facingSin + correction.y.raw * facingCos
 
-        // --- Thrust: always at full power, no fractional scaling ---
+        // --- Thrust ---
+        if (isBraking && braking.shouldRotate) {
+            // Optimal braking: rotate to present best thrust axis against velocity,
+            // then apply full thrust on that axis. During rotation, use whatever
+            // axes are available to start slowing.
+            val brakingAngle = braking.optimalBrakingAngle
+            val rawDelta = brakingAngle - facing
+            val angleDelta = normalizeAngle(rawDelta)
+            val absAngle = absAngleOf(angleDelta)
+
+            // While rotating, still apply whatever braking we can from current facing
+            applyCurrentFacingBrake(forwardComponent, lateralComponent, facing)
+
+            // Rotate toward optimal braking orientation
+            applyRotationToward(angleDelta, absAngle, deltaMs)
+            return
+        }
 
         if (forwardComponent > CORRECTION_EPSILON) {
-            // Full forward thrust
             physics.applyThrust(
                 SceneOffset(1f.sceneUnit, 0f.sceneUnit),
                 spec.movementConfig.forwardThrust,
                 facing,
             )
         } else if (forwardComponent < -CORRECTION_EPSILON) {
-            // Full reverse thrust (braking)
             physics.applyThrust(
                 SceneOffset((-1f).sceneUnit, 0f.sceneUnit),
                 spec.movementConfig.reverseThrust,
@@ -245,7 +255,6 @@ class Ship(
             )
         }
 
-        // Full lateral thrust to cancel perpendicular drift
         if (kotlin.math.abs(lateralComponent) > CORRECTION_EPSILON &&
             spec.movementConfig.lateralThrust > 0f
         ) {
@@ -258,8 +267,6 @@ class Ship(
         }
 
         // --- Rotation priority ---
-        // During braking or low-correction coasting: face combat target
-        // During active acceleration: face the correction vector for efficient thrust
         if (isBraking || correctionMagnitude < maxSpeed * 0.3f) {
             rotateToCombatTarget(deltaMs)
         } else {
@@ -269,13 +276,205 @@ class Ship(
             ).rad
             val rawDelta = correctionAngle - facing
             val angleDelta = normalizeAngle(rawDelta)
-            val absAngle = kotlin.math.abs(angleDelta.normalized.let {
-                if (it > kotlin.math.PI.toFloat()) (2.0 * kotlin.math.PI).toFloat() - it
-                else it
-            })
-            applyRotationToward(angleDelta, absAngle, deltaMs)
+            applyRotationToward(angleDelta, absAngleOf(angleDelta), deltaMs)
         }
     }
+
+    /**
+     * Apply braking thrust from the current facing orientation using whichever
+     * axes oppose velocity, without rotating.
+     */
+    private fun applyCurrentFacingBrake(
+        forwardComponent: Float,
+        lateralComponent: Float,
+        facing: AngleRadians,
+    ) {
+        // Apply reverse if velocity has a forward component (ship moving forward)
+        if (forwardComponent < -CORRECTION_EPSILON) {
+            physics.applyThrust(
+                SceneOffset((-1f).sceneUnit, 0f.sceneUnit),
+                spec.movementConfig.reverseThrust,
+                facing,
+            )
+        } else if (forwardComponent > CORRECTION_EPSILON) {
+            physics.applyThrust(
+                SceneOffset(1f.sceneUnit, 0f.sceneUnit),
+                spec.movementConfig.forwardThrust,
+                facing,
+            )
+        }
+        if (kotlin.math.abs(lateralComponent) > CORRECTION_EPSILON &&
+            spec.movementConfig.lateralThrust > 0f
+        ) {
+            val lateralSign = if (lateralComponent > 0f) 1f else -1f
+            physics.applyThrust(
+                SceneOffset(0f.sceneUnit, lateralSign.sceneUnit),
+                spec.movementConfig.lateralThrust,
+                facing,
+            )
+        }
+    }
+
+    /**
+     * Compute the best braking strategy by comparing stopping with current
+     * orientation vs rotating to present the strongest thrust axis against
+     * current velocity.
+     *
+     * For each thrust axis (forward, reverse, lateral), computes the angle
+     * needed to align that axis against velocity, estimates rotation time,
+     * and calculates total time to stop (rotation + deceleration). Picks
+     * the fastest option. Handles disabled engines (zero thrust) gracefully.
+     */
+    private fun computeBrakingStrategy(speed: Float, facing: AngleRadians): BrakingStrategy {
+        if (speed < CORRECTION_EPSILON) {
+            return BrakingStrategy(
+                stoppingDistance = 0f,
+                effectiveDeceleration = 0f,
+                shouldRotate = false,
+                optimalBrakingAngle = facing,
+            )
+        }
+
+        val mass = spec.totalMass
+        val mc = spec.movementConfig
+        val vel = physics.velocity
+
+        // Direction opposite to velocity (where we want to thrust)
+        val antiVelAngle = kotlin.math.atan2(-vel.y.raw, -vel.x.raw)
+
+        // Angular acceleration for rotation time estimates
+        val angularAccel = if (mass > 0f) mc.angularThrust / mass else 0f
+
+        // Candidate axes: (localAngle offset from forward, thrust magnitude)
+        // Forward (+X) opposing velocity means ship faces opposite to velocity
+        // Reverse (-X) opposing velocity means ship faces same direction as velocity
+        // Lateral (+Y/-Y) opposing velocity means ship faces 90 degrees off
+        data class Candidate(
+            val thrustMagnitude: Float,
+            val localAngleOffset: Float, // radians to add to antiVelAngle to get ship facing
+        )
+
+        val candidates = mutableListOf<Candidate>()
+
+        // Forward axis opposing velocity: ship faces antiVelAngle (forward = +X points anti-vel)
+        if (mc.forwardThrust > 0f) {
+            candidates.add(Candidate(mc.forwardThrust, 0f))
+        }
+        // Reverse axis opposing velocity: ship faces velAngle (reverse = -X points anti-vel)
+        if (mc.reverseThrust > 0f) {
+            candidates.add(Candidate(mc.reverseThrust, kotlin.math.PI.toFloat()))
+        }
+        // Lateral +Y opposing velocity: ship rotated -90 from anti-vel
+        if (mc.lateralThrust > 0f) {
+            candidates.add(Candidate(mc.lateralThrust, -kotlin.math.PI.toFloat() / 2f))
+            candidates.add(Candidate(mc.lateralThrust, kotlin.math.PI.toFloat() / 2f))
+        }
+
+        if (candidates.isEmpty()) {
+            return BrakingStrategy(
+                stoppingDistance = Float.MAX_VALUE,
+                effectiveDeceleration = 0f,
+                shouldRotate = false,
+                optimalBrakingAngle = facing,
+            )
+        }
+
+        // Current-facing braking: how fast can we decelerate right now?
+        val facingCos = facing.cos
+        val facingSin = facing.sin
+        // Component of each axis along the anti-velocity direction
+        val antiVelX = -vel.x.raw / speed
+        val antiVelY = -vel.y.raw / speed
+        // Forward axis in world: (cos(facing), sin(facing))
+        val fwdDot = facingCos * antiVelX + facingSin * antiVelY
+        // Reverse axis: (-cos(facing), -sin(facing))
+        val revDot = -fwdDot
+        // Lateral axis: (-sin(facing), cos(facing))
+        val latDot = -facingSin * antiVelX + facingCos * antiVelY
+
+        val currentDecel = (
+                maxOf(0f, fwdDot) * mc.forwardThrust +
+                        maxOf(0f, revDot) * mc.reverseThrust +
+                        kotlin.math.abs(latDot) * mc.lateralThrust
+                ) / mass
+
+        val currentStopTime = if (currentDecel > 0f) speed / currentDecel else Float.MAX_VALUE
+        val currentStopDist = if (currentDecel > 0f) {
+            (speed * speed) / (2f * currentDecel)
+        } else {
+            Float.MAX_VALUE
+        }
+
+        // Evaluate each rotation candidate
+        var bestTime = currentStopTime
+        var bestAngle = facing.normalized
+        var bestDecel = currentDecel
+        var bestShouldRotate = false
+
+        for (candidate in candidates) {
+            val decel = candidate.thrustMagnitude / mass
+            if (decel <= 0f) continue
+
+            val targetFacing = antiVelAngle + candidate.localAngleOffset
+            val rawDelta = targetFacing - facing.normalized
+            val angleToRotate = kotlin.math.abs(
+                if (rawDelta > kotlin.math.PI.toFloat()) rawDelta - 2f * kotlin.math.PI.toFloat()
+                else if (rawDelta < -kotlin.math.PI.toFloat()) rawDelta + 2f * kotlin.math.PI.toFloat()
+                else rawDelta
+            )
+
+            // Estimate rotation time: theta = 0.5 * alpha * t^2 for half,
+            // then decelerate for the other half. Total: t = 2 * sqrt(theta / alpha)
+            val rotationTime = if (angularAccel > 0f) {
+                2f * kotlin.math.sqrt(angleToRotate / angularAccel)
+            } else {
+                Float.MAX_VALUE
+            }
+
+            // Distance traveled during rotation (at current speed, roughly)
+            val distDuringRotation = speed * rotationTime
+
+            // Braking time after rotation
+            val brakingTime = speed / decel
+
+            val totalTime = rotationTime + brakingTime
+
+            if (totalTime < bestTime * ROTATION_BRAKE_THRESHOLD) {
+                bestTime = totalTime
+                bestAngle = targetFacing
+                bestDecel = decel
+                bestShouldRotate = true
+            }
+        }
+
+        val stoppingDistance = if (bestShouldRotate) {
+            // Distance during rotation + braking distance after aligned
+            val rotRawDelta = bestAngle - facing.normalized
+            val rotAngle = kotlin.math.abs(
+                if (rotRawDelta > kotlin.math.PI.toFloat()) rotRawDelta - 2f * kotlin.math.PI.toFloat()
+                else if (rotRawDelta < -kotlin.math.PI.toFloat()) rotRawDelta + 2f * kotlin.math.PI.toFloat()
+                else rotRawDelta
+            )
+            val rotTime = if (angularAccel > 0f) 2f * kotlin.math.sqrt(rotAngle / angularAccel) else 0f
+            speed * rotTime + (speed * speed) / (2f * bestDecel)
+        } else {
+            currentStopDist
+        }
+
+        return BrakingStrategy(
+            stoppingDistance = stoppingDistance,
+            effectiveDeceleration = bestDecel,
+            shouldRotate = bestShouldRotate,
+            optimalBrakingAngle = bestAngle.rad,
+        )
+    }
+
+    private data class BrakingStrategy(
+        val stoppingDistance: Float,
+        val effectiveDeceleration: Float,
+        val shouldRotate: Boolean,
+        val optimalBrakingAngle: AngleRadians,
+    )
 
     /**
      * Rotate to face the combat target if one exists, otherwise face velocity direction.
@@ -307,6 +506,12 @@ class Ship(
             else it
         })
         applyRotationToward(angleDelta, absAngle, deltaMs)
+    }
+
+    /** Compute absolute effective angle from an AngleRadians delta. */
+    private fun absAngleOf(angleDelta: AngleRadians): Float {
+        val n = angleDelta.normalized
+        return if (n > kotlin.math.PI.toFloat()) (2.0 * kotlin.math.PI).toFloat() - n else n
     }
 
     /**
@@ -359,11 +564,17 @@ class Ship(
         private const val ANGULAR_DRAG = 200f
         private const val ARRIVAL_THRESHOLD = 5f
         private const val ANGULAR_ARRIVAL_THRESHOLD = 0.01f
+
         /** Correction vectors smaller than this are treated as zero */
         private const val CORRECTION_EPSILON = 0.1f
+
         /** Factor to derive max approach speed from forward acceleration */
-        private const val MAX_SPEED_FACTOR = 3f
+        private const val MAX_SPEED_FACTOR = 10f
+
         /** Start braking when stopping distance >= this fraction of remaining distance */
         private const val BRAKING_MARGIN = 0.8f
+
+        /** Rotation braking must be this much faster than current-facing braking to trigger */
+        private const val ROTATION_BRAKE_THRESHOLD = 0.75f
     }
 }
