@@ -85,7 +85,7 @@ private fun GameScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.7f)),
+                    .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.7f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(
@@ -97,7 +97,7 @@ private fun GameScreen(
                             GameResult.DEFEAT -> "Defeat"
                         },
                         style = MaterialTheme.typography.displayMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.inverseOnSurface,
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(
