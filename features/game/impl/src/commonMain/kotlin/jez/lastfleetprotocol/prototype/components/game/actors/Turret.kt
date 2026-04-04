@@ -87,7 +87,7 @@ class Turret(
         if (target == null) {
             gun.angleToTarget = null
             currentRotation =
-                currentRotation.rotateTowards(0.rad, rotationSpeed * deltaTimeInMilliseconds)
+                currentRotation.rotateTowards(0.rad, rotationSpeed / deltaTimeInMilliseconds)
         }
 
         body.rotation += currentRotation
