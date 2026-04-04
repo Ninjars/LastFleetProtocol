@@ -51,8 +51,8 @@ internal class Bullet(
         initialRadius = radius,
         initialPosition = body.position,
     )
-    protected lateinit var actorManager: ActorManager
-    protected lateinit var audioManager: AudioManager
+    private lateinit var actorManager: ActorManager
+    private lateinit var audioManager: AudioManager
     private lateinit var stateManager: StateManager
     private lateinit var viewportManager: ViewportManager
     private lateinit var sprite: ImageBitmap
@@ -113,6 +113,7 @@ internal class Bullet(
             when (outcome) {
                 is ImpactOutcome.Miss -> {
                     // Bullet continues — do nothing
+                    return
                 }
 
                 is ImpactOutcome.Ricochet,

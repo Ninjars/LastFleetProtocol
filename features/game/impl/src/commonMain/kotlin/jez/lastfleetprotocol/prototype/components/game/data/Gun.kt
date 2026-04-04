@@ -8,6 +8,7 @@ import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.game.actors.Bullet
 import jez.lastfleetprotocol.prototype.components.game.actors.BulletData
+import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.utils.getRelativePoint
 import jez.lastfleetprotocol.prototype.components.game.utils.rotate
 import lastfleetprotocol.components.design.generated.resources.Res
@@ -56,7 +57,9 @@ class Gun(
     private var magazine: Int = gunData.magazineCapacity
     private var burstCounter: Int = gunData.shotsPerBurst
 
-    fun spawnBullet(actorManager: ActorManager) {
+    private fun spawnBullet(
+        actorManager: ActorManager,
+    ) {
         val bullet = Bullet(
             initialPosition = turretBody.getRelativePoint(muzzleOffset),
             initialRotation = turretBody.rotation,
@@ -68,7 +71,7 @@ class Gun(
                 drawable = Res.drawable.bullet_laser_green_10,
             ),
             projectileStats = gunData.projectileStats,
-            collidableTypes = emptyList()
+            collidableTypes = listOf(Ship::class),
         )
         actorManager.add(bullet)
     }
