@@ -186,7 +186,9 @@ class Ship(
     private fun navigateToDestination(deltaMs: Int) {
         val dest = destination
         if (dest == null) {
-            physics.decelerate(DRIFT_DRAG, deltaMs)
+            // No destination: brake to a stop using the strongest available thrust
+            physics.decelerate(spec.movementConfig.forwardThrust, deltaMs)
+            physics.decelerateAngular(ANGULAR_DRAG, deltaMs)
             rotateToCombatTarget(deltaMs)
             return
         }
@@ -597,7 +599,6 @@ class Ship(
         const val TEAM_PLAYER = "player"
         const val TEAM_ENEMY = "enemy"
 
-        private const val DRIFT_DRAG = 50f
         private const val ANGULAR_DRAG = 200f
         private const val ARRIVAL_THRESHOLD = 5f
         private const val ANGULAR_ARRIVAL_THRESHOLD = 0.01f
