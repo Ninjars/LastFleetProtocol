@@ -102,6 +102,7 @@ private fun GameScreen(
             ) {
                 LFIconButton(
                     drawable = LFRes.Drawable.ic_menu,
+                    tint = MaterialTheme.colorScheme.inverseOnSurface
                 ) {
                     eventHandler.accept(GameIntent.OpenMenuClicked)
                 }
@@ -112,7 +113,6 @@ private fun GameScreen(
         if (state.isPaused) {
             OverlayMenu(
                 title = "Paused",
-                onBackgroundTap = { eventHandler.accept(GameIntent.ResumeClicked) },
             ) {
                 Button(
                     onClick = { eventHandler.accept(GameIntent.ResumeClicked) },
@@ -121,14 +121,14 @@ private fun GameScreen(
                     Text(text = "Resume")
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
+                Button(
                     onClick = { eventHandler.accept(GameIntent.RestartClicked) },
                     modifier = Modifier.fillMaxWidth(0.5f),
                 ) {
                     Text(text = "Restart")
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
+                Button(
                     onClick = { eventHandler.accept(GameIntent.ExitClicked) },
                     modifier = Modifier.fillMaxWidth(0.5f),
                 ) {
@@ -162,24 +162,12 @@ private fun GameScreen(
 @Composable
 private fun OverlayMenu(
     title: String,
-    onBackgroundTap: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.7f))
-            .then(
-                if (onBackgroundTap != null) {
-                    Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onBackgroundTap,
-                    )
-                } else {
-                    Modifier
-                }
-            ),
+            .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
     ) {
         Column(
