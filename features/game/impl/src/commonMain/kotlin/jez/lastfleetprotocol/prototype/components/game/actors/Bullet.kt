@@ -108,8 +108,8 @@ internal class Bullet(
 
             when (outcome) {
                 is ImpactOutcome.Miss -> {
-                    // Bullet continues — do nothing
-                    return
+                    // Bullet continues — check remaining targets
+                    continue
                 }
 
                 is ImpactOutcome.Ricochet,

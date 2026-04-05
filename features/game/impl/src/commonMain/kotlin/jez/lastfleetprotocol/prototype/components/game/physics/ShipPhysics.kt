@@ -19,6 +19,9 @@ class ShipPhysics(
     val mass: Float,
     initialVelocity: SceneOffset = SceneOffset.Zero,
 ) {
+    init {
+        require(mass > 0f) { "Ship mass must be positive, got $mass" }
+    }
     var velocity: SceneOffset = initialVelocity
     var angularVelocity: Float = 0f
 

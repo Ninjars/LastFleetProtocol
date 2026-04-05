@@ -92,6 +92,10 @@ object DemoScenarioConfig {
         InternalSystemSpec(InternalSystemType.BRIDGE, maxHp = 80f, density = 4f, mass = 15f),
     )
 
+    // -- Turret shared constants --
+    private const val TURRET_PIVOT_X = 32f
+    private const val TURRET_PIVOT_Y = 32f
+
     // -- Weapon configs --
 
     private val standardProjectile = ProjectileStats(
@@ -121,8 +125,8 @@ object DemoScenarioConfig {
     private fun standardTurretConfig(offsetY: Float) = TurretConfig(
         offsetX = 0f,
         offsetY = offsetY,
-        pivotX = 32f,
-        pivotY = 32f,
+        pivotX = TURRET_PIVOT_X,
+        pivotY = TURRET_PIVOT_Y,
         gunData = GunData(
             drawable = Res.drawable.turret_simple_1,
             projectileStats = standardProjectile,
@@ -137,8 +141,8 @@ object DemoScenarioConfig {
     private fun lightTurretConfig(offsetY: Float) = TurretConfig(
         offsetX = 0f,
         offsetY = offsetY,
-        pivotX = 32f,
-        pivotY = 32f,
+        pivotX = TURRET_PIVOT_X,
+        pivotY = TURRET_PIVOT_Y,
         gunData = GunData(
             drawable = Res.drawable.turret_simple_1,
             projectileStats = lightProjectile,
@@ -153,8 +157,8 @@ object DemoScenarioConfig {
     private fun heavyTurretConfig(offsetY: Float) = TurretConfig(
         offsetX = 0f,
         offsetY = offsetY,
-        pivotX = 32f,
-        pivotY = 32f,
+        pivotX = TURRET_PIVOT_X,
+        pivotY = TURRET_PIVOT_Y,
         gunData = GunData(
             drawable = Res.drawable.turret_simple_1,
             projectileStats = heavyProjectile,
