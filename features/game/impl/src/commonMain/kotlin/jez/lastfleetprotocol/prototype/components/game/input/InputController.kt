@@ -1,13 +1,13 @@
 package jez.lastfleetprotocol.prototype.components.game.input
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerId
 import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.actor.traits.Dynamic
 import com.pandulapeter.kubriko.helpers.extensions.get
 import com.pandulapeter.kubriko.helpers.extensions.toSceneOffset
 import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.pointerInput.PointerInputAware
-import androidx.compose.ui.input.pointer.PointerId
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import kotlin.time.TimeSource
 
@@ -54,7 +54,7 @@ class InputController(
     }
 
     override fun onPointerDrag(screenOffset: Offset) {
-        viewportManager.addToCameraPosition(screenOffset)
+        viewportManager.addToCameraPosition(-screenOffset)
     }
 
     override fun onPointerZoom(position: Offset, factor: Float) {
