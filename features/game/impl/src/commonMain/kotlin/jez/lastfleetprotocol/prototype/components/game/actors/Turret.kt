@@ -47,7 +47,7 @@ class Turret(
     private val gun: Gun by lazy {
         Gun(
             turretBody = body,
-            muzzleOffset = SceneOffset(Offset(pivot.x.raw, 0f)),
+            muzzleOffset = SceneOffset(Offset(pivot.x.raw / 2f, 0f)),
             gunData = gunData,
             teamId = teamId,
         )

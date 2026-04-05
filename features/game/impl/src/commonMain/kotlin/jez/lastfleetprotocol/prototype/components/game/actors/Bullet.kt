@@ -2,9 +2,7 @@ package jez.lastfleetprotocol.prototype.components.game.actors
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.actor.body.BoxBody
 import com.pandulapeter.kubriko.actor.traits.Dynamic
@@ -13,11 +11,11 @@ import com.pandulapeter.kubriko.collision.Collidable
 import com.pandulapeter.kubriko.collision.CollisionDetector
 import com.pandulapeter.kubriko.collision.mask.CircleCollisionMask
 import com.pandulapeter.kubriko.helpers.extensions.get
+import com.pandulapeter.kubriko.helpers.extensions.maxDimension
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.StateManager
 import com.pandulapeter.kubriko.manager.ViewportManager
-import com.pandulapeter.kubriko.sprites.SpriteManager
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
@@ -27,12 +25,11 @@ import jez.lastfleetprotocol.prototype.components.game.combat.KineticImpactResol
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.game.data.ProjectileStats
 import jez.lastfleetprotocol.prototype.components.game.managers.AudioManager
-import org.jetbrains.compose.resources.DrawableResource
 import kotlin.math.sqrt
 import kotlin.reflect.KClass
 
 data class BulletData(
-    val drawable: DrawableResource,
+    val bulletSize: SceneSize,
 )
 
 internal class Bullet(
@@ -49,8 +46,9 @@ internal class Bullet(
     override val body = BoxBody(
         initialPosition = initialPosition,
         initialRotation = initialRotation,
+        initialSize = bulletData.bulletSize,
     )
-    private val radius = 3f.sceneUnit
+    private val radius = bulletData.bulletSize.maxDimension / 2f
     override val collisionMask = CircleCollisionMask(
         initialRadius = radius,
         initialPosition = body.position,
@@ -59,7 +57,6 @@ internal class Bullet(
     private lateinit var audioManager: AudioManager
     private lateinit var stateManager: StateManager
     private lateinit var viewportManager: ViewportManager
-    private lateinit var sprite: ImageBitmap
 
     override val drawingOrder = DrawOrder.BULLET
 
@@ -68,12 +65,6 @@ internal class Bullet(
         audioManager = kubriko.get()
         stateManager = kubriko.get()
         viewportManager = kubriko.get()
-
-        sprite = kubriko.get<SpriteManager>().get(bulletData.drawable) ?: throw RuntimeException()
-        body.size = SceneSize(
-            width = sprite.width.sceneUnit,
-            height = sprite.height.sceneUnit,
-        )
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {
@@ -144,13 +135,10 @@ internal class Bullet(
     }
 
     override fun DrawScope.draw() {
-//        drawImage(sprite)
         drawCircle(
             color = Color.Yellow,
-            radius = collisionMask.radius.raw,
-            center = Offset(collisionMask.position.x.raw, collisionMask.position.y.raw),
-            style = Stroke(width = 1.5f),
-            alpha = 0.8f,
+            radius = radius.raw,
+            center = Offset(radius.raw, radius.raw),
         )
     }
 }

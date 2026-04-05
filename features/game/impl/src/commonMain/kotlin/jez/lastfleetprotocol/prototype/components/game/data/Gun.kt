@@ -6,13 +6,13 @@ import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
+import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.actors.Bullet
 import jez.lastfleetprotocol.prototype.components.game.actors.BulletData
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.utils.getRelativePoint
 import jez.lastfleetprotocol.prototype.components.game.utils.rotate
 import lastfleetprotocol.components.design.generated.resources.Res
-import lastfleetprotocol.components.design.generated.resources.bullet_laser_green_10
 import lastfleetprotocol.components.design.generated.resources.turret_simple_1
 import org.jetbrains.compose.resources.DrawableResource
 import kotlin.math.abs
@@ -69,7 +69,7 @@ class Gun(
                 0.sceneUnit
             ).rotate(turretBody.rotation),
             bulletData = BulletData(
-                drawable = Res.drawable.bullet_laser_green_10,
+                bulletSize = SceneSize(10.sceneUnit, 10.sceneUnit)
             ),
             projectileStats = gunData.projectileStats,
             teamId = teamId,

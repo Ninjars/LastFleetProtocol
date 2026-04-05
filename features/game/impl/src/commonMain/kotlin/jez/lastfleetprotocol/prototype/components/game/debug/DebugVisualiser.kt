@@ -14,7 +14,6 @@ import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
-import jez.lastfleetprotocol.prototype.components.game.actors.Bullet
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.utils.rotate
 import kotlin.math.cos
@@ -29,7 +28,6 @@ import kotlin.math.sin
  * - Red line from ship origin: normalised velocity vector
  * - Blue line from ship origin: normalised acceleration vector
  * - White outline: hull collision polygon edges (armour segments)
- * - Yellow circle: projectile collision radius
  */
 class DebugVisualiser : Visible, Dynamic {
 
@@ -56,26 +54,12 @@ class DebugVisualiser : Visible, Dynamic {
 
     override fun DrawScope.draw() {
         for (actor in actorManager.allActors.value) {
-//            if (actor is Bullet) {
-//                drawBulletDebug(actor)
-//            }
             if (actor is Ship) {
                 if (!actor.isDestroyed) {
                     drawShipDebug(actor)
                 }
             }
         }
-    }
-
-    private fun DrawScope.drawBulletDebug(bullet: Bullet) {
-        val mask = bullet.collisionMask
-        drawCircle(
-            color = Color.Yellow,
-            radius = mask.radius.raw,
-            center = Offset(mask.position.x.raw, mask.position.y.raw),
-            style = Stroke(width = 1.5f),
-            alpha = 0.6f,
-        )
     }
 
     private fun DrawScope.drawShipDebug(ship: Ship) {
