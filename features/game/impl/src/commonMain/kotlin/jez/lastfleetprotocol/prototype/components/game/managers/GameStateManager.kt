@@ -45,7 +45,7 @@ class GameStateManager(
 
     fun setPaused(paused: Boolean) {
         if (paused == !stateManager.isRunning.value) return
-        stateManager.updateIsRunning(paused)
+        stateManager.updateIsRunning(!paused)
     }
 
     fun startDemoScene() {
