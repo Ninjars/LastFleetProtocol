@@ -1,7 +1,10 @@
 package jez.lastfleetprotocol.prototype.components.game.actors
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.actor.body.BoxBody
 import com.pandulapeter.kubriko.actor.traits.Dynamic
@@ -47,7 +50,7 @@ internal class Bullet(
         initialPosition = initialPosition,
         initialRotation = initialRotation,
     )
-    private val radius = body.size.width / 2f
+    private val radius = 3f.sceneUnit
     override val collisionMask = CircleCollisionMask(
         initialRadius = radius,
         initialPosition = body.position,
@@ -141,6 +144,13 @@ internal class Bullet(
     }
 
     override fun DrawScope.draw() {
-        drawImage(sprite)
+//        drawImage(sprite)
+        drawCircle(
+            color = Color.Yellow,
+            radius = collisionMask.radius.raw,
+            center = Offset(collisionMask.position.x.raw, collisionMask.position.y.raw),
+            style = Stroke(width = 1.5f),
+            alpha = 0.8f,
+        )
     }
 }

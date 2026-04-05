@@ -4,13 +4,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.actor.body.BoxBody
 import com.pandulapeter.kubriko.actor.traits.Dynamic
 import com.pandulapeter.kubriko.actor.traits.Visible
+import com.pandulapeter.kubriko.helpers.extensions.get
 import com.pandulapeter.kubriko.helpers.extensions.length
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
+import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
+import jez.lastfleetprotocol.prototype.components.game.actors.Bullet
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.utils.rotate
 import kotlin.math.cos
@@ -25,6 +29,7 @@ import kotlin.math.sin
  * - Red line from ship origin: normalised velocity vector
  * - Blue line from ship origin: normalised acceleration vector
  * - White outline: hull collision polygon edges (armour segments)
+ * - Yellow circle: projectile collision radius
  */
 class DebugVisualiser : Visible, Dynamic {
 
@@ -36,14 +41,13 @@ class DebugVisualiser : Visible, Dynamic {
     override val drawingOrder: Float = -10f
     override val shouldClip: Boolean = false
 
-    private val ships = mutableListOf<Ship>()
+    private lateinit var actorManager: ActorManager
 
-    fun registerShip(ship: Ship) {
-        ships.add(ship)
+    override fun onAdded(kubriko: Kubriko) {
+        actorManager = kubriko.get()
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {
-        ships.removeAll { it.isDestroyed }
     }
 
     init {
@@ -51,9 +55,27 @@ class DebugVisualiser : Visible, Dynamic {
     }
 
     override fun DrawScope.draw() {
-        for (ship in ships) {
-            drawShipDebug(ship)
+        for (actor in actorManager.allActors.value) {
+//            if (actor is Bullet) {
+//                drawBulletDebug(actor)
+//            }
+            if (actor is Ship) {
+                if (!actor.isDestroyed) {
+                    drawShipDebug(actor)
+                }
+            }
         }
+    }
+
+    private fun DrawScope.drawBulletDebug(bullet: Bullet) {
+        val mask = bullet.collisionMask
+        drawCircle(
+            color = Color.Yellow,
+            radius = mask.radius.raw,
+            center = Offset(mask.position.x.raw, mask.position.y.raw),
+            style = Stroke(width = 1.5f),
+            alpha = 0.6f,
+        )
     }
 
     private fun DrawScope.drawShipDebug(ship: Ship) {

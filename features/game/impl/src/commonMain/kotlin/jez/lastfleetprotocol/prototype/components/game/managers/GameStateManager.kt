@@ -106,9 +106,6 @@ class GameStateManager(
 
         // Add debug visualiser for all ships
         val debugVisualiser = DebugVisualiser()
-        for (ship in playerShips + enemyShips) {
-            debugVisualiser.registerShip(ship)
-        }
         actorManager.add(debugVisualiser)
     }
 
