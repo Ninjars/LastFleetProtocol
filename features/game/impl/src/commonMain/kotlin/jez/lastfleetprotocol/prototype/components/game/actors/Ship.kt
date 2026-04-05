@@ -297,7 +297,12 @@ class Ship(
         }
 
         // --- Rotation priority ---
-        if (isBraking || correctionMagnitude < maxSpeed * 0.3f) {
+        // Prefer combat-target facing when: braking, nearly on-target velocity,
+        // or correction is predominantly lateral (strafe rather than rotate,
+        // avoids costly rotation for slow-turning ships in close-quarters orbit).
+        val lateralDominant = kotlin.math.abs(lateralComponent) > kotlin.math.abs(forwardComponent) &&
+            spec.movementConfig.lateralThrust > 0f
+        if (isBraking || correctionMagnitude < maxSpeed * 0.3f || lateralDominant) {
             rotateToCombatTarget(deltaMs)
         } else {
             val correctionAngle = kotlin.math.atan2(
