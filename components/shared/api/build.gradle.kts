@@ -17,6 +17,7 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.kotlinx.json)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlininject.runtime)
         }
     }
 }
