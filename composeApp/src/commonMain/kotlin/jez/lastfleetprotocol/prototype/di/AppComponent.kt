@@ -20,7 +20,9 @@ import jez.lastfleetprotocol.prototype.components.game.ui.GameScreen
 import jez.lastfleetprotocol.prototype.components.gamecore.GameLoadingStatus
 import jez.lastfleetprotocol.prototype.components.gamecore.GameSessionState
 import jez.lastfleetprotocol.prototype.components.landingscreen.LandingScreenEntry
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesignRepository
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ShipBuilderScreenEntry
+import jez.lastfleetprotocol.prototype.components.shipbuilder.data.FileShipDesignRepository
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.ShipBuilderScreen
 import jez.lastfleetprotocol.prototype.components.landingscreen.ui.LandingScreen
 import jez.lastfleetprotocol.prototype.components.preferences.SetMusicEnabled
@@ -58,6 +60,9 @@ abstract class AppComponent(
 
     @Provides
     protected fun shipBuilderScreenEntry(shipBuilderScreen: ShipBuilderScreen): ShipBuilderScreenEntry = shipBuilderScreen
+
+    @Provides
+    protected fun shipDesignRepository(fileRepo: FileShipDesignRepository): ShipDesignRepository = fileRepo
 
     @Provides
     protected fun gameSessionState(gameStateHolder: GameStateHolder): GameSessionState = gameStateHolder

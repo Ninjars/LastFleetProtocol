@@ -196,6 +196,7 @@ private fun DrawScope.drawPlacedItems(state: ShipBuilderState): Offset? {
         drawModule(
             module = placed,
             isSelected = isSelected,
+            isInvalid = placed.id in state.invalidPlacements,
             canvasState = state.canvasState,
         )
         if (isSelected) {
@@ -214,6 +215,7 @@ private fun DrawScope.drawPlacedItems(state: ShipBuilderState): Offset? {
         drawTurret(
             turret = placed,
             isSelected = isSelected,
+            isInvalid = placed.id in state.invalidPlacements,
             canvasState = state.canvasState,
         )
         if (isSelected) {

@@ -62,22 +62,25 @@ fun DrawScope.drawHullPiece(
 /**
  * Draw a module as a yellow square on the canvas.
  * If [isSelected], uses a brighter color and thicker stroke.
+ * If [isInvalid], renders with a red tint to indicate placement outside hull bounds.
  */
 fun DrawScope.drawModule(
     module: PlacedModule,
     isSelected: Boolean,
+    isInvalid: Boolean = false,
     canvasState: CanvasState,
 ) {
     val pos = Offset(module.position.x.raw, module.position.y.raw)
     val screenPos = canvasState.worldToScreen(pos)
     val halfSize = MODULE_HALF_SIZE * canvasState.zoom
 
+    val baseColor = if (isInvalid) Color.Red else Color.Yellow
     val fillAlpha = if (isSelected) 0.6f else 0.4f
-    val strokeColor = if (isSelected) Color.Yellow else Color.Yellow.copy(alpha = 0.7f)
+    val strokeColor = if (isSelected) baseColor else baseColor.copy(alpha = 0.7f)
     val strokeWidth = if (isSelected) 2f else 1f
 
     drawRect(
-        color = Color.Yellow.copy(alpha = fillAlpha),
+        color = baseColor.copy(alpha = fillAlpha),
         topLeft = Offset(screenPos.x - halfSize, screenPos.y - halfSize),
         size = Size(halfSize * 2, halfSize * 2),
     )
@@ -90,24 +93,27 @@ fun DrawScope.drawModule(
 }
 
 /**
- * Draw a turret as a red circle with a direction indicator on the canvas.
+ * Draw a turret as a circle with a direction indicator on the canvas.
  * If [isSelected], uses a brighter color and thicker stroke.
+ * If [isInvalid], renders with a magenta tint to indicate placement outside hull bounds.
  */
 fun DrawScope.drawTurret(
     turret: PlacedTurret,
     isSelected: Boolean,
+    isInvalid: Boolean = false,
     canvasState: CanvasState,
 ) {
     val pos = Offset(turret.position.x.raw, turret.position.y.raw)
     val screenPos = canvasState.worldToScreen(pos)
     val radius = TURRET_RADIUS * canvasState.zoom
 
+    val baseColor = if (isInvalid) Color.Magenta else Color.Red
     val fillAlpha = if (isSelected) 0.6f else 0.4f
-    val strokeColor = if (isSelected) Color.Red else Color.Red.copy(alpha = 0.7f)
+    val strokeColor = if (isSelected) baseColor else baseColor.copy(alpha = 0.7f)
     val strokeWidth = if (isSelected) 2f else 1f
 
     drawCircle(
-        color = Color.Red.copy(alpha = fillAlpha),
+        color = baseColor.copy(alpha = fillAlpha),
         radius = radius,
         center = screenPos,
     )
