@@ -4,8 +4,8 @@ import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
-import jez.lastfleetprotocol.prototype.components.game.data.InternalSystemSpec
-import jez.lastfleetprotocol.prototype.components.game.data.InternalSystemType
+import jez.lastfleetprotocol.prototype.components.gamecore.data.InternalSystemSpec
+import jez.lastfleetprotocol.prototype.components.gamecore.data.InternalSystemType
 import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems
 import kotlin.math.PI
 import kotlin.random.Random

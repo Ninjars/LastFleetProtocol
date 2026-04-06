@@ -1,7 +1,7 @@
 package jez.lastfleetprotocol.prototype.components.game.systems
 
-import jez.lastfleetprotocol.prototype.components.game.data.InternalSystemSpec
-import jez.lastfleetprotocol.prototype.components.game.data.InternalSystemType
+import jez.lastfleetprotocol.prototype.components.gamecore.data.InternalSystemSpec
+import jez.lastfleetprotocol.prototype.components.gamecore.data.InternalSystemType
 
 /**
  * Runtime state for a single internal system.

@@ -1,4 +1,4 @@
-package jez.lastfleetprotocol.prototype.components.game.data
+package jez.lastfleetprotocol.prototype.components.gamecore.data
 
 /**
  * Uniform armour stats applied to all hull segments of a ship.

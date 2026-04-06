@@ -11,7 +11,7 @@ import com.pandulapeter.kubriko.helpers.extensions.sin
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.game.actors.Targetable
-import jez.lastfleetprotocol.prototype.components.game.data.MovementConfig
+import jez.lastfleetprotocol.prototype.components.gamecore.data.MovementConfig
 import jez.lastfleetprotocol.prototype.components.game.physics.ShipPhysics
 import jez.lastfleetprotocol.prototype.components.game.utils.PidController
 

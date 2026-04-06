@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.serialization)
 }
 
 kotlin {
@@ -16,6 +17,8 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.kubriko.engine)
             implementation(compose.runtime)
+            implementation(compose.components.resources)
+            implementation(libs.kotlinx.json)
         }
     }
 }

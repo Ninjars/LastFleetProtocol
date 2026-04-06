@@ -2,9 +2,9 @@ package jez.lastfleetprotocol.prototype.components.game.combat
 
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
-import jez.lastfleetprotocol.prototype.components.game.data.ArmourStats
-import jez.lastfleetprotocol.prototype.components.game.data.CombatStats
-import jez.lastfleetprotocol.prototype.components.game.data.ProjectileStats
+import jez.lastfleetprotocol.prototype.components.gamecore.data.ArmourStats
+import jez.lastfleetprotocol.prototype.components.gamecore.data.CombatStats
+import jez.lastfleetprotocol.prototype.components.gamecore.data.ProjectileStats
 import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.random.Random

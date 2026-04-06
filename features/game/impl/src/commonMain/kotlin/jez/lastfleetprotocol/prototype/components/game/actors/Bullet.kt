@@ -23,7 +23,7 @@ import jez.lastfleetprotocol.prototype.components.game.combat.ArcDamageRouter
 import jez.lastfleetprotocol.prototype.components.game.combat.ImpactOutcome
 import jez.lastfleetprotocol.prototype.components.game.combat.KineticImpactResolver
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
-import jez.lastfleetprotocol.prototype.components.game.data.ProjectileStats
+import jez.lastfleetprotocol.prototype.components.gamecore.data.ProjectileStats
 import jez.lastfleetprotocol.prototype.components.game.managers.AudioManager
 import kotlin.math.sqrt
 import kotlin.reflect.KClass

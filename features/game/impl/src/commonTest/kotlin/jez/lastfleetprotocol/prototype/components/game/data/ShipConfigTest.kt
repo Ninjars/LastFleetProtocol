@@ -2,6 +2,8 @@ package jez.lastfleetprotocol.prototype.components.game.data
 
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
+import jez.lastfleetprotocol.prototype.components.gamecore.data.ArmourStats
+import jez.lastfleetprotocol.prototype.components.gamecore.data.HullDefinition
 import kotlin.test.Test
 import kotlin.test.assertTrue
 

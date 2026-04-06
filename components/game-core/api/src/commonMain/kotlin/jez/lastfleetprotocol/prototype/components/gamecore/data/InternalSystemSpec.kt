@@ -1,4 +1,4 @@
-package jez.lastfleetprotocol.prototype.components.game.data
+package jez.lastfleetprotocol.prototype.components.gamecore.data
 
 /**
  * Static configuration for an internal system.

@@ -1,4 +1,4 @@
-package jez.lastfleetprotocol.prototype.components.game.data
+package jez.lastfleetprotocol.prototype.components.gamecore.data
 
 /**
  * Directional thrust configuration for ship movement.
