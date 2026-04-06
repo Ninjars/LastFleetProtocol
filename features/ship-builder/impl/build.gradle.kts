@@ -19,6 +19,7 @@ kotlin {
             implementation(project(":components:design"))
             implementation(project(":components:shared:api"))
             implementation(project(":components:game-core:api"))
+            implementation(libs.kubriko.engine)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)

@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.DesignCanvas
 import jez.lastfleetprotocol.prototype.ui.common.HandleSideEffect
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
@@ -34,20 +35,33 @@ fun ShipBuilderScreen(
 
     ShipBuilderScreen(
         state = viewModel.state.collectAsStateWithLifecycle().value,
+        onIntent = viewModel::accept,
     )
 }
 
 @Composable
 private fun ShipBuilderScreen(
     state: ShipBuilderState,
+    onIntent: (ShipBuilderIntent) -> Unit,
 ) {
     Row(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.width(200.dp).fillMaxHeight()) {
-            Text("Parts")
-        }
-        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            Text("Canvas")
-        }
+        // Left panel: Parts
+        PartsPanel(
+            onAddHullPiece = { onIntent(ShipBuilderIntent.AddHullPiece(it)) },
+            onAddModule = { onIntent(ShipBuilderIntent.AddModule(it)) },
+            onAddTurret = { onIntent(ShipBuilderIntent.AddTurret(it)) },
+            modifier = Modifier.width(200.dp).fillMaxHeight(),
+        )
+
+        // Center: Design canvas
+        DesignCanvas(
+            state = state,
+            onPan = { onIntent(ShipBuilderIntent.Pan(it)) },
+            onZoom = { onIntent(ShipBuilderIntent.Zoom(it)) },
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+        )
+
+        // Right panel: Stats (stub for now)
         Column(modifier = Modifier.width(200.dp).fillMaxHeight()) {
             Text("Stats")
         }
