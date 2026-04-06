@@ -33,11 +33,11 @@ interface CanvasInputHandler {
     /** Single tap (press + release within drag threshold) at a world position. */
     fun onTap(worldPosition: Offset)
 
-    /** Drag started at a world position. */
-    fun onDragStart(worldPosition: Offset)
+    /** Drag started at a world position. Return true if consumed (e.g. item hit), false to pan. */
+    fun onDragStart(worldPosition: Offset): Boolean
 
-    /** Drag moved to a new world position with a world-space delta. */
-    fun onDragMove(worldPosition: Offset, worldDelta: Offset)
+    /** Drag moved to a new world position with a world-space delta. Return true if consumed, false to pan. */
+    fun onDragMove(worldPosition: Offset, worldDelta: Offset): Boolean
 
     /** Drag ended at a world position. */
     fun onDragEnd(worldPosition: Offset)
@@ -127,17 +127,27 @@ fun DesignCanvas(
 
                         if (!isDragging && totalDrag.getDistance() > DRAG_THRESHOLD) {
                             isDragging = true
-                            inputHandlerRef.value.onDragStart(
+                            val consumed = inputHandlerRef.value.onDragStart(
                                 canvasState.screenToWorld(downPos)
                             )
+                            if (!consumed) {
+                                canvasState = canvasState.copy(
+                                    offset = canvasState.offset + totalDrag
+                                )
+                            }
                         }
 
                         if (isDragging) {
                             change.consume()
-                            inputHandlerRef.value.onDragMove(
+                            val consumed = inputHandlerRef.value.onDragMove(
                                 worldPosition = canvasState.screenToWorld(change.position),
                                 worldDelta = dragDelta / canvasState.zoom,
                             )
+                            if (!consumed) {
+                                canvasState = canvasState.copy(
+                                    offset = canvasState.offset + dragDelta
+                                )
+                            }
                         }
                     }
                 }

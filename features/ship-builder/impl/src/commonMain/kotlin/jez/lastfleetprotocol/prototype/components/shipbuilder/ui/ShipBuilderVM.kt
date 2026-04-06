@@ -103,11 +103,14 @@ class ShipBuilderVM(
         override fun onTap(worldPosition: Offset) {
             accept(ShipBuilderIntent.CanvasTap(worldPosition))
         }
-        override fun onDragStart(worldPosition: Offset) {
+        override fun onDragStart(worldPosition: Offset): Boolean {
             accept(ShipBuilderIntent.CanvasDragStart(worldPosition))
+            return dragMode != DragMode.PAN && dragMode != DragMode.NONE
         }
-        override fun onDragMove(worldPosition: Offset, worldDelta: Offset) {
+        override fun onDragMove(worldPosition: Offset, worldDelta: Offset): Boolean {
+            if (dragMode == DragMode.PAN || dragMode == DragMode.NONE) return false
             accept(ShipBuilderIntent.CanvasDragMove(worldPosition, worldDelta))
+            return true
         }
         override fun onDragEnd(worldPosition: Offset) {
             accept(ShipBuilderIntent.CanvasDragEnd(worldPosition))
