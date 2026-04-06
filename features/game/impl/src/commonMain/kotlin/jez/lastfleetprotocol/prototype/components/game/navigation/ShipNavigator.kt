@@ -29,7 +29,6 @@ import jez.lastfleetprotocol.prototype.components.game.utils.PidController
  */
 class ShipNavigator(
     private val hullRadius: Float,
-    private val mass: Float,
 ) {
     private val rotationPid = PidController(
         kp = ROTATION_PID_KP,
@@ -85,7 +84,7 @@ class ShipNavigator(
         val facing = body.rotation
         val velocity = physics.velocity
 
-        val maxSpeed = movementConfig.forwardThrust / mass * MAX_SPEED_FACTOR
+        val maxSpeed = movementConfig.forwardThrust / physics.mass * MAX_SPEED_FACTOR
 
         val braking = computeBrakingStrategy(movementConfig, physics, speed.raw, facing)
         val isBraking = braking.stoppingDistance >= distanceToTarget.raw * BRAKING_MARGIN
@@ -124,7 +123,13 @@ class ShipNavigator(
             val angleDelta = normalizeAngle(rawDelta)
             val absAngle = absAngleOf(angleDelta)
 
-            applyCurrentFacingBrake(movementConfig, physics, forwardComponent, lateralComponent, facing)
+            applyCurrentFacingBrake(
+                movementConfig,
+                physics,
+                forwardComponent,
+                lateralComponent,
+                facing
+            )
             applyRotationToward(movementConfig, physics, angleDelta, absAngle, deltaMs)
             return destination
         }
@@ -155,8 +160,9 @@ class ShipNavigator(
         }
 
         // --- Rotation priority ---
-        val lateralDominant = kotlin.math.abs(lateralComponent) > kotlin.math.abs(forwardComponent) &&
-            movementConfig.lateralThrust > 0f
+        val lateralDominant =
+            kotlin.math.abs(lateralComponent) > kotlin.math.abs(forwardComponent) &&
+                    movementConfig.lateralThrust > 0f
         if (isBraking || correctionMagnitude < maxSpeed * 0.3f || lateralDominant) {
             rotateToCombatTarget(movementConfig, physics, body, combatTarget, deltaMs)
         } else {
@@ -166,7 +172,13 @@ class ShipNavigator(
             ).rad
             val rawDelta = correctionAngle - facing
             val angleDelta = normalizeAngle(rawDelta)
-            applyRotationToward(movementConfig, physics, angleDelta, absAngleOf(angleDelta), deltaMs)
+            applyRotationToward(
+                movementConfig,
+                physics,
+                angleDelta,
+                absAngleOf(angleDelta),
+                deltaMs
+            )
         }
 
         return destination
@@ -283,7 +295,7 @@ class ShipNavigator(
         val vel = physics.velocity
 
         val antiVelAngle = kotlin.math.atan2(-vel.y.raw, -vel.x.raw)
-        val angularAccel = if (mass > 0f) mc.angularThrust / mass else 0f
+        val angularAccel = if (physics.mass > 0f) mc.angularThrust / physics.mass else 0f
 
         data class Candidate(
             val thrustMagnitude: Float,
@@ -321,10 +333,10 @@ class ShipNavigator(
         val latDot = -facingSin * antiVelX + facingCos * antiVelY
 
         val currentDecel = (
-            maxOf(0f, fwdDot) * mc.forwardThrust +
-                maxOf(0f, revDot) * mc.reverseThrust +
-                kotlin.math.abs(latDot) * mc.lateralThrust
-            ) / mass
+                maxOf(0f, fwdDot) * mc.forwardThrust +
+                        maxOf(0f, revDot) * mc.reverseThrust +
+                        kotlin.math.abs(latDot) * mc.lateralThrust
+                ) / physics.mass
 
         val currentStopTime = if (currentDecel > 0f) speed / currentDecel else Float.MAX_VALUE
         val currentStopDist = if (currentDecel > 0f) {
@@ -339,7 +351,7 @@ class ShipNavigator(
         var bestShouldRotate = false
 
         for (candidate in candidates) {
-            val decel = candidate.thrustMagnitude / mass
+            val decel = candidate.thrustMagnitude / physics.mass
             if (decel <= 0f) continue
 
             val targetFacing = antiVelAngle + candidate.localAngleOffset
@@ -374,7 +386,8 @@ class ShipNavigator(
                 else if (rotRawDelta < -kotlin.math.PI.toFloat()) rotRawDelta + 2f * kotlin.math.PI.toFloat()
                 else rotRawDelta
             )
-            val rotTime = if (angularAccel > 0f) 2f * kotlin.math.sqrt(rotAngle / angularAccel) else 0f
+            val rotTime =
+                if (angularAccel > 0f) 2f * kotlin.math.sqrt(rotAngle / angularAccel) else 0f
             speed * rotTime + (speed * speed) / (2f * bestDecel)
         } else {
             currentStopDist

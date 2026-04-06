@@ -79,7 +79,6 @@ class Ship(
         } else {
             5f // fallback matching ARRIVAL_THRESHOLD
         },
-        mass = spec.totalMass,
     )
 
     private val sprite: ImageBitmap by lazy {
