@@ -20,6 +20,9 @@ kotlin {
             implementation(compose.components.resources)
             implementation(libs.kotlinx.json)
         }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
     }
 }
 
