@@ -215,7 +215,7 @@ Input Flow:
 
 ### Phase 1: Data Model & Ship Systems Foundation
 
-- [ ] **Unit 1: Stat data classes and ship configuration**
+- [x] **Unit 1: Stat data classes and ship configuration**
 
   **Goal:** Define all parameter data classes for ship stats, armour, internal systems, and
   weapon/projectile properties. Create demo scenario ship configurations.
@@ -264,7 +264,7 @@ Input Flow:
   - All game-affecting stat values originate from data classes, not inline constants in actors
   - Demo scenario config defines distinct ship archetypes with meaningfully different stat profiles
 
-- [ ] **Unit 2: Internal system model**
+- [x] **Unit 2: Internal system model**
 
   **Goal:** Implement the internal system runtime state and damage/disable/destroy logic for
   Reactor, Main Engine, and Bridge.
@@ -314,7 +314,7 @@ Input Flow:
 
 ### Phase 2: Ship Hull, Collision, and Movement
 
-- [ ] **Unit 3: Ship hull polygon and armour**
+- [x] **Unit 3: Ship hull polygon and armour**
 
   **Goal:** Replace `CircleCollisionMask` on ships with `PolygonCollisionMask`. Attach uniform
   armour stats. Wire `CollisionManager` into `AppComponent`.
@@ -356,7 +356,7 @@ Input Flow:
   - Ships render and collide using polygon masks
   - CollisionManager is active in the game Kubriko instance
 
-- [ ] **Unit 4: Physics-based movement**
+- [x] **Unit 4: Physics-based movement**
 
   **Goal:** Replace the current simple velocity movement with physics simulation featuring mass,
   directional thrust, momentum, and angular force.
@@ -416,7 +416,7 @@ Input Flow:
 
 ### Phase 3: Input, Camera, and Orders
 
-- [ ] **Unit 5: Input controller with gesture disambiguation**
+- [x] **Unit 5: Input controller with gesture disambiguation**
 
   **Goal:** Create a centralized input controller that distinguishes tap from drag, dispatches
   camera pan/zoom, and exposes tap events for ship selection and movement orders.
@@ -472,7 +472,7 @@ Input Flow:
 
 ### Phase 4: Kinetic Damage Pipeline
 
-- [ ] **Unit 6: Kinetic projectile impact resolution**
+- [x] **Unit 6: Kinetic projectile impact resolution**
 
   **Goal:** Implement the full kinetic hit chain: hit check -> ricochet -> penetration ->
   arc-based damage routing to internal systems.
@@ -543,7 +543,7 @@ Input Flow:
   - Different impact angles route damage to different systems
   - The full chain (hit → ricochet → penetration → damage) runs without errors
 
-- [ ] **Unit 7: Bullet lifecycle management**
+- [x] **Unit 7: Bullet lifecycle management**
 
   **Goal:** Add TTL to bullets, remove them when expired or when they score a hit.
 
@@ -573,7 +573,7 @@ Input Flow:
 
 ### Phase 5: Enemy AI and Ship Destruction
 
-- [ ] **Unit 8: Enemy AI — target selection and movement**
+- [x] **Unit 8: Enemy AI — target selection and movement**
 
   **Goal:** Enemy ships autonomously select the nearest player ship as target, move to weapon
   range, and fire.
@@ -614,7 +614,7 @@ Input Flow:
   - Different enemy configurations produce visibly different combat behavior
   - Enemy ships use the same physics movement as player ships
 
-- [ ] **Unit 9: Ship destruction and removal**
+- [x] **Unit 9: Ship destruction and removal**
 
   **Goal:** Ships whose reactor is destroyed explode and are removed from the scene.
 
@@ -650,7 +650,7 @@ Input Flow:
 
 ### Phase 6: Game Loop Completion
 
-- [ ] **Unit 10: Win/lose conditions and result screen**
+- [x] **Unit 10: Win/lose conditions and result screen**
 
   **Goal:** Track fleet state, detect victory or defeat, and display a result screen with restart
   option.
@@ -691,7 +691,7 @@ Input Flow:
   - Defeat screen appears when all player ships are destroyed
   - Restart works cleanly without stale state
 
-- [ ] **Unit 11: Demo scenario wiring and integration**
+- [x] **Unit 11: Demo scenario wiring and integration**
 
   **Goal:** Wire everything together: create the demo scenario from `DemoScenarioConfig`, update
   `GameStateManager.startDemoScene()`, and validate end-to-end on desktop and Android.
