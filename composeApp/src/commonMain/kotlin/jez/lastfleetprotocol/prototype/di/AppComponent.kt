@@ -1,6 +1,7 @@
 package jez.lastfleetprotocol.prototype.di
 
 import com.pandulapeter.kubriko.Kubriko
+import com.pandulapeter.kubriko.collision.CollisionManager
 import com.pandulapeter.kubriko.audioPlayback.MusicManager
 import com.pandulapeter.kubriko.audioPlayback.SoundManager
 import com.pandulapeter.kubriko.manager.ActorManager
@@ -113,6 +114,13 @@ abstract class AppComponent(
 
     @Singleton
     @Provides
+    protected fun collisionManager(): CollisionManager = CollisionManager.newInstance(
+        isLoggingEnabled = enableLogging,
+        instanceNameForLogging = Constants.GAME_LOG_TAG,
+    )
+
+    @Singleton
+    @Provides
     protected fun PointerInputManager(): PointerInputManager = PointerInputManager.newInstance(
         isLoggingEnabled = enableLogging,
         instanceNameForLogging = Constants.GAME_LOG_TAG,
@@ -154,6 +162,7 @@ abstract class AppComponent(
         loadingManager: LoadingManager,
         audioManager: AudioManager,
         actorManager: ActorManager,
+        collisionManager: CollisionManager,
         uiManager: UiManager,
         gameStateManager: GameStateManager,
         viewportManager: ViewportManager,
@@ -167,6 +176,7 @@ abstract class AppComponent(
         audioManager,
         loadingManager,
         actorManager,
+        collisionManager,
         uiManager,
         gameStateManager,
         viewportManager,

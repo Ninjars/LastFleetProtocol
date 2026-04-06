@@ -25,6 +25,7 @@ class Turret(
     offsetFromParentPivot: SceneOffset,
     private val pivot: SceneOffset,
     private val gunData: GunData,
+    val teamId: String,
     private val rotationSpeed: AngleRadians = 10f.deg.rad,
 ) : Child(
     parent = parent,
@@ -46,8 +47,9 @@ class Turret(
     private val gun: Gun by lazy {
         Gun(
             turretBody = body,
-            muzzleOffset = SceneOffset(Offset(pivot.x.raw, 0f)),
-            gunData = gunData
+            muzzleOffset = SceneOffset(Offset(pivot.x.raw / 2f, 0f)),
+            gunData = gunData,
+            teamId = teamId,
         )
     }
 
@@ -85,7 +87,7 @@ class Turret(
         if (target == null) {
             gun.angleToTarget = null
             currentRotation =
-                currentRotation.rotateTowards(0.rad, rotationSpeed * deltaTimeInMilliseconds)
+                currentRotation.rotateTowards(0.rad, rotationSpeed / deltaTimeInMilliseconds)
         }
 
         body.rotation += currentRotation

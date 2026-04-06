@@ -66,6 +66,7 @@ kotlin {
 
             implementation(libs.kubriko.engine)
             implementation(libs.kubriko.plugin.audio)
+            implementation(libs.kubriko.plugin.collision)
             implementation(libs.kubriko.plugin.persistence)
             implementation(libs.kubriko.plugin.pointer)
             implementation(libs.kubriko.plugin.sprites)
@@ -82,7 +83,8 @@ kotlin {
 }
 
 dependencies {
-    kspCommonMainMetadata(libs.kotlininject.compiler)
+    // kotlin-inject KSP runs per-platform only; kspCommonMainMetadata cannot
+    // resolve @Qualifier annotations across KMP module boundaries.
     add("kspJvm", libs.kotlininject.compiler)
     add("kspAndroid", libs.kotlininject.compiler)
 //    add("kspIosX64", libs.kotlininject.compiler)

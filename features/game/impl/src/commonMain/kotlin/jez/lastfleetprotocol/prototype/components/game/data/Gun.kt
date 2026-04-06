@@ -6,20 +6,26 @@ import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
+import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.actors.Bullet
 import jez.lastfleetprotocol.prototype.components.game.actors.BulletData
+import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.utils.getRelativePoint
 import jez.lastfleetprotocol.prototype.components.game.utils.rotate
 import lastfleetprotocol.components.design.generated.resources.Res
-import lastfleetprotocol.components.design.generated.resources.bullet_laser_green_10
 import lastfleetprotocol.components.design.generated.resources.turret_simple_1
 import org.jetbrains.compose.resources.DrawableResource
 import kotlin.math.abs
 
 data class GunData(
     val drawable: DrawableResource = Res.drawable.turret_simple_1,
-    val reloadTime: Long = 500L,
-    val bulletSpeed: Float = 100f,
+    val projectileStats: ProjectileStats = ProjectileStats(
+        damage = 10f,
+        armourPiercing = 5f,
+        toHitModifier = 0.1f,
+        speed = 100f,
+        lifetimeMs = 5000,
+    ),
     val aimTolerance: AngleRadians = AngleRadians.TwoPi / 1440f,
     val magazineCapacity: Int,
     val reloadMilliseconds: Int,
@@ -32,6 +38,7 @@ class Gun(
     private val turretBody: BoxBody,
     private val muzzleOffset: SceneOffset,
     private val gunData: GunData,
+    private val teamId: String,
 ) {
 
     enum class Condition {
@@ -51,18 +58,22 @@ class Gun(
     private var magazine: Int = gunData.magazineCapacity
     private var burstCounter: Int = gunData.shotsPerBurst
 
-    fun spawnBullet(actorManager: ActorManager) {
+    private fun spawnBullet(
+        actorManager: ActorManager,
+    ) {
         val bullet = Bullet(
             initialPosition = turretBody.getRelativePoint(muzzleOffset),
             initialRotation = turretBody.rotation,
             velocity = SceneOffset(
-                gunData.bulletSpeed.sceneUnit,
+                gunData.projectileStats.speed.sceneUnit,
                 0.sceneUnit
             ).rotate(turretBody.rotation),
             bulletData = BulletData(
-                drawable = Res.drawable.bullet_laser_green_10,
+                bulletSize = SceneSize(10.sceneUnit, 10.sceneUnit)
             ),
-            collidableTypes = emptyList()
+            projectileStats = gunData.projectileStats,
+            teamId = teamId,
+            collidableTypes = listOf(Ship::class),
         )
         actorManager.add(bullet)
     }
