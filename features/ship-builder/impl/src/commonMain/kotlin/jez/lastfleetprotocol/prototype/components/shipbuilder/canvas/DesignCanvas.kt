@@ -57,7 +57,12 @@ fun DesignCanvas(
                 change.consume()
             }
             // Touch/mouse gestures: tap, drag-item, pan, pinch-zoom.
-            .pointerInput(state.selectedItemId) {
+            .pointerInput(
+                state.selectedItemId,
+                state.placedTurrets,
+                state.placedModules,
+                state.placedHulls
+            ) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val downPos = down.position
