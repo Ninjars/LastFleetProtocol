@@ -3,7 +3,6 @@ package jez.lastfleetprotocol.prototype.components.shipbuilder.canvas
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculateCentroidSize
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,11 +54,11 @@ fun DesignCanvas(
                     val handlePos = rotateHandleScreenPos
                     val selectedId = state.selectedItemId
                     val hitRotateHandle = selectedId != null && handlePos != null &&
-                        (downPos - handlePos).getDistance() < ROTATE_HANDLE_HIT_RADIUS * state.canvasState.zoom
+                            (downPos - handlePos).getDistance() < ROTATE_HANDLE_HIT_RADIUS * state.canvasState.zoom
 
                     // Check if we hit the selected item
                     val hitSelectedItem = selectedId != null && !hitRotateHandle &&
-                        hitTestItem(downPos, selectedId, state)
+                            hitTestItem(downPos, selectedId, state)
 
                     var totalDrag = Offset.Zero
                     var isDragging = false
@@ -96,14 +95,13 @@ fun DesignCanvas(
                             change.consume()
                             if (!isDragging) {
                                 // It was a tap — do hit testing for selection
-                                val worldPos = state.canvasState.screenToWorld(downPos)
                                 val hitId = hitTestAllItems(downPos, state)
                                 if (hitId != null) {
                                     onSelectItem(hitId)
                                 } else {
                                     onDeselect()
                                 }
-                            } else if (isDragging && hitSelectedItem && selectedId != null) {
+                            } else if (hitSelectedItem) {
                                 // Drag ended on a moved item — snap position
                                 val currentWorldPos = getItemWorldPos(selectedId, state)
                                 if (currentWorldPos != null) {
@@ -124,11 +122,12 @@ fun DesignCanvas(
                         if (isDragging) {
                             change.consume()
                             when {
-                                hitRotateHandle && selectedId != null -> {
+                                hitRotateHandle -> {
                                     // Rotate mode: compute angle from item center to pointer
                                     val itemWorldPos = getItemWorldPos(selectedId, state)
                                     if (itemWorldPos != null) {
-                                        val pointerWorld = state.canvasState.screenToWorld(change.position)
+                                        val pointerWorld =
+                                            state.canvasState.screenToWorld(change.position)
                                         val angle = atan2(
                                             pointerWorld.y - itemWorldPos.y,
                                             pointerWorld.x - itemWorldPos.x,
@@ -137,7 +136,7 @@ fun DesignCanvas(
                                     }
                                 }
 
-                                hitSelectedItem && selectedId != null -> {
+                                hitSelectedItem -> {
                                     // Drag mode: move item by delta in world space
                                     val worldDelta = dragDelta / state.canvasState.zoom
                                     val currentWorldPos = getItemWorldPos(selectedId, state)
@@ -324,7 +323,7 @@ private fun pointInHullPiece(
         val yj = vertices[j].y.raw
 
         val intersect = ((yi > testY) != (yj > testY)) &&
-            (testX < (xj - xi) * (testY - yi) / (yj - yi) + xi)
+                (testX < (xj - xi) * (testY - yi) / (yj - yi) + xi)
 
         if (intersect) inside = !inside
         j = i
