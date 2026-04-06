@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasInputHandler
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.DesignCanvas
 import jez.lastfleetprotocol.prototype.ui.common.HandleSideEffect
 import jez.lastfleetprotocol.prototype.ui.resources.LFRes
@@ -47,6 +48,7 @@ fun ShipBuilderScreen(
     ShipBuilderScreen(
         state = viewModel.state.collectAsStateWithLifecycle().value,
         onIntent = viewModel::accept,
+        canvasInputHandler = viewModel.canvasInputHandler,
     )
 }
 
@@ -54,8 +56,8 @@ fun ShipBuilderScreen(
 private fun ShipBuilderScreen(
     state: ShipBuilderState,
     onIntent: (ShipBuilderIntent) -> Unit,
+    canvasInputHandler: CanvasInputHandler,
 ) {
-
     Row(modifier = Modifier.fillMaxSize()) {
         // Left panel: Parts
         PartsPanel(
@@ -71,10 +73,7 @@ private fun ShipBuilderScreen(
         ) {
             DesignCanvas(
                 state = state,
-                onSelectItem = { onIntent(ShipBuilderIntent.SelectItem(it)) },
-                onDeselect = { onIntent(ShipBuilderIntent.Deselect) },
-                onMoveItem = { id, pos -> onIntent(ShipBuilderIntent.MoveItem(id, pos)) },
-                onRotateItem = { id, angle -> onIntent(ShipBuilderIntent.RotateItem(id, angle)) },
+                inputHandler = canvasInputHandler,
                 modifier = Modifier.fillMaxSize(),
             )
 

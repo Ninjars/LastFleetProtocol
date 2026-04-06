@@ -23,8 +23,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasInputHandler
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGrid
 import me.tatarka.inject.annotations.Inject
 import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -34,19 +37,17 @@ sealed interface ShipBuilderIntent {
     data class AddModule(val catalogModule: CatalogSystemModule) : ShipBuilderIntent
     data class AddTurret(val catalogTurret: CatalogTurretModule) : ShipBuilderIntent
 
-    // Selection
-    data class SelectItem(val id: String) : ShipBuilderIntent
-    data object Deselect : ShipBuilderIntent
+    // Canvas input — raw pointer events from DesignCanvas
+    data class CanvasTap(val worldPosition: Offset) : ShipBuilderIntent
+    data class CanvasDragStart(val worldPosition: Offset) : ShipBuilderIntent
+    data class CanvasDragMove(val worldPosition: Offset, val worldDelta: Offset) : ShipBuilderIntent
+    data class CanvasDragEnd(val worldPosition: Offset) : ShipBuilderIntent
 
-    // Movement
-    data class MoveItem(val id: String, val position: Offset) : ShipBuilderIntent
-
-    // Transforms
+    // Transforms (from toolbar buttons)
     data class MirrorItemX(val id: String) : ShipBuilderIntent
     data class MirrorItemY(val id: String) : ShipBuilderIntent
     data class RotateCW(val id: String) : ShipBuilderIntent
     data class RotateCCW(val id: String) : ShipBuilderIntent
-    data class RotateItem(val id: String, val angle: Float) : ShipBuilderIntent
 
     // Stats panel
     data class RenameDesign(val name: String) : ShipBuilderIntent
@@ -72,6 +73,17 @@ sealed interface ShipBuilderSideEffect {
     data object NavigateBack : ShipBuilderSideEffect
 }
 
+private const val HIT_RADIUS_MODULE = 8f
+private const val HIT_RADIUS_TURRET = 6f
+private const val ROTATE_HANDLE_DISTANCE = 30f
+private const val ROTATE_HANDLE_HIT_RADIUS = 12f
+private const val GRID_CELL_SIZE = 10f
+
+/**
+ * Drag mode resolved at drag-start based on what was under the pointer.
+ */
+private enum class DragMode { NONE, MOVE_ITEM, ROTATE_ITEM, PAN }
+
 @Inject
 class ShipBuilderVM(
     private val repository: ShipDesignRepository,
@@ -83,15 +95,32 @@ class ShipBuilderVM(
     private var nextId = 0
     private fun generateId(prefix: String): String = "${prefix}_${nextId++}"
 
+    /** Current drag mode, set on drag-start, cleared on drag-end. */
+    private var dragMode: DragMode = DragMode.NONE
+
+    /** The CanvasInputHandler that the UI captures once and passes to DesignCanvas. */
+    val canvasInputHandler = object : CanvasInputHandler {
+        override fun onTap(worldPosition: Offset) {
+            accept(ShipBuilderIntent.CanvasTap(worldPosition))
+        }
+        override fun onDragStart(worldPosition: Offset) {
+            accept(ShipBuilderIntent.CanvasDragStart(worldPosition))
+        }
+        override fun onDragMove(worldPosition: Offset, worldDelta: Offset) {
+            accept(ShipBuilderIntent.CanvasDragMove(worldPosition, worldDelta))
+        }
+        override fun onDragEnd(worldPosition: Offset) {
+            accept(ShipBuilderIntent.CanvasDragEnd(worldPosition))
+        }
+    }
+
     init {
-        // Generate initial design name and auto-save
         val initialName = "Untitled Ship ${generateTimestamp()}"
         _state.update { it.copy(designName = initialName) }
         autoSave()
     }
 
     private fun generateTimestamp(): String {
-        // Simple incrementing name since we don't have platform time easily
         return "${nextId++}"
     }
 
@@ -167,55 +196,69 @@ class ShipBuilderVM(
                 autoSave()
             }
 
-            is ShipBuilderIntent.SelectItem -> _state.update { current ->
-                current.copy(selectedItemId = intent.id)
+            // --- Canvas input: VM resolves what the pointer events mean ---
+
+            is ShipBuilderIntent.CanvasTap -> {
+                val hitId = hitTestAllItems(intent.worldPosition, _state.value)
+                _state.update { it.copy(selectedItemId = hitId) }
             }
 
-            is ShipBuilderIntent.Deselect -> _state.update { current ->
-                current.copy(selectedItemId = null)
-            }
-
-            is ShipBuilderIntent.MoveItem -> {
-                _state.update { current ->
-                    val id = intent.id
-                    val newPos = SceneOffset(
-                        intent.position.x.sceneUnit,
-                        intent.position.y.sceneUnit,
-                    )
-                    val newState = current.copy(
-                        placedHulls = current.placedHulls.map {
-                            if (it.id == id) it.copy(position = newPos) else it
-                        },
-                        placedModules = current.placedModules.map {
-                            if (it.id == id) it.copy(position = newPos) else it
-                        },
-                        placedTurrets = current.placedTurrets.map {
-                            if (it.id == id) it.copy(position = newPos) else it
-                        },
-                    )
-                    recalculate(newState)
+            is ShipBuilderIntent.CanvasDragStart -> {
+                val current = _state.value
+                val selectedId = current.selectedItemId
+                dragMode = if (selectedId != null) {
+                    val itemPos = getItemWorldPos(selectedId, current)
+                    if (itemPos != null && isOnRotateHandle(intent.worldPosition, itemPos, current)) {
+                        DragMode.ROTATE_ITEM
+                    } else if (hitTestItem(intent.worldPosition, selectedId, current)) {
+                        DragMode.MOVE_ITEM
+                    } else {
+                        DragMode.PAN
+                    }
+                } else {
+                    DragMode.PAN
                 }
-                autoSave()
             }
 
-            is ShipBuilderIntent.RotateItem -> {
-                _state.update { current ->
-                    val id = intent.id
-                    val newRotation = intent.angle.rad
-                    val newState = current.copy(
-                        placedHulls = current.placedHulls.map {
-                            if (it.id == id) it.copy(rotation = newRotation) else it
-                        },
-                        placedModules = current.placedModules.map {
-                            if (it.id == id) it.copy(rotation = newRotation) else it
-                        },
-                        placedTurrets = current.placedTurrets.map {
-                            if (it.id == id) it.copy(rotation = newRotation) else it
-                        },
-                    )
-                    recalculate(newState)
+            is ShipBuilderIntent.CanvasDragMove -> {
+                val current = _state.value
+                val selectedId = current.selectedItemId ?: return
+                when (dragMode) {
+                    DragMode.MOVE_ITEM -> {
+                        val currentPos = getItemWorldPos(selectedId, current) ?: return
+                        val newPos = currentPos + intent.worldDelta
+                        _state.update { moveItem(it, selectedId, newPos) }
+                    }
+                    DragMode.ROTATE_ITEM -> {
+                        val itemPos = getItemWorldPos(selectedId, current) ?: return
+                        val angle = atan2(
+                            intent.worldPosition.y - itemPos.y,
+                            intent.worldPosition.x - itemPos.x,
+                        )
+                        _state.update { rotateItem(it, selectedId, angle) }
+                    }
+                    DragMode.PAN, DragMode.NONE -> {
+                        // Pan is handled locally in DesignCanvas — nothing to do here
+                    }
                 }
-                autoSave()
+            }
+
+            is ShipBuilderIntent.CanvasDragEnd -> {
+                if (dragMode == DragMode.MOVE_ITEM) {
+                    val current = _state.value
+                    val selectedId = current.selectedItemId
+                    if (selectedId != null) {
+                        val pos = getItemWorldPos(selectedId, current)
+                        if (pos != null) {
+                            val snapped = snapToGrid(pos, GRID_CELL_SIZE)
+                            _state.update { recalculate(moveItem(it, selectedId, snapped)) }
+                            autoSave()
+                        }
+                    }
+                } else if (dragMode == DragMode.ROTATE_ITEM) {
+                    autoSave()
+                }
+                dragMode = DragMode.NONE
             }
 
             is ShipBuilderIntent.RotateCW -> {
@@ -381,6 +424,108 @@ class ShipBuilderVM(
             }
         }
         return false
+    }
+
+    // --- Hit testing (moved from DesignCanvas to VM) ---
+
+    private fun hitTestAllItems(worldPos: Offset, state: ShipBuilderState): String? {
+        for (placed in state.placedTurrets.asReversed()) {
+            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
+            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_TURRET) return placed.id
+        }
+        for (placed in state.placedModules.asReversed()) {
+            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
+            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_MODULE) return placed.id
+        }
+        for (placed in state.placedHulls.asReversed()) {
+            val hullDef = state.hullPieces.find { it.id == placed.hullPieceId } ?: continue
+            if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return placed.id
+        }
+        return null
+    }
+
+    private fun hitTestItem(worldPos: Offset, itemId: String, state: ShipBuilderState): Boolean {
+        for (placed in state.placedHulls) {
+            if (placed.id != itemId) continue
+            val hullDef = state.hullPieces.find { it.id == placed.hullPieceId } ?: continue
+            if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return true
+        }
+        for (placed in state.placedModules) {
+            if (placed.id != itemId) continue
+            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
+            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_MODULE) return true
+        }
+        for (placed in state.placedTurrets) {
+            if (placed.id != itemId) continue
+            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
+            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_TURRET) return true
+        }
+        return false
+    }
+
+    private fun pointInHullPiece(
+        worldPoint: Offset,
+        placed: PlacedHullPiece,
+        vertices: List<com.pandulapeter.kubriko.types.SceneOffset>,
+    ): Boolean {
+        if (vertices.size < 3) return false
+        val rotation = placed.rotation.normalized
+        val pos = Offset(placed.position.x.raw, placed.position.y.raw)
+        val localX = worldPoint.x - pos.x
+        val localY = worldPoint.y - pos.y
+        val cosR = cos(-rotation)
+        val sinR = sin(-rotation)
+        val testPoint = Offset(localX * cosR - localY * sinR, localX * sinR + localY * cosR)
+        val localVertices = vertices.map { Offset(it.x.raw, it.y.raw) }
+        return pointInPolygon(testPoint, localVertices)
+    }
+
+    private fun getItemWorldPos(itemId: String, state: ShipBuilderState): Offset? {
+        for (placed in state.placedHulls) {
+            if (placed.id == itemId) return Offset(placed.position.x.raw, placed.position.y.raw)
+        }
+        for (placed in state.placedModules) {
+            if (placed.id == itemId) return Offset(placed.position.x.raw, placed.position.y.raw)
+        }
+        for (placed in state.placedTurrets) {
+            if (placed.id == itemId) return Offset(placed.position.x.raw, placed.position.y.raw)
+        }
+        return null
+    }
+
+    private fun isOnRotateHandle(worldPos: Offset, itemPos: Offset, state: ShipBuilderState): Boolean {
+        val selectedId = state.selectedItemId ?: return false
+        val rotation = getItemRotation(selectedId, state) ?: return false
+        val handleX = itemPos.x + cos(rotation) * ROTATE_HANDLE_DISTANCE
+        val handleY = itemPos.y + sin(rotation) * ROTATE_HANDLE_DISTANCE
+        return (worldPos - Offset(handleX, handleY)).getDistance() < ROTATE_HANDLE_HIT_RADIUS
+    }
+
+    private fun getItemRotation(itemId: String, state: ShipBuilderState): Float? {
+        state.placedHulls.find { it.id == itemId }?.let { return it.rotation.normalized }
+        state.placedModules.find { it.id == itemId }?.let { return it.rotation.normalized }
+        state.placedTurrets.find { it.id == itemId }?.let { return it.rotation.normalized }
+        return null
+    }
+
+    // --- Item mutation helpers ---
+
+    private fun moveItem(state: ShipBuilderState, id: String, worldPos: Offset): ShipBuilderState {
+        val newPos = SceneOffset(worldPos.x.sceneUnit, worldPos.y.sceneUnit)
+        return state.copy(
+            placedHulls = state.placedHulls.map { if (it.id == id) it.copy(position = newPos) else it },
+            placedModules = state.placedModules.map { if (it.id == id) it.copy(position = newPos) else it },
+            placedTurrets = state.placedTurrets.map { if (it.id == id) it.copy(position = newPos) else it },
+        )
+    }
+
+    private fun rotateItem(state: ShipBuilderState, id: String, angle: Float): ShipBuilderState {
+        val newRotation = angle.rad
+        return state.copy(
+            placedHulls = state.placedHulls.map { if (it.id == id) it.copy(rotation = newRotation) else it },
+            placedModules = state.placedModules.map { if (it.id == id) it.copy(rotation = newRotation) else it },
+            placedTurrets = state.placedTurrets.map { if (it.id == id) it.copy(rotation = newRotation) else it },
+        )
     }
 
     private fun autoSave() {
