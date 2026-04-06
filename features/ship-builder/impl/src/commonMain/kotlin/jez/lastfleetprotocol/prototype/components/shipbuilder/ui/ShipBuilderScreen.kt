@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,13 +54,38 @@ private fun ShipBuilderScreen(
             modifier = Modifier.width(200.dp).fillMaxHeight(),
         )
 
-        // Center: Design canvas
-        DesignCanvas(
-            state = state,
-            onPan = { onIntent(ShipBuilderIntent.Pan(it)) },
-            onZoom = { onIntent(ShipBuilderIntent.Zoom(it)) },
+        // Center: Design canvas with transform toolbar overlay
+        Box(
             modifier = Modifier.weight(1f).fillMaxHeight(),
-        )
+        ) {
+            DesignCanvas(
+                state = state,
+                onPan = { onIntent(ShipBuilderIntent.Pan(it)) },
+                onZoom = { onIntent(ShipBuilderIntent.Zoom(it)) },
+                onSelectItem = { onIntent(ShipBuilderIntent.SelectItem(it)) },
+                onDeselect = { onIntent(ShipBuilderIntent.Deselect) },
+                onMoveItem = { id, pos -> onIntent(ShipBuilderIntent.MoveItem(id, pos)) },
+                onRotateItem = { id, angle -> onIntent(ShipBuilderIntent.RotateItem(id, angle)) },
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            TransformToolbar(
+                isVisible = state.selectedItemId != null,
+                onMirrorX = {
+                    state.selectedItemId?.let { onIntent(ShipBuilderIntent.MirrorItemX(it)) }
+                },
+                onMirrorY = {
+                    state.selectedItemId?.let { onIntent(ShipBuilderIntent.MirrorItemY(it)) }
+                },
+                onRotateCW = {
+                    state.selectedItemId?.let { onIntent(ShipBuilderIntent.RotateCW(it)) }
+                },
+                onRotateCCW = {
+                    state.selectedItemId?.let { onIntent(ShipBuilderIntent.RotateCCW(it)) }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
 
         // Right panel: Stats (stub for now)
         Column(modifier = Modifier.width(200.dp).fillMaxHeight()) {

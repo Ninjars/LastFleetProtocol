@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import me.tatarka.inject.annotations.Inject
+import kotlin.math.PI
 
 sealed interface ShipBuilderIntent {
     data object Noop : ShipBuilderIntent
@@ -26,6 +27,20 @@ sealed interface ShipBuilderIntent {
     data class AddHullPiece(val catalogPiece: CatalogHullPiece) : ShipBuilderIntent
     data class AddModule(val catalogModule: CatalogSystemModule) : ShipBuilderIntent
     data class AddTurret(val catalogTurret: CatalogTurretModule) : ShipBuilderIntent
+
+    // Selection
+    data class SelectItem(val id: String) : ShipBuilderIntent
+    data object Deselect : ShipBuilderIntent
+
+    // Movement
+    data class MoveItem(val id: String, val position: Offset) : ShipBuilderIntent
+
+    // Transforms
+    data class MirrorItemX(val id: String) : ShipBuilderIntent
+    data class MirrorItemY(val id: String) : ShipBuilderIntent
+    data class RotateCW(val id: String) : ShipBuilderIntent
+    data class RotateCCW(val id: String) : ShipBuilderIntent
+    data class RotateItem(val id: String, val angle: Float) : ShipBuilderIntent
 }
 
 data class ShipBuilderState(
@@ -35,6 +50,7 @@ data class ShipBuilderState(
     val placedHulls: List<PlacedHullPiece> = emptyList(),
     val placedModules: List<PlacedModule> = emptyList(),
     val placedTurrets: List<PlacedTurret> = emptyList(),
+    val selectedItemId: String? = null,
 )
 
 sealed interface ShipBuilderSideEffect {
@@ -98,7 +114,6 @@ class ShipBuilderVM : ViewModelContract<ShipBuilderIntent, ShipBuilderState, Shi
 
             is ShipBuilderIntent.AddModule -> _state.update { current ->
                 val moduleId = generateId("module")
-                // Assign to the first hull if available, or empty string
                 val parentHullId = current.placedHulls.firstOrNull()?.id ?: ""
                 val placed = PlacedModule(
                     id = moduleId,
@@ -126,6 +141,132 @@ class ShipBuilderVM : ViewModelContract<ShipBuilderIntent, ShipBuilderState, Shi
                     placedTurrets = current.placedTurrets + placed,
                 )
             }
+
+            is ShipBuilderIntent.SelectItem -> _state.update { current ->
+                current.copy(selectedItemId = intent.id)
+            }
+
+            is ShipBuilderIntent.Deselect -> _state.update { current ->
+                current.copy(selectedItemId = null)
+            }
+
+            is ShipBuilderIntent.MoveItem -> _state.update { current ->
+                val id = intent.id
+                val newPos = SceneOffset(
+                    intent.position.x.sceneUnit,
+                    intent.position.y.sceneUnit,
+                )
+                current.copy(
+                    placedHulls = current.placedHulls.map {
+                        if (it.id == id) it.copy(position = newPos) else it
+                    },
+                    placedModules = current.placedModules.map {
+                        if (it.id == id) it.copy(position = newPos) else it
+                    },
+                    placedTurrets = current.placedTurrets.map {
+                        if (it.id == id) it.copy(position = newPos) else it
+                    },
+                )
+            }
+
+            is ShipBuilderIntent.RotateItem -> _state.update { current ->
+                val id = intent.id
+                val newRotation = intent.angle.rad
+                current.copy(
+                    placedHulls = current.placedHulls.map {
+                        if (it.id == id) it.copy(rotation = newRotation) else it
+                    },
+                    placedModules = current.placedModules.map {
+                        if (it.id == id) it.copy(rotation = newRotation) else it
+                    },
+                    placedTurrets = current.placedTurrets.map {
+                        if (it.id == id) it.copy(rotation = newRotation) else it
+                    },
+                )
+            }
+
+            is ShipBuilderIntent.RotateCW -> _state.update { current ->
+                rotateItemBy(current, intent.id, (PI / 2).toFloat())
+            }
+
+            is ShipBuilderIntent.RotateCCW -> _state.update { current ->
+                rotateItemBy(current, intent.id, -(PI / 2).toFloat())
+            }
+
+            is ShipBuilderIntent.MirrorItemX -> _state.update { current ->
+                mirrorItem(current, intent.id, mirrorX = true)
+            }
+
+            is ShipBuilderIntent.MirrorItemY -> _state.update { current ->
+                mirrorItem(current, intent.id, mirrorX = false)
+            }
         }
+    }
+
+    private fun rotateItemBy(state: ShipBuilderState, id: String, deltaRadians: Float): ShipBuilderState {
+        return state.copy(
+            placedHulls = state.placedHulls.map {
+                if (it.id == id) it.copy(rotation = (it.rotation.normalized + deltaRadians).rad) else it
+            },
+            placedModules = state.placedModules.map {
+                if (it.id == id) it.copy(rotation = (it.rotation.normalized + deltaRadians).rad) else it
+            },
+            placedTurrets = state.placedTurrets.map {
+                if (it.id == id) it.copy(rotation = (it.rotation.normalized + deltaRadians).rad) else it
+            },
+        )
+    }
+
+    /**
+     * Mirror an item. For hull pieces, negate vertex coordinates in the hull definition.
+     * For modules/turrets, negate the relevant position axis.
+     *
+     * [mirrorX] = true mirrors across the Y axis (negates Y coordinates — "flip horizontal").
+     * [mirrorX] = false mirrors across the X axis (negates X coordinates — "flip vertical").
+     */
+    private fun mirrorItem(state: ShipBuilderState, id: String, mirrorX: Boolean): ShipBuilderState {
+        // Check if this is a hull piece — if so, mirror the hull definition's vertices
+        val hullPlaced = state.placedHulls.find { it.id == id }
+        if (hullPlaced != null) {
+            val hullDefId = hullPlaced.hullPieceId
+            val newHullPieces = state.hullPieces.map { def ->
+                if (def.id == hullDefId) {
+                    def.copy(
+                        vertices = def.vertices.map { v ->
+                            if (mirrorX) {
+                                SceneOffset(v.x, (-v.y.raw).sceneUnit)
+                            } else {
+                                SceneOffset((-v.x.raw).sceneUnit, v.y)
+                            }
+                        }
+                    )
+                } else def
+            }
+            return state.copy(hullPieces = newHullPieces)
+        }
+
+        // For modules/turrets, negate the relevant position component
+        return state.copy(
+            placedModules = state.placedModules.map {
+                if (it.id == id) {
+                    val p = it.position
+                    if (mirrorX) {
+                        it.copy(position = SceneOffset(p.x, (-p.y.raw).sceneUnit))
+                    } else {
+                        it.copy(position = SceneOffset((-p.x.raw).sceneUnit, p.y))
+                    }
+                } else it
+            },
+            placedTurrets = state.placedTurrets.map {
+                if (it.id == id) {
+                    val p = it.position
+                    if (mirrorX) {
+                        it.copy(position = SceneOffset(p.x, (-p.y.raw).sceneUnit))
+                    } else {
+                        it.copy(position = SceneOffset((-p.x.raw).sceneUnit, p.y))
+                    }
+                } else it
+            },
+        )
     }
 }
