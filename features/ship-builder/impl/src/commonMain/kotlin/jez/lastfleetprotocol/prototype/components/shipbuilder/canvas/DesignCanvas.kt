@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -31,8 +32,8 @@ private const val ROTATE_HANDLE_HIT_RADIUS = 12f
 @Composable
 fun DesignCanvas(
     state: ShipBuilderState,
-    onPan: (Offset) -> Unit,
-    onZoom: (Float) -> Unit,
+    canvasState: CanvasState,
+    onCanvasStateChanged: (CanvasState) -> Unit,
     onSelectItem: (String) -> Unit,
     onDeselect: () -> Unit,
     onMoveItem: (String, Offset) -> Unit,
@@ -42,23 +43,30 @@ fun DesignCanvas(
     // Track the rotate handle screen position for hit testing
     var rotateHandleScreenPos by remember { mutableStateOf<Offset?>(null) }
 
+    // Capture canvasState in a ref so the gesture coroutine always reads
+    // the latest value without restarting when it changes.
+    val canvasStateRef = rememberUpdatedState(canvasState)
+
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(state.selectedItemId, state.canvasState) {
+            .pointerInput(state.selectedItemId) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val downPos = down.position
+
+                    // Read current canvas state from the ref (not a key)
+                    val cs = canvasStateRef.value
 
                     // Check if we hit the rotate handle
                     val handlePos = rotateHandleScreenPos
                     val selectedId = state.selectedItemId
                     val hitRotateHandle = selectedId != null && handlePos != null &&
-                            (downPos - handlePos).getDistance() < ROTATE_HANDLE_HIT_RADIUS * state.canvasState.zoom
+                            (downPos - handlePos).getDistance() < ROTATE_HANDLE_HIT_RADIUS * cs.zoom
 
-                    // Check if we hit the selected item
+                    // Check if we hit the selected item (use ref for coordinate conversion)
                     val hitSelectedItem = selectedId != null && !hitRotateHandle &&
-                            hitTestItem(downPos, selectedId, state)
+                            hitTestItem(downPos, selectedId, state, cs)
 
                     var totalDrag = Offset.Zero
                     var isDragging = false
@@ -74,14 +82,20 @@ fun DesignCanvas(
                             isMultiTouch = true
                             val zoom = event.calculateZoom()
                             val pan = event.calculatePan()
-                            if (zoom != 1f) onZoom(zoom)
-                            if (pan != Offset.Zero) onPan(pan)
+                            val current = canvasStateRef.value
+                            val newZoom = (current.zoom * zoom)
+                                .coerceIn(CanvasState.MIN_ZOOM, CanvasState.MAX_ZOOM)
+                            onCanvasStateChanged(
+                                current.copy(
+                                    offset = current.offset + pan,
+                                    zoom = newZoom,
+                                )
+                            )
                             event.changes.forEach { it.consume() }
                             continue
                         }
 
                         if (isMultiTouch) {
-                            // If we were in multi-touch mode, consume remaining events
                             if (event.type == PointerEventType.Release) {
                                 event.changes.forEach { it.consume() }
                                 break
@@ -94,15 +108,13 @@ fun DesignCanvas(
                         if (change.changedToUp()) {
                             change.consume()
                             if (!isDragging) {
-                                // It was a tap — do hit testing for selection
-                                val hitId = hitTestAllItems(downPos, state)
+                                val hitId = hitTestAllItems(downPos, state, canvasStateRef.value)
                                 if (hitId != null) {
                                     onSelectItem(hitId)
                                 } else {
                                     onDeselect()
                                 }
                             } else if (hitSelectedItem) {
-                                // Drag ended on a moved item — snap position
                                 val currentWorldPos = getItemWorldPos(selectedId, state)
                                 if (currentWorldPos != null) {
                                     val snappedPos = snapToGrid(currentWorldPos, GRID_CELL_SIZE)
@@ -123,11 +135,10 @@ fun DesignCanvas(
                             change.consume()
                             when {
                                 hitRotateHandle -> {
-                                    // Rotate mode: compute angle from item center to pointer
                                     val itemWorldPos = getItemWorldPos(selectedId, state)
                                     if (itemWorldPos != null) {
                                         val pointerWorld =
-                                            state.canvasState.screenToWorld(change.position)
+                                            canvasStateRef.value.screenToWorld(change.position)
                                         val angle = atan2(
                                             pointerWorld.y - itemWorldPos.y,
                                             pointerWorld.x - itemWorldPos.x,
@@ -137,8 +148,7 @@ fun DesignCanvas(
                                 }
 
                                 hitSelectedItem -> {
-                                    // Drag mode: move item by delta in world space
-                                    val worldDelta = dragDelta / state.canvasState.zoom
+                                    val worldDelta = dragDelta / canvasStateRef.value.zoom
                                     val currentWorldPos = getItemWorldPos(selectedId, state)
                                     if (currentWorldPos != null) {
                                         onMoveItem(selectedId, currentWorldPos + worldDelta)
@@ -146,8 +156,10 @@ fun DesignCanvas(
                                 }
 
                                 else -> {
-                                    // Pan mode
-                                    onPan(dragDelta)
+                                    val current = canvasStateRef.value
+                                    onCanvasStateChanged(
+                                        current.copy(offset = current.offset + dragDelta)
+                                    )
                                 }
                             }
                         }
@@ -155,8 +167,8 @@ fun DesignCanvas(
                 }
             }
     ) {
-        drawGrid(state.canvasState)
-        rotateHandleScreenPos = drawPlacedItems(state)
+        drawGrid(canvasState)
+        rotateHandleScreenPos = drawPlacedItems(state, canvasState)
     }
 }
 
@@ -165,7 +177,7 @@ private const val GRID_CELL_SIZE = 10f
 /**
  * Draw all placed items, returning the screen position of the rotate handle if applicable.
  */
-private fun DrawScope.drawPlacedItems(state: ShipBuilderState): Offset? {
+private fun DrawScope.drawPlacedItems(state: ShipBuilderState, canvasState: CanvasState): Offset? {
     val selectedId = state.selectedItemId
     var rotateHandlePos: Offset? = null
 
@@ -177,14 +189,14 @@ private fun DrawScope.drawPlacedItems(state: ShipBuilderState): Offset? {
             piece = placed,
             vertices = hullDef.vertices,
             isSelected = isSelected,
-            canvasState = state.canvasState,
+            canvasState = canvasState,
         )
         if (isSelected) {
             val worldPos = Offset(placed.position.x.raw, placed.position.y.raw)
             rotateHandlePos = drawRotateHandle(
                 itemWorldPos = worldPos,
                 itemRotation = placed.rotation.normalized,
-                canvasState = state.canvasState,
+                canvasState = canvasState,
             )
         }
     }
@@ -196,14 +208,14 @@ private fun DrawScope.drawPlacedItems(state: ShipBuilderState): Offset? {
             module = placed,
             isSelected = isSelected,
             isInvalid = placed.id in state.invalidPlacements,
-            canvasState = state.canvasState,
+            canvasState = canvasState,
         )
         if (isSelected) {
             val worldPos = Offset(placed.position.x.raw, placed.position.y.raw)
             rotateHandlePos = drawRotateHandle(
                 itemWorldPos = worldPos,
                 itemRotation = placed.rotation.normalized,
-                canvasState = state.canvasState,
+                canvasState = canvasState,
             )
         }
     }
@@ -215,14 +227,14 @@ private fun DrawScope.drawPlacedItems(state: ShipBuilderState): Offset? {
             turret = placed,
             isSelected = isSelected,
             isInvalid = placed.id in state.invalidPlacements,
-            canvasState = state.canvasState,
+            canvasState = canvasState,
         )
         if (isSelected) {
             val worldPos = Offset(placed.position.x.raw, placed.position.y.raw)
             rotateHandlePos = drawRotateHandle(
                 itemWorldPos = worldPos,
                 itemRotation = placed.rotation.normalized,
-                canvasState = state.canvasState,
+                canvasState = canvasState,
             )
         }
     }
@@ -233,9 +245,8 @@ private fun DrawScope.drawPlacedItems(state: ShipBuilderState): Offset? {
 /**
  * Hit test a specific item by ID. Returns true if the screen position hits it.
  */
-private fun hitTestItem(screenPos: Offset, itemId: String, state: ShipBuilderState): Boolean {
-    val canvas = state.canvasState
-    val worldPos = canvas.screenToWorld(screenPos)
+private fun hitTestItem(screenPos: Offset, itemId: String, state: ShipBuilderState, canvasState: CanvasState): Boolean {
+    val worldPos = canvasState.screenToWorld(screenPos)
 
     // Check hull pieces
     for (placed in state.placedHulls) {
@@ -265,9 +276,8 @@ private fun hitTestItem(screenPos: Offset, itemId: String, state: ShipBuilderSta
  * Hit test all items at a screen position, iterating in reverse order (topmost first).
  * Returns the ID of the hit item, or null.
  */
-private fun hitTestAllItems(screenPos: Offset, state: ShipBuilderState): String? {
-    val canvas = state.canvasState
-    val worldPos = canvas.screenToWorld(screenPos)
+private fun hitTestAllItems(screenPos: Offset, state: ShipBuilderState, canvasState: CanvasState): String? {
+    val worldPos = canvasState.screenToWorld(screenPos)
 
     // Check turrets last drawn = topmost, so check in reverse
     for (placed in state.placedTurrets.asReversed()) {

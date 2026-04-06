@@ -12,7 +12,6 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurr
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesign
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesignRepository
-import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasState
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogHullPiece
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogSystemModule
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogTurretModule
@@ -31,8 +30,6 @@ import kotlin.math.sin
 
 sealed interface ShipBuilderIntent {
     data object Noop : ShipBuilderIntent
-    data class Pan(val offset: Offset) : ShipBuilderIntent
-    data class Zoom(val factor: Float) : ShipBuilderIntent
     data class AddHullPiece(val catalogPiece: CatalogHullPiece) : ShipBuilderIntent
     data class AddModule(val catalogModule: CatalogSystemModule) : ShipBuilderIntent
     data class AddTurret(val catalogTurret: CatalogTurretModule) : ShipBuilderIntent
@@ -60,7 +57,6 @@ sealed interface ShipBuilderIntent {
 
 data class ShipBuilderState(
     val designName: String = "New Ship",
-    val canvasState: CanvasState = CanvasState(),
     val hullPieces: List<HullPieceDefinition> = emptyList(),
     val placedHulls: List<PlacedHullPiece> = emptyList(),
     val placedModules: List<PlacedModule> = emptyList(),
@@ -102,22 +98,6 @@ class ShipBuilderVM(
     override fun accept(intent: ShipBuilderIntent) {
         when (intent) {
             is ShipBuilderIntent.Noop -> Unit
-
-            is ShipBuilderIntent.Pan -> _state.update { current ->
-                current.copy(
-                    canvasState = current.canvasState.copy(
-                        offset = current.canvasState.offset + intent.offset,
-                    )
-                )
-            }
-
-            is ShipBuilderIntent.Zoom -> _state.update { current ->
-                val newZoom = (current.canvasState.zoom * intent.factor)
-                    .coerceIn(CanvasState.MIN_ZOOM, CanvasState.MAX_ZOOM)
-                current.copy(
-                    canvasState = current.canvasState.copy(zoom = newZoom)
-                )
-            }
 
             is ShipBuilderIntent.AddHullPiece -> {
                 _state.update { current ->
