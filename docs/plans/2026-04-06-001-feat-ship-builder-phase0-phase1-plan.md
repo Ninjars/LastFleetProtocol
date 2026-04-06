@@ -1,7 +1,7 @@
 ---
 title: "feat: Ship builder — Phase 0 (data refactor) + Phase 1 (canvas, module placement, save/load)"
 type: feat
-status: active
+status: completed
 date: 2026-04-06
 origin: docs/brainstorms/2026-04-06-ship-builder-requirements.md
 ---
