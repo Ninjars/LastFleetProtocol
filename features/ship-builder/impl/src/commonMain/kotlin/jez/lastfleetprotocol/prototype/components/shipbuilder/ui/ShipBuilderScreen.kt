@@ -24,6 +24,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.DesignCanvas
 import jez.lastfleetprotocol.prototype.ui.common.HandleSideEffect
+import jez.lastfleetprotocol.prototype.ui.resources.LFRes
+import org.jetbrains.compose.resources.stringResource
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
 
@@ -123,10 +125,10 @@ private fun LoadDesignDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Load Design") },
+        title = { Text(stringResource(LFRes.String.builder_load_design)) },
         text = {
             if (designs.isEmpty()) {
-                Text("No saved designs found.")
+                Text(stringResource(LFRes.String.builder_no_saved_designs))
             } else {
                 LazyColumn {
                     items(designs) { name ->
@@ -146,7 +148,7 @@ private fun LoadDesignDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(LFRes.String.button_cancel))
             }
         },
     )

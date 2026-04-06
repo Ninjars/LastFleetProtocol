@@ -37,6 +37,7 @@ import jez.lastfleetprotocol.prototype.ui.common.HandleSideEffect
 import jez.lastfleetprotocol.prototype.ui.common.composables.LFIconButton
 import jez.lastfleetprotocol.prototype.ui.resources.LFRes
 import me.tatarka.inject.annotations.Assisted
+import org.jetbrains.compose.resources.stringResource
 import me.tatarka.inject.annotations.Inject
 import java.util.function.Consumer
 
@@ -112,27 +113,27 @@ private fun GameScreen(
         // Pause menu overlay
         if (state.isPaused) {
             OverlayMenu(
-                title = "Paused",
+                title = stringResource(LFRes.String.game_paused),
             ) {
                 Button(
                     onClick = { eventHandler.accept(GameIntent.ResumeClicked) },
                     modifier = Modifier.fillMaxWidth(0.5f),
                 ) {
-                    Text(text = "Resume")
+                    Text(text = stringResource(LFRes.String.button_resume))
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = { eventHandler.accept(GameIntent.RestartClicked) },
                     modifier = Modifier.fillMaxWidth(0.5f),
                 ) {
-                    Text(text = "Restart")
+                    Text(text = stringResource(LFRes.String.button_restart))
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = { eventHandler.accept(GameIntent.ExitClicked) },
                     modifier = Modifier.fillMaxWidth(0.5f),
                 ) {
-                    Text(text = "Exit")
+                    Text(text = stringResource(LFRes.String.button_exit))
                 }
             }
         }
@@ -141,14 +142,14 @@ private fun GameScreen(
         if (state.gameResult != null) {
             OverlayMenu(
                 title = when (state.gameResult) {
-                    GameResult.VICTORY -> "Victory!"
-                    GameResult.DEFEAT -> "Defeat"
+                    GameResult.VICTORY -> stringResource(LFRes.String.game_victory)
+                    GameResult.DEFEAT -> stringResource(LFRes.String.game_defeat)
                 },
             ) {
                 Button(
                     onClick = { eventHandler.accept(GameIntent.RestartClicked) },
                 ) {
-                    Text(text = "Restart")
+                    Text(text = stringResource(LFRes.String.button_restart))
                 }
             }
         }

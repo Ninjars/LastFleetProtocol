@@ -32,6 +32,8 @@ import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogHullPi
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogSystemModule
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogTurretModule
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.PartsCatalog
+import jez.lastfleetprotocol.prototype.ui.resources.LFRes
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun PartsPanel(
@@ -45,7 +47,7 @@ fun PartsPanel(
             .verticalScroll(rememberScrollState())
             .padding(8.dp)
     ) {
-        CollapsibleSection(title = "Hull Pieces") {
+        CollapsibleSection(title = stringResource(LFRes.String.builder_hull_pieces)) {
             for (piece in PartsCatalog.hullPieces) {
                 HullPieceItem(
                     piece = piece,
@@ -56,7 +58,7 @@ fun PartsPanel(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-        CollapsibleSection(title = "Systems") {
+        CollapsibleSection(title = stringResource(LFRes.String.builder_systems)) {
             for (module in PartsCatalog.systemModules) {
                 SystemModuleItem(
                     module = module,
@@ -67,7 +69,7 @@ fun PartsPanel(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-        CollapsibleSection(title = "Turrets") {
+        CollapsibleSection(title = stringResource(LFRes.String.builder_turrets)) {
             for (turret in PartsCatalog.turretModules) {
                 TurretModuleItem(
                     turret = turret,

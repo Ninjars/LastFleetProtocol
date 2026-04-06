@@ -8,4 +8,27 @@
     <string name="desc_toggle_sound_effects">Toggle sound effects</string>
 
     <string name="title_splash">Last Fleet Protocol</string>
+
+    <string name="game_paused">Paused</string>
+    <string name="game_victory">Victory!</string>
+    <string name="game_defeat">Defeat</string>
+    <string name="button_resume">Resume</string>
+    <string name="button_restart">Restart</string>
+    <string name="button_exit">Exit</string>
+
+    <string name="builder_stats">Stats</string>
+    <string name="builder_design_name">Design Name</string>
+    <string name="builder_thrust">Thrust</string>
+    <string name="builder_acceleration">Acceleration</string>
+    <string name="builder_mass">Mass</string>
+    <string name="builder_forward">Forward</string>
+    <string name="builder_lateral">Lateral</string>
+    <string name="builder_reverse">Reverse</string>
+    <string name="builder_angular">Angular</string>
+    <string name="builder_load_design">Load Design</string>
+    <string name="builder_no_saved_designs">No saved designs found.</string>
+    <string name="button_cancel">Cancel</string>
+    <string name="builder_hull_pieces">Hull Pieces</string>
+    <string name="builder_systems">Systems</string>
+    <string name="builder_turrets">Turrets</string>
 </resources>

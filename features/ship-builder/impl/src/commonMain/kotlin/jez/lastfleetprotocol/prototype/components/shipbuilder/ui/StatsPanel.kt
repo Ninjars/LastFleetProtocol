@@ -20,6 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.ShipStats
+import jez.lastfleetprotocol.prototype.ui.resources.LFRes
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun StatsPanel(
@@ -33,7 +35,7 @@ fun StatsPanel(
 
     Column(modifier = modifier.padding(8.dp)) {
         Text(
-            text = "${if (expanded) "v" else ">"} Stats",
+            text = "${if (expanded) "v" else ">"} ${stringResource(LFRes.String.builder_stats)}",
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier
                 .fillMaxWidth()
@@ -46,7 +48,7 @@ fun StatsPanel(
                 OutlinedTextField(
                     value = designName,
                     onValueChange = onNameChanged,
-                    label = { Text("Design Name") },
+                    label = { Text(stringResource(LFRes.String.builder_design_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -55,29 +57,29 @@ fun StatsPanel(
                 HorizontalDivider()
                 Spacer(modifier = Modifier.height(8.dp))
 
-                StatRow("Mass", "%.1f".format(stats.totalMass))
+                StatRow(stringResource(LFRes.String.builder_mass), "%.1f".format(stats.totalMass))
 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Thrust",
+                    text = stringResource(LFRes.String.builder_thrust),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                StatRow("Forward", "%.1f".format(stats.forwardThrust))
-                StatRow("Lateral", "%.1f".format(stats.lateralThrust))
-                StatRow("Reverse", "%.1f".format(stats.reverseThrust))
-                StatRow("Angular", "%.1f".format(stats.angularThrust))
+                StatRow(stringResource(LFRes.String.builder_forward), "%.1f".format(stats.forwardThrust))
+                StatRow(stringResource(LFRes.String.builder_lateral), "%.1f".format(stats.lateralThrust))
+                StatRow(stringResource(LFRes.String.builder_reverse), "%.1f".format(stats.reverseThrust))
+                StatRow(stringResource(LFRes.String.builder_angular), "%.1f".format(stats.angularThrust))
 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Acceleration",
+                    text = stringResource(LFRes.String.builder_acceleration),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                StatRow("Forward", "%.1f".format(stats.forwardAccel))
-                StatRow("Lateral", "%.1f".format(stats.lateralAccel))
-                StatRow("Reverse", "%.1f".format(stats.reverseAccel))
-                StatRow("Angular", "%.1f".format(stats.angularAccel))
+                StatRow(stringResource(LFRes.String.builder_forward), "%.1f".format(stats.forwardAccel))
+                StatRow(stringResource(LFRes.String.builder_lateral), "%.1f".format(stats.lateralAccel))
+                StatRow(stringResource(LFRes.String.builder_reverse), "%.1f".format(stats.reverseAccel))
+                StatRow(stringResource(LFRes.String.builder_angular), "%.1f".format(stats.angularAccel))
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -85,7 +87,7 @@ fun StatsPanel(
                     onClick = onLoadClicked,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Load Design")
+                    Text(stringResource(LFRes.String.builder_load_design))
                 }
             }
         }
