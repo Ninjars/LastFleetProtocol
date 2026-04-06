@@ -19,6 +19,7 @@ sealed interface LandingIntent {
     data class ToggleSoundEffectsClicked(val setEnabled: Boolean) : LandingIntent
     data object ShowSettingsClicked : LandingIntent
     data object PlayClicked : LandingIntent
+    data object ShipBuilderClicked : LandingIntent
 }
 
 data class LandingState(
@@ -31,6 +32,7 @@ data class LandingState(
 sealed interface LandingSideEffect {
     data object StartNewGame : LandingSideEffect
     data object GoToSettings : LandingSideEffect
+    data object GoToShipBuilder : LandingSideEffect
 }
 
 private data class InternalState(
@@ -84,6 +86,7 @@ class LandingVM(
             when (intent) {
                 is LandingIntent.PlayClicked -> handlePlayClicked(internalState.value.saveGame)
                 is LandingIntent.ShowSettingsClicked -> sendSideEffect(LandingSideEffect.GoToSettings)
+                is LandingIntent.ShipBuilderClicked -> sendSideEffect(LandingSideEffect.GoToShipBuilder)
                 is LandingIntent.ToggleMusicClicked -> setMusicEnabled(intent.setEnabled)
                 is LandingIntent.ToggleSoundEffectsClicked -> setSoundEffectsEnabled(intent.setEnabled)
             }

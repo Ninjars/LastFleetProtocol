@@ -5,6 +5,7 @@ import lastfleetprotocol.components.design.generated.resources.bullet_laser_gree
 import lastfleetprotocol.components.design.generated.resources.button_continue
 import lastfleetprotocol.components.design.generated.resources.button_new_game
 import lastfleetprotocol.components.design.generated.resources.button_settings
+import lastfleetprotocol.components.design.generated.resources.button_ship_builder
 import lastfleetprotocol.components.design.generated.resources.desc_toggle_music
 import lastfleetprotocol.components.design.generated.resources.desc_toggle_sound_effects
 import lastfleetprotocol.components.design.generated.resources.ic_back
@@ -58,6 +59,7 @@ object LFRes {
         val button_new_game: StringResource = Res.string.button_new_game
         val button_continue: StringResource = Res.string.button_continue
         val button_settings: StringResource = Res.string.button_settings
+        val button_ship_builder: StringResource = Res.string.button_ship_builder
         val desc_toggle_music: StringResource = Res.string.desc_toggle_music
         val desc_toggle_sound_effects: StringResource = Res.string.desc_toggle_sound_effects
     }

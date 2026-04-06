@@ -47,6 +47,7 @@ fun LandingScreen(
         when (it) {
             is LandingSideEffect.GoToSettings -> navController.navigate(LFNavDestination.SETTINGS)
             is LandingSideEffect.StartNewGame -> navController.navigate(LFNavDestination.GAME)
+            is LandingSideEffect.GoToShipBuilder -> navController.navigate(LFNavDestination.SHIP_BUILDER)
         }
     }
 
@@ -111,6 +112,14 @@ private fun LandingScreenContent(
             enabled = state.hasSaveGame != null,
         ) {
             eventHandler.accept(LandingIntent.PlayClicked)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        LFTextButton(
+            textRes = LFRes.String.button_ship_builder,
+        ) {
+            eventHandler.accept(LandingIntent.ShipBuilderClicked)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
