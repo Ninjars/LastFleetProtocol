@@ -10,13 +10,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.ShipBuilderState
@@ -30,11 +31,10 @@ private const val HIT_RADIUS_TURRET = 6f
 private const val ROTATE_HANDLE_HIT_RADIUS = 12f
 private const val SCROLL_ZOOM_FACTOR = 0.05f
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun DesignCanvas(
     state: ShipBuilderState,
-    canvasState: CanvasState,
-    onCanvasStateChanged: (CanvasState) -> Unit,
     onSelectItem: (String) -> Unit,
     onDeselect: () -> Unit,
     onMoveItem: (String, Offset) -> Unit,
@@ -42,29 +42,19 @@ fun DesignCanvas(
     modifier: Modifier = Modifier,
 ) {
     var rotateHandleScreenPos by remember { mutableStateOf<Offset?>(null) }
-    val canvasStateRef = rememberUpdatedState(canvasState)
+    var canvasState by remember { mutableStateOf(CanvasState()) }
 
     Canvas(
         modifier = modifier
             .fillMaxSize()
             // Scroll-wheel zoom (Desktop). Uses a separate pointerInput scope
             // so scroll events don't interfere with the touch/drag gesture scope.
-            // Follows Kubriko's PlatformExtensions pattern.
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        if (event.type == PointerEventType.Scroll) {
-                            val change = event.changes.firstOrNull() ?: continue
-                            val current = canvasStateRef.value
-                            val factor = 1f - change.scrollDelta.y * SCROLL_ZOOM_FACTOR
-                            val newZoom = (current.zoom * factor)
-                                .coerceIn(CanvasState.MIN_ZOOM, CanvasState.MAX_ZOOM)
-                            onCanvasStateChanged(current.copy(zoom = newZoom))
-                            change.consume()
-                        }
-                    }
-                }
+            .onPointerEvent(PointerEventType.Scroll) { event ->
+                val change = event.changes.first()
+                val newZoom = (canvasState.zoom * (1f - change.scrollDelta.y * SCROLL_ZOOM_FACTOR))
+                    .coerceIn(CanvasState.MIN_ZOOM, CanvasState.MAX_ZOOM)
+                canvasState = canvasState.copy(zoom = newZoom)
+                change.consume()
             }
             // Touch/mouse gestures: tap, drag-item, pan, pinch-zoom.
             .pointerInput(state.selectedItemId) {
@@ -72,13 +62,12 @@ fun DesignCanvas(
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val downPos = down.position
 
-                    val cs = canvasStateRef.value
                     val handlePos = rotateHandleScreenPos
                     val selectedId = state.selectedItemId
                     val hitRotateHandle = selectedId != null && handlePos != null &&
-                        (downPos - handlePos).getDistance() < ROTATE_HANDLE_HIT_RADIUS * cs.zoom
+                            (downPos - handlePos).getDistance() < ROTATE_HANDLE_HIT_RADIUS * canvasState.zoom
                     val hitSelectedItem = selectedId != null && !hitRotateHandle &&
-                        hitTestItem(downPos, selectedId, state, cs)
+                            hitTestItem(downPos, selectedId, state, canvasState)
 
                     var totalDrag = Offset.Zero
                     var isDragging = false
@@ -93,14 +82,11 @@ fun DesignCanvas(
                             isMultiTouch = true
                             val zoom = event.calculateZoom()
                             val pan = event.calculatePan()
-                            val current = canvasStateRef.value
-                            val newZoom = (current.zoom * zoom)
+                            val newZoom = (canvasState.zoom * zoom)
                                 .coerceIn(CanvasState.MIN_ZOOM, CanvasState.MAX_ZOOM)
-                            onCanvasStateChanged(
-                                current.copy(
-                                    offset = current.offset + pan,
-                                    zoom = newZoom,
-                                )
+                            canvasState = canvasState.copy(
+                                offset = canvasState.offset + pan,
+                                zoom = newZoom,
                             )
                             event.changes.forEach { it.consume() }
                             continue
@@ -120,8 +106,7 @@ fun DesignCanvas(
                             change.consume()
                             if (!isDragging) {
                                 // Tap: hit-test for selection
-                                val hitId =
-                                    hitTestAllItems(downPos, state, canvasStateRef.value)
+                                val hitId = hitTestAllItems(downPos, state, canvasState)
                                 if (hitId != null) onSelectItem(hitId) else onDeselect()
                             } else if (hitSelectedItem) {
                                 // Item drag ended: snap to grid
@@ -147,7 +132,7 @@ fun DesignCanvas(
                                     val itemWorldPos = getItemWorldPos(selectedId, state)
                                     if (itemWorldPos != null) {
                                         val pointerWorld =
-                                            canvasStateRef.value.screenToWorld(change.position)
+                                            canvasState.screenToWorld(change.position)
                                         onRotateItem(
                                             selectedId, atan2(
                                                 pointerWorld.y - itemWorldPos.y,
@@ -158,7 +143,7 @@ fun DesignCanvas(
                                 }
 
                                 hitSelectedItem -> {
-                                    val worldDelta = dragDelta / canvasStateRef.value.zoom
+                                    val worldDelta = dragDelta / canvasState.zoom
                                     val currentWorldPos = getItemWorldPos(selectedId, state)
                                     if (currentWorldPos != null) {
                                         onMoveItem(selectedId, currentWorldPos + worldDelta)
@@ -167,10 +152,8 @@ fun DesignCanvas(
 
                                 else -> {
                                     // Pan
-                                    val current = canvasStateRef.value
-                                    onCanvasStateChanged(
-                                        current.copy(offset = current.offset + dragDelta)
-                                    )
+                                    canvasState =
+                                        canvasState.copy(offset = canvasState.offset + dragDelta)
                                 }
                             }
                         }
@@ -327,7 +310,7 @@ private fun pointInHullPiece(
         val yj = vertices[j].y.raw
 
         val intersect = ((yi > testY) != (yj > testY)) &&
-            (testX < (xj - xi) * (testY - yi) / (yj - yi) + xi)
+                (testX < (xj - xi) * (testY - yi) / (yj - yi) + xi)
 
         if (intersect) inside = !inside
         j = i

@@ -16,23 +16,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasState
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.DesignCanvas
 import jez.lastfleetprotocol.prototype.ui.common.HandleSideEffect
 import jez.lastfleetprotocol.prototype.ui.resources.LFRes
-import org.jetbrains.compose.resources.stringResource
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
+import org.jetbrains.compose.resources.stringResource
 
 typealias ShipBuilderScreen = @Composable (NavController) -> Unit
 
@@ -60,9 +55,6 @@ private fun ShipBuilderScreen(
     state: ShipBuilderState,
     onIntent: (ShipBuilderIntent) -> Unit,
 ) {
-    // Canvas pan/zoom is view-only state — kept out of the VM to avoid
-    // recomposition restarting the gesture coroutine mid-drag/pinch.
-    var canvasState by remember { mutableStateOf(CanvasState()) }
 
     Row(modifier = Modifier.fillMaxSize()) {
         // Left panel: Parts
@@ -79,8 +71,6 @@ private fun ShipBuilderScreen(
         ) {
             DesignCanvas(
                 state = state,
-                canvasState = canvasState,
-                onCanvasStateChanged = { canvasState = it },
                 onSelectItem = { onIntent(ShipBuilderIntent.SelectItem(it)) },
                 onDeselect = { onIntent(ShipBuilderIntent.Deselect) },
                 onMoveItem = { id, pos -> onIntent(ShipBuilderIntent.MoveItem(id, pos)) },
