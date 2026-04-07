@@ -3,6 +3,7 @@ package jez.lastfleetprotocol.prototype.components.shipbuilder.canvas
 import androidx.compose.ui.geometry.Offset
 
 data class CanvasState(
+    val viewportCentre: Offset = Offset.Zero,
     val offset: Offset = Offset.Zero,
     val zoom: Float = 1f,
 ) {
@@ -17,11 +18,11 @@ data class CanvasState(
      * Convert a screen-space point to world-space, accounting for pan offset and zoom.
      */
     fun screenToWorld(screenPoint: Offset): Offset =
-        (screenPoint - offset) / zoom
+        (screenPoint - offset - viewportCentre) / zoom
 
     /**
      * Convert a world-space point to screen-space, accounting for pan offset and zoom.
      */
     fun worldToScreen(worldPoint: Offset): Offset =
-        worldPoint * zoom + offset
+        worldPoint * zoom + offset + viewportCentre
 }
