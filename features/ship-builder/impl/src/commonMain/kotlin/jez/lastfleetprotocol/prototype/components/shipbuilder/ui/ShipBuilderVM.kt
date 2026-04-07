@@ -5,11 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
-import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.HullPieceDefinition
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurret
-import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesign
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesignRepository
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasInputHandler
@@ -87,70 +88,12 @@ class ShipBuilderVM(
         when (intent) {
             is ShipBuilderIntent.Noop -> Unit
 
-            is ShipBuilderIntent.AddHullPiece -> {
-                _state.update { current ->
-                    val piece = intent.catalogPiece
-                    val defId = generateId("hulldef")
-                    val placedId = generateId("hull")
-                    val hullDef = HullPieceDefinition(
-                        id = defId,
-                        vertices = piece.vertices,
-                        armour = SerializableArmourStats(
-                            hardness = piece.armour.hardness,
-                            density = piece.armour.density,
-                        ),
-                        sizeCategory = piece.sizeCategory,
-                        mass = piece.mass,
-                    )
-                    val placed = PlacedHullPiece(
-                        id = placedId,
-                        hullPieceId = defId,
-                        position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
-                        rotation = 0f.rad,
-                    )
-                    val newState = current.copy(
-                        hullPieces = current.hullPieces + hullDef,
-                        placedHulls = current.placedHulls + placed,
-                    )
-                    recalculate(newState)
-                }
-                autoSave()
-            }
-
-            is ShipBuilderIntent.AddModule -> {
-                _state.update { current ->
-                    val moduleId = generateId("module")
-                    val parentHullId = current.placedHulls.firstOrNull()?.id ?: ""
-                    val placed = PlacedModule(
-                        id = moduleId,
-                        systemType = intent.catalogModule.type.name,
-                        position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
-                        rotation = 0f.rad,
-                        parentHullId = parentHullId,
-                    )
-                    val newState = current.copy(
-                        placedModules = current.placedModules + placed,
-                    )
-                    recalculate(newState)
-                }
-                autoSave()
-            }
-
-            is ShipBuilderIntent.AddTurret -> {
-                _state.update { current ->
-                    val turretId = generateId("turret")
-                    val parentHullId = current.placedHulls.firstOrNull()?.id ?: ""
-                    val placed = PlacedTurret(
-                        id = turretId,
-                        turretConfigId = intent.catalogTurret.configId,
-                        position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
-                        rotation = 0f.rad,
-                        parentHullId = parentHullId,
-                    )
-                    val newState = current.copy(
-                        placedTurrets = current.placedTurrets + placed,
-                    )
-                    recalculate(newState)
+            is ShipBuilderIntent.AddItem -> {
+                val itemDef = intent.itemDefinition
+                when (itemDef.itemType) {
+                    ItemType.HULL -> addHullItem(itemDef)
+                    ItemType.MODULE -> addModuleItem(itemDef)
+                    ItemType.TURRET -> addTurretItem(itemDef)
                 }
                 autoSave()
             }
@@ -300,7 +243,7 @@ class ShipBuilderVM(
                         _state.update { current ->
                             val newState = current.copy(
                                 designName = loaded.name,
-                                hullPieces = loaded.hullPieces,
+                                itemDefinitions = loaded.itemDefinitions,
                                 placedHulls = loaded.placedHulls,
                                 placedModules = loaded.placedModules,
                                 placedTurrets = loaded.placedTurrets,
@@ -321,6 +264,71 @@ class ShipBuilderVM(
                     current.copy(showLoadDialog = false, savedDesigns = emptyList())
                 }
             }
+        }
+    }
+
+    private fun addHullItem(itemDef: ItemDefinition) {
+        _state.update { current ->
+            val defId = generateId("itemdef")
+            val placedId = generateId("hull")
+            val attrs = itemDef.attributes as ItemAttributes.HullAttributes
+            val newDef = itemDef.copy(id = defId)
+            val placed = PlacedHullPiece(
+                id = placedId,
+                itemDefinitionId = defId,
+                position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
+                rotation = 0f.rad,
+            )
+            val newState = current.copy(
+                itemDefinitions = current.itemDefinitions + newDef,
+                placedHulls = current.placedHulls + placed,
+            )
+            recalculate(newState)
+        }
+    }
+
+    private fun addModuleItem(itemDef: ItemDefinition) {
+        _state.update { current ->
+            val defId = generateId("itemdef")
+            val moduleId = generateId("module")
+            val parentHullId = current.placedHulls.firstOrNull()?.id ?: ""
+            val attrs = itemDef.attributes as ItemAttributes.ModuleAttributes
+            val newDef = itemDef.copy(id = defId)
+            val placed = PlacedModule(
+                id = moduleId,
+                itemDefinitionId = defId,
+                systemType = attrs.systemType,
+                position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
+                rotation = 0f.rad,
+                parentHullId = parentHullId,
+            )
+            val newState = current.copy(
+                itemDefinitions = current.itemDefinitions + newDef,
+                placedModules = current.placedModules + placed,
+            )
+            recalculate(newState)
+        }
+    }
+
+    private fun addTurretItem(itemDef: ItemDefinition) {
+        _state.update { current ->
+            val defId = generateId("itemdef")
+            val turretId = generateId("turret")
+            val parentHullId = current.placedHulls.firstOrNull()?.id ?: ""
+            val newDef = itemDef.copy(id = defId)
+            val placed = PlacedTurret(
+                id = turretId,
+                itemDefinitionId = defId,
+                turretConfigId = itemDef.id,
+                position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
+                rotation = 0f.rad,
+                parentHullId = parentHullId,
+            )
+            val newState = current.copy(
+                itemDefinitions = current.itemDefinitions + newDef,
+                placedTurrets = current.placedTurrets + placed,
+            )
+            recalculate(newState)
         }
     }
 
@@ -372,7 +380,7 @@ class ShipBuilderVM(
      */
     private fun isInsideAnyHull(worldPoint: Offset, state: ShipBuilderState): Boolean {
         for (placed in state.placedHulls) {
-            val hullDef = state.hullPieces.find { it.id == placed.hullPieceId } ?: continue
+            val hullDef = state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
             if (hullDef.vertices.size < 3) continue
 
             val hullPos = Offset(placed.position.x.raw, placed.position.y.raw)
@@ -409,7 +417,7 @@ class ShipBuilderVM(
             if ((worldPos - itemPos).getDistance() < HIT_RADIUS_MODULE) return placed.id
         }
         for (placed in state.placedHulls.asReversed()) {
-            val hullDef = state.hullPieces.find { it.id == placed.hullPieceId } ?: continue
+            val hullDef = state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
             if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return placed.id
         }
         return null
@@ -418,7 +426,7 @@ class ShipBuilderVM(
     private fun hitTestItem(worldPos: Offset, itemId: String, state: ShipBuilderState): Boolean {
         for (placed in state.placedHulls) {
             if (placed.id != itemId) continue
-            val hullDef = state.hullPieces.find { it.id == placed.hullPieceId } ?: continue
+            val hullDef = state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
             if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return true
         }
         for (placed in state.placedModules) {
@@ -532,7 +540,7 @@ class ShipBuilderVM(
     }
 
     /**
-     * Mirror an item. For hull pieces, negate vertex coordinates in the hull definition.
+     * Mirror an item. For hull pieces, negate vertex coordinates in the item definition.
      * For modules/turrets, negate the relevant position axis.
      *
      * [mirrorX] = true mirrors across the Y axis (negates Y coordinates -- "flip horizontal").
@@ -543,12 +551,12 @@ class ShipBuilderVM(
         id: String,
         mirrorX: Boolean
     ): ShipBuilderState {
-        // Check if this is a hull piece -- if so, mirror the hull definition's vertices
+        // Check if this is a hull piece -- if so, mirror the item definition's vertices
         val hullPlaced = state.placedHulls.find { it.id == id }
         if (hullPlaced != null) {
-            val hullDefId = hullPlaced.hullPieceId
-            val newHullPieces = state.hullPieces.map { def ->
-                if (def.id == hullDefId) {
+            val defId = hullPlaced.itemDefinitionId
+            val newItemDefs = state.itemDefinitions.map { def ->
+                if (def.id == defId) {
                     def.copy(
                         vertices = def.vertices.map { v ->
                             if (mirrorX) {
@@ -560,7 +568,7 @@ class ShipBuilderVM(
                     )
                 } else def
             }
-            return state.copy(hullPieces = newHullPieces)
+            return state.copy(itemDefinitions = newItemDefs)
         }
 
         // For modules/turrets, negate the relevant position component
@@ -594,7 +602,7 @@ class ShipBuilderVM(
  */
 fun ShipBuilderState.toShipDesign(): ShipDesign = ShipDesign(
     name = designName,
-    hullPieces = hullPieces,
+    itemDefinitions = itemDefinitions,
     placedHulls = placedHulls,
     placedModules = placedModules,
     placedTurrets = placedTurrets,

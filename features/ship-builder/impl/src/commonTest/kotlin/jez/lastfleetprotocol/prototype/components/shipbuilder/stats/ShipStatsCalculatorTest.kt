@@ -3,11 +3,13 @@ package jez.lastfleetprotocol.prototype.components.shipbuilder.stats
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
-import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.HullPieceDefinition
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
-import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.ShipBuilderState
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -27,26 +29,30 @@ class ShipStatsCalculatorTest {
 
     @Test
     fun singleHullPiece_includesHullMassAndArmourContribution() {
-        val hullDef = HullPieceDefinition(
+        val hullDef = ItemDefinition(
             id = "hull1",
+            name = "Test Hull",
             vertices = listOf(
                 SceneOffset(10f.sceneUnit, 0f.sceneUnit),
                 SceneOffset((-5f).sceneUnit, 5f.sceneUnit),
                 SceneOffset((-5f).sceneUnit, (-5f).sceneUnit),
             ),
-            armour = SerializableArmourStats(hardness = 5f, density = 2f),
-            sizeCategory = "medium",
-            mass = 50f,
+            itemType = ItemType.HULL,
+            attributes = ItemAttributes.HullAttributes(
+                armour = SerializableArmourStats(hardness = 5f, density = 2f),
+                sizeCategory = "medium",
+                mass = 50f,
+            ),
         )
         val placedHull = PlacedHullPiece(
             id = "placed_hull1",
-            hullPieceId = "hull1",
+            itemDefinitionId = "hull1",
             position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
             rotation = 0f.rad,
         )
 
         val state = ShipBuilderState(
-            hullPieces = listOf(hullDef),
+            itemDefinitions = listOf(hullDef),
             placedHulls = listOf(placedHull),
         )
         val stats = calculateStats(state)
@@ -61,25 +67,42 @@ class ShipStatsCalculatorTest {
 
     @Test
     fun hullWithReactorModule_massIncludesReactorMass() {
-        val hullDef = HullPieceDefinition(
+        val hullDef = ItemDefinition(
             id = "hull1",
+            name = "Test Hull",
             vertices = listOf(
                 SceneOffset(10f.sceneUnit, 0f.sceneUnit),
                 SceneOffset((-5f).sceneUnit, 5f.sceneUnit),
                 SceneOffset((-5f).sceneUnit, (-5f).sceneUnit),
             ),
-            armour = SerializableArmourStats(hardness = 5f, density = 2f),
-            sizeCategory = "medium",
-            mass = 50f,
+            itemType = ItemType.HULL,
+            attributes = ItemAttributes.HullAttributes(
+                armour = SerializableArmourStats(hardness = 5f, density = 2f),
+                sizeCategory = "medium",
+                mass = 50f,
+            ),
+        )
+        val reactorDef = ItemDefinition(
+            id = "reactor_def",
+            name = "Reactor",
+            vertices = emptyList(),
+            itemType = ItemType.MODULE,
+            attributes = ItemAttributes.ModuleAttributes(
+                systemType = "REACTOR",
+                maxHp = 100f,
+                density = 8f,
+                mass = 20f,
+            ),
         )
         val placedHull = PlacedHullPiece(
             id = "placed_hull1",
-            hullPieceId = "hull1",
+            itemDefinitionId = "hull1",
             position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
             rotation = 0f.rad,
         )
         val reactor = PlacedModule(
             id = "reactor1",
+            itemDefinitionId = "reactor_def",
             systemType = "REACTOR",
             position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
             rotation = 0f.rad,
@@ -87,7 +110,7 @@ class ShipStatsCalculatorTest {
         )
 
         val state = ShipBuilderState(
-            hullPieces = listOf(hullDef),
+            itemDefinitions = listOf(hullDef, reactorDef),
             placedHulls = listOf(placedHull),
             placedModules = listOf(reactor),
         )
@@ -100,25 +123,46 @@ class ShipStatsCalculatorTest {
 
     @Test
     fun hullWithEngineModule_hasThrustAndAcceleration() {
-        val hullDef = HullPieceDefinition(
+        val hullDef = ItemDefinition(
             id = "hull1",
+            name = "Test Hull",
             vertices = listOf(
                 SceneOffset(10f.sceneUnit, 0f.sceneUnit),
                 SceneOffset((-5f).sceneUnit, 5f.sceneUnit),
                 SceneOffset((-5f).sceneUnit, (-5f).sceneUnit),
             ),
-            armour = SerializableArmourStats(hardness = 5f, density = 0f),
-            sizeCategory = "medium",
-            mass = 100f,
+            itemType = ItemType.HULL,
+            attributes = ItemAttributes.HullAttributes(
+                armour = SerializableArmourStats(hardness = 5f, density = 0f),
+                sizeCategory = "medium",
+                mass = 100f,
+            ),
+        )
+        val engineDef = ItemDefinition(
+            id = "engine_def",
+            name = "Main Engine",
+            vertices = emptyList(),
+            itemType = ItemType.MODULE,
+            attributes = ItemAttributes.ModuleAttributes(
+                systemType = "MAIN_ENGINE",
+                maxHp = 80f,
+                density = 4f,
+                mass = 15f,
+                forwardThrust = 1200f,
+                lateralThrust = 500f,
+                reverseThrust = 500f,
+                angularThrust = 300f,
+            ),
         )
         val placedHull = PlacedHullPiece(
             id = "placed_hull1",
-            hullPieceId = "hull1",
+            itemDefinitionId = "hull1",
             position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
             rotation = 0f.rad,
         )
         val engine = PlacedModule(
             id = "engine1",
+            itemDefinitionId = "engine_def",
             systemType = "MAIN_ENGINE",
             position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
             rotation = 0f.rad,
@@ -126,7 +170,7 @@ class ShipStatsCalculatorTest {
         )
 
         val state = ShipBuilderState(
-            hullPieces = listOf(hullDef),
+            itemDefinitions = listOf(hullDef, engineDef),
             placedHulls = listOf(placedHull),
             placedModules = listOf(engine),
         )

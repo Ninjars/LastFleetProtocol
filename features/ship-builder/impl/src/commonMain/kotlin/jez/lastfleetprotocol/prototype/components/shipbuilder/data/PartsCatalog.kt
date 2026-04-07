@@ -2,39 +2,22 @@ package jez.lastfleetprotocol.prototype.components.shipbuilder.data
 
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
-import jez.lastfleetprotocol.prototype.components.gamecore.data.InternalSystemType
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
-
-data class CatalogHullPiece(
-    val id: String,
-    val name: String,
-    val vertices: List<SceneOffset>,
-    val armour: SerializableArmourStats,
-    val sizeCategory: String,
-    val mass: Float,
-)
-
-data class CatalogSystemModule(
-    val id: String,
-    val name: String,
-    val type: InternalSystemType,
-)
-
-data class CatalogTurretModule(
-    val id: String,
-    val name: String,
-    val configId: String,
-)
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * Pre-defined parts available in the ship builder.
- * Hull piece vertex/armour/mass values are duplicated from DemoScenarioConfig
- * since the builder module cannot depend on the game impl module.
+ * All entries are [ItemDefinition] instances grouped by [ItemType].
  */
 object PartsCatalog {
 
-    val hullPieces: List<CatalogHullPiece> = listOf(
-        CatalogHullPiece(
+    val hullItems: List<ItemDefinition> = listOf(
+        ItemDefinition(
             id = "hull_player",
             name = "Player Hull",
             vertices = listOf(
@@ -44,11 +27,14 @@ object PartsCatalog {
                 SceneOffset((-56f).sceneUnit, (-20f).sceneUnit),
                 SceneOffset((-30f).sceneUnit, (-37f).sceneUnit),
             ),
-            armour = SerializableArmourStats(hardness = 5f, density = 2f),
-            sizeCategory = "medium",
-            mass = 50f,
+            itemType = ItemType.HULL,
+            attributes = ItemAttributes.HullAttributes(
+                armour = SerializableArmourStats(hardness = 5f, density = 2f),
+                sizeCategory = "medium",
+                mass = 50f,
+            ),
         ),
-        CatalogHullPiece(
+        ItemDefinition(
             id = "hull_light",
             name = "Light Hull",
             vertices = listOf(
@@ -58,11 +44,14 @@ object PartsCatalog {
                 SceneOffset((-42f).sceneUnit, (-15f).sceneUnit),
                 SceneOffset((-20f).sceneUnit, (-30f).sceneUnit),
             ),
-            armour = SerializableArmourStats(hardness = 3f, density = 1f),
-            sizeCategory = "light",
-            mass = 30f,
+            itemType = ItemType.HULL,
+            attributes = ItemAttributes.HullAttributes(
+                armour = SerializableArmourStats(hardness = 3f, density = 1f),
+                sizeCategory = "light",
+                mass = 30f,
+            ),
         ),
-        CatalogHullPiece(
+        ItemDefinition(
             id = "hull_medium",
             name = "Medium Hull",
             vertices = listOf(
@@ -72,11 +61,14 @@ object PartsCatalog {
                 SceneOffset((-52f).sceneUnit, (-25f).sceneUnit),
                 SceneOffset((-25f).sceneUnit, (-42f).sceneUnit),
             ),
-            armour = SerializableArmourStats(hardness = 5f, density = 2f),
-            sizeCategory = "medium",
-            mass = 50f,
+            itemType = ItemType.HULL,
+            attributes = ItemAttributes.HullAttributes(
+                armour = SerializableArmourStats(hardness = 5f, density = 2f),
+                sizeCategory = "medium",
+                mass = 50f,
+            ),
         ),
-        CatalogHullPiece(
+        ItemDefinition(
             id = "hull_heavy",
             name = "Heavy Hull",
             vertices = listOf(
@@ -86,45 +78,102 @@ object PartsCatalog {
                 SceneOffset((-52f).sceneUnit, (-35f).sceneUnit),
                 SceneOffset((-20f).sceneUnit, (-50f).sceneUnit),
             ),
-            armour = SerializableArmourStats(hardness = 8f, density = 4f),
-            sizeCategory = "heavy",
-            mass = 100f,
+            itemType = ItemType.HULL,
+            attributes = ItemAttributes.HullAttributes(
+                armour = SerializableArmourStats(hardness = 8f, density = 4f),
+                sizeCategory = "heavy",
+                mass = 100f,
+            ),
         ),
     )
 
-    val systemModules: List<CatalogSystemModule> = listOf(
-        CatalogSystemModule(
+    private val moduleSquareVertices: List<SceneOffset> = listOf(
+        SceneOffset(7.5f.sceneUnit, (-7.5f).sceneUnit),
+        SceneOffset(7.5f.sceneUnit, 7.5f.sceneUnit),
+        SceneOffset((-7.5f).sceneUnit, 7.5f.sceneUnit),
+        SceneOffset((-7.5f).sceneUnit, (-7.5f).sceneUnit),
+    )
+
+    private val turretOctagonVertices: List<SceneOffset> = buildList {
+        val radius = 10f
+        for (i in 0 until 8) {
+            val angle = (2.0 * PI * i / 8).toFloat()
+            add(SceneOffset((radius * cos(angle)).sceneUnit, (radius * sin(angle)).sceneUnit))
+        }
+    }
+
+    val moduleItems: List<ItemDefinition> = listOf(
+        ItemDefinition(
             id = "system_reactor",
             name = "Reactor",
-            type = InternalSystemType.REACTOR,
+            vertices = moduleSquareVertices,
+            itemType = ItemType.MODULE,
+            attributes = ItemAttributes.ModuleAttributes(
+                systemType = "REACTOR",
+                maxHp = 100f,
+                density = 8f,
+                mass = 20f,
+            ),
         ),
-        CatalogSystemModule(
+        ItemDefinition(
             id = "system_engine",
             name = "Main Engine",
-            type = InternalSystemType.MAIN_ENGINE,
+            vertices = moduleSquareVertices,
+            itemType = ItemType.MODULE,
+            attributes = ItemAttributes.ModuleAttributes(
+                systemType = "MAIN_ENGINE",
+                maxHp = 80f,
+                density = 4f,
+                mass = 15f,
+                forwardThrust = 1200f,
+                lateralThrust = 500f,
+                reverseThrust = 500f,
+                angularThrust = 300f,
+            ),
         ),
-        CatalogSystemModule(
+        ItemDefinition(
             id = "system_bridge",
             name = "Bridge",
-            type = InternalSystemType.BRIDGE,
+            vertices = moduleSquareVertices,
+            itemType = ItemType.MODULE,
+            attributes = ItemAttributes.ModuleAttributes(
+                systemType = "BRIDGE",
+                maxHp = 60f,
+                density = 3f,
+                mass = 10f,
+            ),
         ),
     )
 
-    val turretModules: List<CatalogTurretModule> = listOf(
-        CatalogTurretModule(
+    val turretItems: List<ItemDefinition> = listOf(
+        ItemDefinition(
             id = "turret_standard",
             name = "Standard Turret",
-            configId = "standard",
+            vertices = turretOctagonVertices,
+            itemType = ItemType.TURRET,
+            attributes = ItemAttributes.TurretAttributes(
+                sizeCategory = "medium",
+            ),
         ),
-        CatalogTurretModule(
+        ItemDefinition(
             id = "turret_light",
             name = "Light Turret",
-            configId = "light",
+            vertices = turretOctagonVertices,
+            itemType = ItemType.TURRET,
+            attributes = ItemAttributes.TurretAttributes(
+                sizeCategory = "light",
+            ),
         ),
-        CatalogTurretModule(
+        ItemDefinition(
             id = "turret_heavy",
             name = "Heavy Turret",
-            configId = "heavy",
+            vertices = turretOctagonVertices,
+            itemType = ItemType.TURRET,
+            attributes = ItemAttributes.TurretAttributes(
+                sizeCategory = "heavy",
+            ),
         ),
     )
+
+    val allItems: List<ItemDefinition> = hullItems + moduleItems + turretItems
 }

@@ -1,15 +1,11 @@
 package jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities
 
 import androidx.compose.ui.geometry.Offset
-import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogHullPiece
-import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogSystemModule
-import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogTurretModule
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
 
 sealed interface ShipBuilderIntent {
     data object Noop : ShipBuilderIntent
-    data class AddHullPiece(val catalogPiece: CatalogHullPiece) : ShipBuilderIntent
-    data class AddModule(val catalogModule: CatalogSystemModule) : ShipBuilderIntent
-    data class AddTurret(val catalogTurret: CatalogTurretModule) : ShipBuilderIntent
+    data class AddItem(val itemDefinition: ItemDefinition) : ShipBuilderIntent
 
     // Canvas input — raw pointer events from DesignCanvas
     data class CanvasTap(val worldPosition: Offset) : ShipBuilderIntent

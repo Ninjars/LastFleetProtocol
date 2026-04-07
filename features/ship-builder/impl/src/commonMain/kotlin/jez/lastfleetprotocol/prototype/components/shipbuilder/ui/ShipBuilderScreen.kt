@@ -64,9 +64,7 @@ private fun ShipBuilderScreen(
     Row(modifier = Modifier.fillMaxSize()) {
         // Left panel: Parts
         PartsPanel(
-            onAddHullPiece = { onIntent(ShipBuilderIntent.AddHullPiece(it)) },
-            onAddModule = { onIntent(ShipBuilderIntent.AddModule(it)) },
-            onAddTurret = { onIntent(ShipBuilderIntent.AddTurret(it)) },
+            onAddItem = { onIntent(ShipBuilderIntent.AddItem(it)) },
             modifier = Modifier.width(200.dp).fillMaxHeight(),
         )
 

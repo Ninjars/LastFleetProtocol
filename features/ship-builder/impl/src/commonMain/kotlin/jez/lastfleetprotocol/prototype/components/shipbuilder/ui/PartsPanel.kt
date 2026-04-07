@@ -28,18 +28,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
-import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogHullPiece
-import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogSystemModule
-import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogTurretModule
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.PartsCatalog
 import jez.lastfleetprotocol.prototype.ui.resources.LFRes
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun PartsPanel(
-    onAddHullPiece: (CatalogHullPiece) -> Unit,
-    onAddModule: (CatalogSystemModule) -> Unit,
-    onAddTurret: (CatalogTurretModule) -> Unit,
+    onAddItem: (ItemDefinition) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -48,10 +45,10 @@ fun PartsPanel(
             .padding(8.dp)
     ) {
         CollapsibleSection(title = stringResource(LFRes.String.builder_hull_pieces)) {
-            for (piece in PartsCatalog.hullPieces) {
+            for (item in PartsCatalog.hullItems) {
                 HullPieceItem(
-                    piece = piece,
-                    onClick = { onAddHullPiece(piece) },
+                    item = item,
+                    onClick = { onAddItem(item) },
                 )
             }
         }
@@ -59,10 +56,10 @@ fun PartsPanel(
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
         CollapsibleSection(title = stringResource(LFRes.String.builder_systems)) {
-            for (module in PartsCatalog.systemModules) {
+            for (item in PartsCatalog.moduleItems) {
                 SystemModuleItem(
-                    module = module,
-                    onClick = { onAddModule(module) },
+                    item = item,
+                    onClick = { onAddItem(item) },
                 )
             }
         }
@@ -70,10 +67,10 @@ fun PartsPanel(
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
         CollapsibleSection(title = stringResource(LFRes.String.builder_turrets)) {
-            for (turret in PartsCatalog.turretModules) {
+            for (item in PartsCatalog.turretItems) {
                 TurretModuleItem(
-                    turret = turret,
-                    onClick = { onAddTurret(turret) },
+                    item = item,
+                    onClick = { onAddItem(item) },
                 )
             }
         }
@@ -105,9 +102,10 @@ private fun CollapsibleSection(
 
 @Composable
 private fun HullPieceItem(
-    piece: CatalogHullPiece,
+    item: ItemDefinition,
     onClick: () -> Unit,
 ) {
+    val attrs = item.attributes as? ItemAttributes.HullAttributes
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -115,37 +113,40 @@ private fun HullPieceItem(
             .clickable(onClick = onClick)
             .padding(vertical = 4.dp),
     ) {
-        HullPreview(piece = piece)
+        ItemPreview(item = item, color = Color.Cyan)
         Spacer(modifier = Modifier.width(8.dp))
         Column {
             Text(
-                text = piece.name,
+                text = item.name,
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Text(
-                text = "${piece.sizeCategory} - ${piece.mass}t",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (attrs != null) {
+                Text(
+                    text = "${attrs.sizeCategory} - ${attrs.mass}t",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun HullPreview(
-    piece: CatalogHullPiece,
+private fun ItemPreview(
+    item: ItemDefinition,
+    color: Color,
     modifier: Modifier = Modifier,
 ) {
     val previewSize = 40.dp
     Canvas(modifier = modifier.size(previewSize)) {
-        if (piece.vertices.isEmpty()) return@Canvas
+        if (item.vertices.isEmpty()) return@Canvas
 
         // Find bounds to scale preview
         var minX = Float.MAX_VALUE
         var maxX = Float.MIN_VALUE
         var minY = Float.MAX_VALUE
         var maxY = Float.MIN_VALUE
-        for (v in piece.vertices) {
+        for (v in item.vertices) {
             val vx = v.x.raw
             val vy = v.y.raw
             if (vx < minX) minX = vx
@@ -165,21 +166,21 @@ private fun HullPreview(
         val midY = (minY + maxY) / 2f
 
         val path = Path()
-        for (i in piece.vertices.indices) {
-            val px = cx + (piece.vertices[i].x.raw - midX) * scale
-            val py = cy + (piece.vertices[i].y.raw - midY) * scale
+        for (i in item.vertices.indices) {
+            val px = cx + (item.vertices[i].x.raw - midX) * scale
+            val py = cy + (item.vertices[i].y.raw - midY) * scale
             if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
         }
         path.close()
 
-        drawPath(path = path, color = Color.Cyan.copy(alpha = 0.3f))
-        drawPath(path = path, color = Color.Cyan, style = Stroke(width = 1f))
+        drawPath(path = path, color = color.copy(alpha = 0.3f))
+        drawPath(path = path, color = color, style = Stroke(width = 1f))
     }
 }
 
 @Composable
 private fun SystemModuleItem(
-    module: CatalogSystemModule,
+    item: ItemDefinition,
     onClick: () -> Unit,
 ) {
     Row(
@@ -189,22 +190,10 @@ private fun SystemModuleItem(
             .clickable(onClick = onClick)
             .padding(vertical = 4.dp),
     ) {
-        Canvas(modifier = Modifier.size(24.dp)) {
-            drawRect(
-                color = Color.Yellow.copy(alpha = 0.4f),
-                topLeft = Offset(4f, 4f),
-                size = androidx.compose.ui.geometry.Size(size.width - 8f, size.height - 8f),
-            )
-            drawRect(
-                color = Color.Yellow,
-                topLeft = Offset(4f, 4f),
-                size = androidx.compose.ui.geometry.Size(size.width - 8f, size.height - 8f),
-                style = Stroke(width = 1f),
-            )
-        }
+        ItemPreview(item = item, color = Color.Yellow)
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = module.name,
+            text = item.name,
             style = MaterialTheme.typography.bodyMedium,
         )
     }
@@ -212,7 +201,7 @@ private fun SystemModuleItem(
 
 @Composable
 private fun TurretModuleItem(
-    turret: CatalogTurretModule,
+    item: ItemDefinition,
     onClick: () -> Unit,
 ) {
     Row(
@@ -222,20 +211,10 @@ private fun TurretModuleItem(
             .clickable(onClick = onClick)
             .padding(vertical = 4.dp),
     ) {
-        Canvas(modifier = Modifier.size(24.dp)) {
-            drawCircle(
-                color = Color.Red.copy(alpha = 0.4f),
-                radius = size.minDimension / 2f - 4f,
-            )
-            drawCircle(
-                color = Color.Red,
-                radius = size.minDimension / 2f - 4f,
-                style = Stroke(width = 1f),
-            )
-        }
+        ItemPreview(item = item, color = Color.Red)
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = turret.name,
+            text = item.name,
             style = MaterialTheme.typography.bodyMedium,
         )
     }
