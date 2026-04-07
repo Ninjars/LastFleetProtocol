@@ -8,6 +8,25 @@ import lastfleetprotocol.components.design.generated.resources.builder_create_mo
 import lastfleetprotocol.components.design.generated.resources.builder_create_turret
 import lastfleetprotocol.components.design.generated.resources.builder_finish
 import lastfleetprotocol.components.design.generated.resources.builder_item_name
+import lastfleetprotocol.components.design.generated.resources.builder_area
+import lastfleetprotocol.components.design.generated.resources.builder_armour_hardness
+import lastfleetprotocol.components.design.generated.resources.builder_armour_density
+import lastfleetprotocol.components.design.generated.resources.builder_size_category
+import lastfleetprotocol.components.design.generated.resources.builder_module_type
+import lastfleetprotocol.components.design.generated.resources.builder_max_hp
+import lastfleetprotocol.components.design.generated.resources.builder_density
+import lastfleetprotocol.components.design.generated.resources.builder_forward_thrust
+import lastfleetprotocol.components.design.generated.resources.builder_lateral_thrust
+import lastfleetprotocol.components.design.generated.resources.builder_reverse_thrust
+import lastfleetprotocol.components.design.generated.resources.builder_angular_thrust
+import lastfleetprotocol.components.design.generated.resources.builder_fixed
+import lastfleetprotocol.components.design.generated.resources.builder_rotating
+import lastfleetprotocol.components.design.generated.resources.builder_default_facing
+import lastfleetprotocol.components.design.generated.resources.builder_limited_rotation
+import lastfleetprotocol.components.design.generated.resources.builder_min_angle
+import lastfleetprotocol.components.design.generated.resources.builder_max_angle
+import lastfleetprotocol.components.design.generated.resources.builder_item_attributes
+import lastfleetprotocol.components.design.generated.resources.builder_custom_items
 import lastfleetprotocol.components.design.generated.resources.builder_angular
 import lastfleetprotocol.components.design.generated.resources.builder_design_name
 import lastfleetprotocol.components.design.generated.resources.builder_forward
@@ -118,6 +137,25 @@ object LFRes {
         val builder_finish: StringResource = Res.string.builder_finish
         val builder_cancel_creation: StringResource = Res.string.builder_cancel_creation
         val builder_item_name: StringResource = Res.string.builder_item_name
+        val builder_area: StringResource = Res.string.builder_area
+        val builder_armour_hardness: StringResource = Res.string.builder_armour_hardness
+        val builder_armour_density: StringResource = Res.string.builder_armour_density
+        val builder_size_category: StringResource = Res.string.builder_size_category
+        val builder_module_type: StringResource = Res.string.builder_module_type
+        val builder_max_hp: StringResource = Res.string.builder_max_hp
+        val builder_density: StringResource = Res.string.builder_density
+        val builder_forward_thrust: StringResource = Res.string.builder_forward_thrust
+        val builder_lateral_thrust: StringResource = Res.string.builder_lateral_thrust
+        val builder_reverse_thrust: StringResource = Res.string.builder_reverse_thrust
+        val builder_angular_thrust: StringResource = Res.string.builder_angular_thrust
+        val builder_fixed: StringResource = Res.string.builder_fixed
+        val builder_rotating: StringResource = Res.string.builder_rotating
+        val builder_default_facing: StringResource = Res.string.builder_default_facing
+        val builder_limited_rotation: StringResource = Res.string.builder_limited_rotation
+        val builder_min_angle: StringResource = Res.string.builder_min_angle
+        val builder_max_angle: StringResource = Res.string.builder_max_angle
+        val builder_item_attributes: StringResource = Res.string.builder_item_attributes
+        val builder_custom_items: StringResource = Res.string.builder_custom_items
     }
 
     object Font {

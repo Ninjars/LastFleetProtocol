@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.PartsCatalog
 import jez.lastfleetprotocol.prototype.ui.resources.LFRes
 import androidx.compose.material3.FilledTonalButton
@@ -41,8 +42,13 @@ fun PartsPanel(
     onCreateHull: () -> Unit,
     onCreateModule: () -> Unit,
     onCreateTurret: () -> Unit,
+    customItems: List<ItemDefinition> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
+    val customHulls = customItems.filter { it.itemType == ItemType.HULL }
+    val customModules = customItems.filter { it.itemType == ItemType.MODULE }
+    val customTurrets = customItems.filter { it.itemType == ItemType.TURRET }
+
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
@@ -50,6 +56,12 @@ fun PartsPanel(
     ) {
         CollapsibleSection(title = stringResource(LFRes.String.builder_hull_pieces)) {
             for (item in PartsCatalog.hullItems) {
+                HullPieceItem(
+                    item = item,
+                    onClick = { onAddItem(item) },
+                )
+            }
+            for (item in customHulls) {
                 HullPieceItem(
                     item = item,
                     onClick = { onAddItem(item) },
@@ -66,12 +78,24 @@ fun PartsPanel(
                     onClick = { onAddItem(item) },
                 )
             }
+            for (item in customModules) {
+                SystemModuleItem(
+                    item = item,
+                    onClick = { onAddItem(item) },
+                )
+            }
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
         CollapsibleSection(title = stringResource(LFRes.String.builder_turrets)) {
             for (item in PartsCatalog.turretItems) {
+                TurretModuleItem(
+                    item = item,
+                    onClick = { onAddItem(item) },
+                )
+            }
+            for (item in customTurrets) {
                 TurretModuleItem(
                     item = item,
                     onClick = { onAddItem(item) },

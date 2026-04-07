@@ -37,4 +37,23 @@
     <string name="builder_finish">Finish</string>
     <string name="builder_cancel_creation">Cancel</string>
     <string name="builder_item_name">Item Name</string>
+    <string name="builder_area">Area</string>
+    <string name="builder_armour_hardness">Armour Hardness</string>
+    <string name="builder_armour_density">Armour Density</string>
+    <string name="builder_size_category">Size Category</string>
+    <string name="builder_module_type">Module Type</string>
+    <string name="builder_max_hp">Max HP</string>
+    <string name="builder_density">Density</string>
+    <string name="builder_forward_thrust">Forward Thrust</string>
+    <string name="builder_lateral_thrust">Lateral Thrust</string>
+    <string name="builder_reverse_thrust">Reverse Thrust</string>
+    <string name="builder_angular_thrust">Angular Thrust</string>
+    <string name="builder_fixed">Fixed</string>
+    <string name="builder_rotating">Rotating</string>
+    <string name="builder_default_facing">Default Facing</string>
+    <string name="builder_limited_rotation">Limited Rotation</string>
+    <string name="builder_min_angle">Min Angle</string>
+    <string name="builder_max_angle">Max Angle</string>
+    <string name="builder_item_attributes">Item Attributes</string>
+    <string name="builder_custom_items">Custom Items</string>
 </resources>

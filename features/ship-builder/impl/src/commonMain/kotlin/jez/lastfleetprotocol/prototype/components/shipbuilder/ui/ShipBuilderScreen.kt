@@ -18,7 +18,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -80,6 +79,7 @@ private fun ShipBuilderScreen(
                     onCreateHull = { onIntent(ShipBuilderIntent.EnterCreationMode(ItemType.HULL)) },
                     onCreateModule = { onIntent(ShipBuilderIntent.EnterCreationMode(ItemType.MODULE)) },
                     onCreateTurret = { onIntent(ShipBuilderIntent.EnterCreationMode(ItemType.TURRET)) },
+                    customItems = state.customItemDefinitions,
                     modifier = Modifier.width(200.dp).fillMaxHeight(),
                 )
             }
@@ -140,6 +140,7 @@ private fun ShipBuilderScreen(
                 ItemCreationAttributesPanel(
                     creatingItem = editorMode,
                     onNameChanged = { onIntent(ShipBuilderIntent.UpdateCreationName(it)) },
+                    onAttributesChanged = { onIntent(ShipBuilderIntent.UpdateCreationAttributes(it)) },
                     onFinish = { onIntent(ShipBuilderIntent.FinishCreation) },
                     onCancel = { onIntent(ShipBuilderIntent.ExitCreationMode) },
                     modifier = Modifier.width(200.dp).fillMaxHeight(),
@@ -188,6 +189,7 @@ private fun CreationControlsPanel(
 private fun ItemCreationAttributesPanel(
     creatingItem: EditorMode.CreatingItem,
     onNameChanged: (String) -> Unit,
+    onAttributesChanged: (jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes) -> Unit,
     onFinish: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
@@ -195,31 +197,12 @@ private fun ItemCreationAttributesPanel(
     Column(
         modifier = modifier.padding(8.dp),
     ) {
-        Text(
-            text = when (creatingItem.itemType) {
-                ItemType.HULL -> stringResource(LFRes.String.builder_create_hull)
-                ItemType.MODULE -> stringResource(LFRes.String.builder_create_module)
-                ItemType.TURRET -> stringResource(LFRes.String.builder_create_turret)
-            },
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(vertical = 4.dp),
+        ItemAttributesPanel(
+            creatingItem = creatingItem,
+            onNameChanged = onNameChanged,
+            onAttributesChanged = onAttributesChanged,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
         )
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-        OutlinedTextField(
-            value = creatingItem.name,
-            onValueChange = onNameChanged,
-            label = { Text(stringResource(LFRes.String.builder_item_name)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Placeholder for type-specific attributes (Units 4-6)
-
-        Spacer(modifier = Modifier.weight(1f))
 
         FilledTonalButton(
             onClick = onFinish,

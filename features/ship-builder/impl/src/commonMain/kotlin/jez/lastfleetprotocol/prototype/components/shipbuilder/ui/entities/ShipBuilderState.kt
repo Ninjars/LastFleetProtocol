@@ -7,6 +7,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurret
+import jez.lastfleetprotocol.prototype.components.shipbuilder.data.PartsCatalog
 import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.ShipStats
 
 sealed interface EditorMode {
@@ -33,4 +34,11 @@ data class ShipBuilderState(
     val showLoadDialog: Boolean = false,
     val savedDesigns: List<String> = emptyList(),
     val editorMode: EditorMode = EditorMode.EditingShip,
-)
+) {
+    /** Custom item definitions (those not in the pre-defined catalog). */
+    val customItemDefinitions: List<ItemDefinition>
+        get() {
+            val catalogIds = PartsCatalog.allItems.map { it.id }.toSet()
+            return itemDefinitions.filter { it.id !in catalogIds }
+        }
+}
