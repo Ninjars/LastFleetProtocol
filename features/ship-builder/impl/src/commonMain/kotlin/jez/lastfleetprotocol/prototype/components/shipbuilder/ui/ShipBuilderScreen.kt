@@ -24,6 +24,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasInputHandler
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.DesignCanvas
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderIntent
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderSideEffect
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderState
 import jez.lastfleetprotocol.prototype.ui.common.HandleSideEffect
 import jez.lastfleetprotocol.prototype.ui.resources.LFRes
 import me.tatarka.inject.annotations.Assisted

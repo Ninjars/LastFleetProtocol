@@ -1,7 +1,7 @@
 package jez.lastfleetprotocol.prototype.components.shipbuilder.ui
 
-import androidx.lifecycle.viewModelScope
 import androidx.compose.ui.geometry.Offset
+import androidx.lifecycle.viewModelScope
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
@@ -12,66 +12,23 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurr
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesign
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesignRepository
-import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogHullPiece
-import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogSystemModule
-import jez.lastfleetprotocol.prototype.components.shipbuilder.data.CatalogTurretModule
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasInputHandler
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGrid
 import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.pointInPolygon
-import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.ShipStats
 import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.calculateStats
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderIntent
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderSideEffect
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderState
 import jez.lastfleetprotocol.prototype.ui.common.ViewModelContract
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasInputHandler
-import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGrid
 import me.tatarka.inject.annotations.Inject
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
-
-sealed interface ShipBuilderIntent {
-    data object Noop : ShipBuilderIntent
-    data class AddHullPiece(val catalogPiece: CatalogHullPiece) : ShipBuilderIntent
-    data class AddModule(val catalogModule: CatalogSystemModule) : ShipBuilderIntent
-    data class AddTurret(val catalogTurret: CatalogTurretModule) : ShipBuilderIntent
-
-    // Canvas input — raw pointer events from DesignCanvas
-    data class CanvasTap(val worldPosition: Offset) : ShipBuilderIntent
-    data class CanvasDragStart(val worldPosition: Offset) : ShipBuilderIntent
-    data class CanvasDragMove(val worldPosition: Offset, val worldDelta: Offset) : ShipBuilderIntent
-    data class CanvasDragEnd(val worldPosition: Offset) : ShipBuilderIntent
-
-    // Transforms (from toolbar buttons)
-    data class MirrorItemX(val id: String) : ShipBuilderIntent
-    data class MirrorItemY(val id: String) : ShipBuilderIntent
-    data class RotateCW(val id: String) : ShipBuilderIntent
-    data class RotateCCW(val id: String) : ShipBuilderIntent
-
-    // Stats panel
-    data class RenameDesign(val name: String) : ShipBuilderIntent
-    data object LoadDesignClicked : ShipBuilderIntent
-    data class ConfirmLoad(val name: String) : ShipBuilderIntent
-    data object DismissLoadDialog : ShipBuilderIntent
-}
-
-data class ShipBuilderState(
-    val designName: String = "New Ship",
-    val hullPieces: List<HullPieceDefinition> = emptyList(),
-    val placedHulls: List<PlacedHullPiece> = emptyList(),
-    val placedModules: List<PlacedModule> = emptyList(),
-    val placedTurrets: List<PlacedTurret> = emptyList(),
-    val selectedItemId: String? = null,
-    val invalidPlacements: Set<String> = emptySet(),
-    val stats: ShipStats = ShipStats(),
-    val showLoadDialog: Boolean = false,
-    val savedDesigns: List<String> = emptyList(),
-)
-
-sealed interface ShipBuilderSideEffect {
-    data object NavigateBack : ShipBuilderSideEffect
-}
 
 private const val HIT_RADIUS_MODULE = 8f
 private const val HIT_RADIUS_TURRET = 6f
@@ -103,15 +60,18 @@ class ShipBuilderVM(
         override fun onTap(worldPosition: Offset) {
             accept(ShipBuilderIntent.CanvasTap(worldPosition))
         }
+
         override fun onDragStart(worldPosition: Offset): Boolean {
             accept(ShipBuilderIntent.CanvasDragStart(worldPosition))
             return dragMode != DragMode.PAN && dragMode != DragMode.NONE
         }
+
         override fun onDragMove(worldPosition: Offset, worldDelta: Offset): Boolean {
             if (dragMode == DragMode.PAN || dragMode == DragMode.NONE) return false
             accept(ShipBuilderIntent.CanvasDragMove(worldPosition, worldDelta))
             return true
         }
+
         override fun onDragEnd(worldPosition: Offset) {
             accept(ShipBuilderIntent.CanvasDragEnd(worldPosition))
         }
@@ -211,7 +171,12 @@ class ShipBuilderVM(
                 val selectedId = current.selectedItemId
                 dragMode = if (selectedId != null) {
                     val itemPos = getItemWorldPos(selectedId, current)
-                    if (itemPos != null && isOnRotateHandle(intent.worldPosition, itemPos, current)) {
+                    if (itemPos != null && isOnRotateHandle(
+                            intent.worldPosition,
+                            itemPos,
+                            current
+                        )
+                    ) {
                         DragMode.ROTATE_ITEM
                     } else if (hitTestItem(intent.worldPosition, selectedId, current)) {
                         DragMode.MOVE_ITEM
@@ -232,6 +197,7 @@ class ShipBuilderVM(
                         val newPos = currentPos + intent.worldDelta
                         _state.update { moveItem(it, selectedId, newPos) }
                     }
+
                     DragMode.ROTATE_ITEM -> {
                         val itemPos = getItemWorldPos(selectedId, current) ?: return
                         val angle = atan2(
@@ -240,6 +206,7 @@ class ShipBuilderVM(
                         )
                         _state.update { rotateItem(it, selectedId, angle) }
                     }
+
                     DragMode.PAN, DragMode.NONE -> {
                         // Pan is handled locally in DesignCanvas — nothing to do here
                     }
@@ -496,7 +463,11 @@ class ShipBuilderVM(
         return null
     }
 
-    private fun isOnRotateHandle(worldPos: Offset, itemPos: Offset, state: ShipBuilderState): Boolean {
+    private fun isOnRotateHandle(
+        worldPos: Offset,
+        itemPos: Offset,
+        state: ShipBuilderState
+    ): Boolean {
         val selectedId = state.selectedItemId ?: return false
         val rotation = getItemRotation(selectedId, state) ?: return false
         val handleX = itemPos.x + cos(rotation) * ROTATE_HANDLE_DISTANCE
@@ -541,7 +512,11 @@ class ShipBuilderVM(
         }
     }
 
-    private fun rotateItemBy(state: ShipBuilderState, id: String, deltaRadians: Float): ShipBuilderState {
+    private fun rotateItemBy(
+        state: ShipBuilderState,
+        id: String,
+        deltaRadians: Float
+    ): ShipBuilderState {
         return state.copy(
             placedHulls = state.placedHulls.map {
                 if (it.id == id) it.copy(rotation = (it.rotation.normalized + deltaRadians).rad) else it
@@ -562,7 +537,11 @@ class ShipBuilderVM(
      * [mirrorX] = true mirrors across the Y axis (negates Y coordinates -- "flip horizontal").
      * [mirrorX] = false mirrors across the X axis (negates X coordinates -- "flip vertical").
      */
-    private fun mirrorItem(state: ShipBuilderState, id: String, mirrorX: Boolean): ShipBuilderState {
+    private fun mirrorItem(
+        state: ShipBuilderState,
+        id: String,
+        mirrorX: Boolean
+    ): ShipBuilderState {
         // Check if this is a hull piece -- if so, mirror the hull definition's vertices
         val hullPlaced = state.placedHulls.find { it.id == id }
         if (hullPlaced != null) {

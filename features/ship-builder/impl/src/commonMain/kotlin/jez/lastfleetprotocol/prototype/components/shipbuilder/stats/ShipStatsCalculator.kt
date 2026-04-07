@@ -1,6 +1,6 @@
 package jez.lastfleetprotocol.prototype.components.shipbuilder.stats
 
-import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.ShipBuilderState
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderState
 
 /**
  * Calculated stats for the current ship design.
