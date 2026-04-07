@@ -32,11 +32,15 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttrib
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.PartsCatalog
 import jez.lastfleetprotocol.prototype.ui.resources.LFRes
+import androidx.compose.material3.FilledTonalButton
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun PartsPanel(
     onAddItem: (ItemDefinition) -> Unit,
+    onCreateHull: () -> Unit,
+    onCreateModule: () -> Unit,
+    onCreateTurret: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -73,6 +77,29 @@ fun PartsPanel(
                     onClick = { onAddItem(item) },
                 )
             }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        FilledTonalButton(
+            onClick = onCreateHull,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(LFRes.String.builder_create_hull))
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        FilledTonalButton(
+            onClick = onCreateModule,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(LFRes.String.builder_create_module))
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        FilledTonalButton(
+            onClick = onCreateTurret,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(LFRes.String.builder_create_turret))
         }
     }
 }

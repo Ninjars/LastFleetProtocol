@@ -2,6 +2,12 @@ package jez.lastfleetprotocol.prototype.ui.resources
 
 import lastfleetprotocol.components.design.generated.resources.Res
 import lastfleetprotocol.components.design.generated.resources.builder_acceleration
+import lastfleetprotocol.components.design.generated.resources.builder_cancel_creation
+import lastfleetprotocol.components.design.generated.resources.builder_create_hull
+import lastfleetprotocol.components.design.generated.resources.builder_create_module
+import lastfleetprotocol.components.design.generated.resources.builder_create_turret
+import lastfleetprotocol.components.design.generated.resources.builder_finish
+import lastfleetprotocol.components.design.generated.resources.builder_item_name
 import lastfleetprotocol.components.design.generated.resources.builder_angular
 import lastfleetprotocol.components.design.generated.resources.builder_design_name
 import lastfleetprotocol.components.design.generated.resources.builder_forward
@@ -106,6 +112,12 @@ object LFRes {
         val builder_hull_pieces: StringResource = Res.string.builder_hull_pieces
         val builder_systems: StringResource = Res.string.builder_systems
         val builder_turrets: StringResource = Res.string.builder_turrets
+        val builder_create_hull: StringResource = Res.string.builder_create_hull
+        val builder_create_module: StringResource = Res.string.builder_create_module
+        val builder_create_turret: StringResource = Res.string.builder_create_turret
+        val builder_finish: StringResource = Res.string.builder_finish
+        val builder_cancel_creation: StringResource = Res.string.builder_cancel_creation
+        val builder_item_name: StringResource = Res.string.builder_item_name
     }
 
     object Font {

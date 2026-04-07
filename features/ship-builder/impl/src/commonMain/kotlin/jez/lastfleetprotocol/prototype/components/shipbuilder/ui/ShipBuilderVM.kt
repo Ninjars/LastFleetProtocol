@@ -17,6 +17,8 @@ import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasInput
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGrid
 import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.pointInPolygon
 import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.calculateStats
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderIntent
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderSideEffect
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderState
@@ -262,6 +264,112 @@ class ShipBuilderVM(
             is ShipBuilderIntent.DismissLoadDialog -> {
                 _state.update { current ->
                     current.copy(showLoadDialog = false, savedDesigns = emptyList())
+                }
+            }
+
+            is ShipBuilderIntent.EnterCreationMode -> {
+                _state.update { current ->
+                    current.copy(
+                        selectedItemId = null,
+                        editorMode = EditorMode.CreatingItem(
+                            itemType = intent.itemType,
+                            vertices = emptyList(),
+                            selectedVertexIndex = null,
+                            attributes = defaultAttributesFor(intent.itemType),
+                            isConvex = true,
+                            name = defaultNameFor(intent.itemType),
+                        ),
+                    )
+                }
+            }
+
+            is ShipBuilderIntent.ExitCreationMode -> {
+                _state.update { current ->
+                    current.copy(editorMode = EditorMode.EditingShip)
+                }
+            }
+
+            is ShipBuilderIntent.FinishCreation -> {
+                val current = _state.value
+                val creating = current.editorMode as? EditorMode.CreatingItem ?: return
+                if (creating.vertices.size < 3 || !creating.isConvex) return
+
+                val defId = generateId("itemdef")
+                val vertices = creating.vertices.map { v ->
+                    SceneOffset(v.x.sceneUnit, v.y.sceneUnit)
+                }
+                val newDef = ItemDefinition(
+                    id = defId,
+                    name = creating.name,
+                    vertices = vertices,
+                    itemType = creating.itemType,
+                    attributes = creating.attributes,
+                )
+
+                // Calculate centroid for placement position
+                val centroidX = creating.vertices.map { it.x }.average().toFloat()
+                val centroidY = creating.vertices.map { it.y }.average().toFloat()
+                val centroidPos = SceneOffset(centroidX.sceneUnit, centroidY.sceneUnit)
+
+                _state.update { s ->
+                    var newState = s.copy(
+                        itemDefinitions = s.itemDefinitions + newDef,
+                        editorMode = EditorMode.EditingShip,
+                    )
+                    newState = when (creating.itemType) {
+                        ItemType.HULL -> {
+                            val placed = PlacedHullPiece(
+                                id = generateId("hull"),
+                                itemDefinitionId = defId,
+                                position = centroidPos,
+                                rotation = 0f.rad,
+                            )
+                            newState.copy(placedHulls = newState.placedHulls + placed)
+                        }
+
+                        ItemType.MODULE -> {
+                            val attrs = creating.attributes as ItemAttributes.ModuleAttributes
+                            val parentHullId = newState.placedHulls.firstOrNull()?.id ?: ""
+                            val placed = PlacedModule(
+                                id = generateId("module"),
+                                itemDefinitionId = defId,
+                                systemType = attrs.systemType,
+                                position = centroidPos,
+                                rotation = 0f.rad,
+                                parentHullId = parentHullId,
+                            )
+                            newState.copy(placedModules = newState.placedModules + placed)
+                        }
+
+                        ItemType.TURRET -> {
+                            val parentHullId = newState.placedHulls.firstOrNull()?.id ?: ""
+                            val placed = PlacedTurret(
+                                id = generateId("turret"),
+                                itemDefinitionId = defId,
+                                turretConfigId = defId,
+                                position = centroidPos,
+                                rotation = 0f.rad,
+                                parentHullId = parentHullId,
+                            )
+                            newState.copy(placedTurrets = newState.placedTurrets + placed)
+                        }
+                    }
+                    recalculate(newState)
+                }
+                autoSave()
+            }
+
+            is ShipBuilderIntent.UpdateCreationName -> {
+                _state.update { current ->
+                    val creating = current.editorMode as? EditorMode.CreatingItem ?: return@update current
+                    current.copy(editorMode = creating.copy(name = intent.name))
+                }
+            }
+
+            is ShipBuilderIntent.UpdateCreationAttributes -> {
+                _state.update { current ->
+                    val creating = current.editorMode as? EditorMode.CreatingItem ?: return@update current
+                    current.copy(editorMode = creating.copy(attributes = intent.attributes))
                 }
             }
         }
@@ -594,6 +702,33 @@ class ShipBuilderVM(
                 } else it
             },
         )
+    }
+    private fun defaultAttributesFor(itemType: ItemType): ItemAttributes = when (itemType) {
+        ItemType.HULL -> ItemAttributes.HullAttributes(
+            armour = SerializableArmourStats(hardness = 5f, density = 2f),
+            sizeCategory = "Medium",
+            mass = 50f,
+        )
+
+        ItemType.MODULE -> ItemAttributes.ModuleAttributes(
+            systemType = "REACTOR",
+            maxHp = 100f,
+            density = 8f,
+            mass = 20f,
+        )
+
+        ItemType.TURRET -> ItemAttributes.TurretAttributes(
+            sizeCategory = "Medium",
+            isFixed = false,
+            defaultFacing = 0f,
+            isLimitedRotation = false,
+        )
+    }
+
+    private fun defaultNameFor(itemType: ItemType): String = when (itemType) {
+        ItemType.HULL -> "Custom Hull ${nextId}"
+        ItemType.MODULE -> "Custom Module ${nextId}"
+        ItemType.TURRET -> "Custom Turret ${nextId}"
     }
 }
 

@@ -1,7 +1,9 @@
 package jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities
 
 import androidx.compose.ui.geometry.Offset
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 
 sealed interface ShipBuilderIntent {
     data object Noop : ShipBuilderIntent
@@ -24,4 +26,11 @@ sealed interface ShipBuilderIntent {
     data object LoadDesignClicked : ShipBuilderIntent
     data class ConfirmLoad(val name: String) : ShipBuilderIntent
     data object DismissLoadDialog : ShipBuilderIntent
+
+    // Creation mode
+    data class EnterCreationMode(val itemType: ItemType) : ShipBuilderIntent
+    data object ExitCreationMode : ShipBuilderIntent
+    data object FinishCreation : ShipBuilderIntent
+    data class UpdateCreationName(val name: String) : ShipBuilderIntent
+    data class UpdateCreationAttributes(val attributes: ItemAttributes) : ShipBuilderIntent
 }

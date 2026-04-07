@@ -31,4 +31,10 @@
     <string name="builder_hull_pieces">Hull Pieces</string>
     <string name="builder_systems">Systems</string>
     <string name="builder_turrets">Turrets</string>
+    <string name="builder_create_hull">Create Hull</string>
+    <string name="builder_create_module">Create Module</string>
+    <string name="builder_create_turret">Create Turret</string>
+    <string name="builder_finish">Finish</string>
+    <string name="builder_cancel_creation">Cancel</string>
+    <string name="builder_item_name">Item Name</string>
 </resources>
