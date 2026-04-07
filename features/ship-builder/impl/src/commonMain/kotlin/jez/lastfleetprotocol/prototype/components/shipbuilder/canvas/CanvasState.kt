@@ -8,7 +8,9 @@ data class CanvasState(
 ) {
     companion object {
         const val MIN_ZOOM = 0.25f
-        const val MAX_ZOOM = 4f
+        const val MAX_ZOOM = 10f
+        const val DRAG_THRESHOLD = 8f
+        const val SCROLL_ZOOM_FACTOR = 0.05f
     }
 
     /**

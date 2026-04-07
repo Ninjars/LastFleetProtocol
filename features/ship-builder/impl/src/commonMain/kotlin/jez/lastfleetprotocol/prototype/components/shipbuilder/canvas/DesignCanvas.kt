@@ -19,10 +19,10 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasState.Companion.DRAG_THRESHOLD
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasState.Companion.SCROLL_ZOOM_FACTOR
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.ShipBuilderState
 
-private const val DRAG_THRESHOLD = 8f
-private const val SCROLL_ZOOM_FACTOR = 0.05f
 
 /**
  * Callback interface for raw canvas pointer events.
@@ -63,8 +63,9 @@ fun DesignCanvas(
                         val event = awaitPointerEvent()
                         if (event.type == PointerEventType.Scroll) {
                             val change = event.changes.firstOrNull() ?: continue
-                            val newZoom = (canvasState.zoom * (1f - change.scrollDelta.y * SCROLL_ZOOM_FACTOR))
-                                .coerceIn(CanvasState.MIN_ZOOM, CanvasState.MAX_ZOOM)
+                            val newZoom =
+                                (canvasState.zoom * (1f - change.scrollDelta.y * SCROLL_ZOOM_FACTOR))
+                                    .coerceIn(CanvasState.MIN_ZOOM, CanvasState.MAX_ZOOM)
                             canvasState = canvasState.copy(zoom = newZoom)
                             change.consume()
                         }
