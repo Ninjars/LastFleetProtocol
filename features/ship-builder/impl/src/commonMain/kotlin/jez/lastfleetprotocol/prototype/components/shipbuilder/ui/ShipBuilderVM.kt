@@ -77,13 +77,10 @@ class ShipBuilderVM(
     }
 
     init {
-        val initialName = "Untitled Ship ${generateTimestamp()}"
+        nextId = repository.listAll().size
+        val initialName = "Untitled Ship ${nextId++}"
         _state.update { it.copy(designName = initialName) }
         autoSave()
-    }
-
-    private fun generateTimestamp(): String {
-        return "${nextId++}"
     }
 
     override fun accept(intent: ShipBuilderIntent) {
