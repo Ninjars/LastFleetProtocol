@@ -50,7 +50,6 @@ class ShipBuilderVM(
     override val state: StateFlow<ShipBuilderState> = _state
 
     private var nextId = 0
-    private fun generateId(prefix: String): String = "${prefix}_${nextId++}"
 
     /** Current drag mode, set on drag-start, cleared on drag-end. */
     private var dragMode: DragMode = DragMode.NONE
@@ -271,6 +270,7 @@ class ShipBuilderVM(
                     val designs = try {
                         repository.listAll()
                     } catch (e: Exception) {
+                        println("Failed to load designs: $e")
                         emptyList()
                     }
                     _state.update { current ->
@@ -287,13 +287,15 @@ class ShipBuilderVM(
                     // Save current design first
                     try {
                         repository.save(_state.value.toShipDesign())
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        println("Failed to save current design ${_state.value.designName}: $e")
                     }
 
                     // Load selected design
                     val loaded = try {
                         repository.load(intent.name)
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        println("Failed to load design ${intent.name}: $e")
                         null
                     }
 
@@ -324,6 +326,8 @@ class ShipBuilderVM(
             }
         }
     }
+
+    private fun generateId(prefix: String): String = "${prefix}_${nextId++}"
 
     /**
      * Recalculate derived state: invalid placements and stats.
@@ -436,7 +440,7 @@ class ShipBuilderVM(
     private fun pointInHullPiece(
         worldPoint: Offset,
         placed: PlacedHullPiece,
-        vertices: List<com.pandulapeter.kubriko.types.SceneOffset>,
+        vertices: List<SceneOffset>,
     ): Boolean {
         if (vertices.size < 3) return false
         val rotation = placed.rotation.normalized
