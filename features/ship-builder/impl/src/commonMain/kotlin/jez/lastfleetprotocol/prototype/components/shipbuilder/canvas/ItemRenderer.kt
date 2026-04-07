@@ -27,6 +27,7 @@ fun DrawScope.drawHullPiece(
     vertices: List<SceneOffset>,
     isSelected: Boolean,
     canvasState: CanvasState,
+    alpha: Float = 1f,
 ) {
     if (vertices.isEmpty()) return
 
@@ -50,11 +51,11 @@ fun DrawScope.drawHullPiece(
 
     drawPath(
         path = path,
-        color = Color.Cyan.copy(alpha = 0.2f),
+        color = Color.Cyan.copy(alpha = 0.2f * alpha),
     )
     drawPath(
         path = path,
-        color = if (isSelected) Color.Cyan else Color.Cyan.copy(alpha = 0.6f),
+        color = if (isSelected) Color.Cyan.copy(alpha = alpha) else Color.Cyan.copy(alpha = 0.6f * alpha),
         style = Stroke(width = if (isSelected) 3f else 1.5f),
     )
 }
@@ -69,14 +70,15 @@ fun DrawScope.drawModule(
     isSelected: Boolean,
     isInvalid: Boolean = false,
     canvasState: CanvasState,
+    alpha: Float = 1f,
 ) {
     val pos = Offset(module.position.x.raw, module.position.y.raw)
     val screenPos = canvasState.worldToScreen(pos)
     val halfSize = MODULE_HALF_SIZE * canvasState.zoom
 
     val baseColor = if (isInvalid) Color.Red else Color.Yellow
-    val fillAlpha = if (isSelected) 0.6f else 0.4f
-    val strokeColor = if (isSelected) baseColor else baseColor.copy(alpha = 0.7f)
+    val fillAlpha = (if (isSelected) 0.6f else 0.4f) * alpha
+    val strokeColor = if (isSelected) baseColor.copy(alpha = alpha) else baseColor.copy(alpha = 0.7f * alpha)
     val strokeWidth = if (isSelected) 2f else 1f
 
     drawRect(
@@ -102,14 +104,15 @@ fun DrawScope.drawTurret(
     isSelected: Boolean,
     isInvalid: Boolean = false,
     canvasState: CanvasState,
+    alpha: Float = 1f,
 ) {
     val pos = Offset(turret.position.x.raw, turret.position.y.raw)
     val screenPos = canvasState.worldToScreen(pos)
     val radius = TURRET_RADIUS * canvasState.zoom
 
     val baseColor = if (isInvalid) Color.Magenta else Color.Red
-    val fillAlpha = if (isSelected) 0.6f else 0.4f
-    val strokeColor = if (isSelected) baseColor else baseColor.copy(alpha = 0.7f)
+    val fillAlpha = (if (isSelected) 0.6f else 0.4f) * alpha
+    val strokeColor = if (isSelected) baseColor.copy(alpha = alpha) else baseColor.copy(alpha = 0.7f * alpha)
     val strokeWidth = if (isSelected) 2f else 1f
 
     drawCircle(
@@ -174,4 +177,77 @@ fun DrawScope.drawRotateHandle(
     )
 
     return handleScreen
+}
+
+private const val VERTEX_HANDLE_RADIUS = 5f
+private const val SELECTED_VERTEX_HANDLE_RADIUS = 7f
+
+/**
+ * Draw the in-progress creation polygon: edges, closing line, and vertex handles.
+ * Red edges when concave, green when convex.
+ * Selected vertex is drawn larger and white; others are cyan outlines.
+ */
+fun DrawScope.drawCreationPolygon(
+    vertices: List<Offset>,
+    selectedVertexIndex: Int?,
+    isConvex: Boolean,
+    canvasState: CanvasState,
+) {
+    if (vertices.isEmpty()) return
+
+    val edgeColor = if (isConvex) Color.Green else Color.Red
+
+    // Draw edges between consecutive vertices (and closing edge)
+    if (vertices.size >= 2) {
+        val path = Path()
+        val firstScreen = canvasState.worldToScreen(vertices[0])
+        path.moveTo(firstScreen.x, firstScreen.y)
+        for (i in 1 until vertices.size) {
+            val screen = canvasState.worldToScreen(vertices[i])
+            path.lineTo(screen.x, screen.y)
+        }
+        // Close the polygon (line from last back to first)
+        path.close()
+
+        // Semi-transparent fill
+        drawPath(
+            path = path,
+            color = edgeColor.copy(alpha = 0.1f),
+        )
+        // Edge outline
+        drawPath(
+            path = path,
+            color = edgeColor.copy(alpha = 0.8f),
+            style = Stroke(width = 2f),
+        )
+    } else {
+        // Single vertex — just draw the handle below
+    }
+
+    // Draw vertex handles
+    for (i in vertices.indices) {
+        val screenPos = canvasState.worldToScreen(vertices[i])
+        if (i == selectedVertexIndex) {
+            // Selected vertex: larger, filled white
+            drawCircle(
+                color = Color.White,
+                radius = SELECTED_VERTEX_HANDLE_RADIUS * canvasState.zoom.coerceIn(0.5f, 2f),
+                center = screenPos,
+            )
+        } else {
+            // Other vertices: cyan outline
+            val radius = VERTEX_HANDLE_RADIUS * canvasState.zoom.coerceIn(0.5f, 2f)
+            drawCircle(
+                color = Color.Cyan.copy(alpha = 0.3f),
+                radius = radius,
+                center = screenPos,
+            )
+            drawCircle(
+                color = Color.Cyan,
+                radius = radius,
+                center = screenPos,
+                style = Stroke(width = 1.5f),
+            )
+        }
+    }
 }

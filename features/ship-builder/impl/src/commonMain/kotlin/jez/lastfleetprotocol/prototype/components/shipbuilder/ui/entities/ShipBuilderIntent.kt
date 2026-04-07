@@ -27,6 +27,11 @@ sealed interface ShipBuilderIntent {
     data class ConfirmLoad(val name: String) : ShipBuilderIntent
     data object DismissLoadDialog : ShipBuilderIntent
 
+    // Vertex manipulation (creation mode)
+    data class PlaceVertex(val worldPosition: Offset) : ShipBuilderIntent
+    data class SelectVertex(val index: Int) : ShipBuilderIntent
+    data class MoveVertex(val index: Int, val worldPosition: Offset) : ShipBuilderIntent
+
     // Creation mode
     data class EnterCreationMode(val itemType: ItemType) : ShipBuilderIntent
     data object ExitCreationMode : ShipBuilderIntent

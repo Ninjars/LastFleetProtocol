@@ -15,6 +15,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesign
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesignRepository
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasInputHandler
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGrid
+import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.isConvex
 import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.pointInPolygon
 import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.calculateStats
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
@@ -38,11 +39,13 @@ private const val HIT_RADIUS_TURRET = 6f
 private const val ROTATE_HANDLE_DISTANCE = 30f
 private const val ROTATE_HANDLE_HIT_RADIUS = 12f
 private const val GRID_CELL_SIZE = 10f
+private const val VERTEX_HIT_RADIUS = 8f
+private const val MAX_VERTICES = 12
 
 /**
  * Drag mode resolved at drag-start based on what was under the pointer.
  */
-private enum class DragMode { NONE, MOVE_ITEM, ROTATE_ITEM, PAN }
+private enum class DragMode { NONE, MOVE_ITEM, ROTATE_ITEM, MOVE_VERTEX, PAN }
 
 @Inject
 class ShipBuilderVM(
@@ -57,24 +60,61 @@ class ShipBuilderVM(
     /** Current drag mode, set on drag-start, cleared on drag-end. */
     private var dragMode: DragMode = DragMode.NONE
 
+    /** Index of the vertex being dragged in MOVE_VERTEX mode. */
+    private var draggingVertexIndex: Int = -1
+
     /** The CanvasInputHandler that the UI captures once and passes to DesignCanvas. */
     val canvasInputHandler = object : CanvasInputHandler {
         override fun onTap(worldPosition: Offset) {
-            accept(ShipBuilderIntent.CanvasTap(worldPosition))
+            val mode = _state.value.editorMode
+            if (mode is EditorMode.CreatingItem) {
+                val snapped = snapToGrid(worldPosition, GRID_CELL_SIZE)
+                val nearIdx = findNearVertex(snapped, mode.vertices, VERTEX_HIT_RADIUS)
+                if (nearIdx != null) {
+                    accept(ShipBuilderIntent.SelectVertex(nearIdx))
+                } else {
+                    accept(ShipBuilderIntent.PlaceVertex(snapped))
+                }
+            } else {
+                accept(ShipBuilderIntent.CanvasTap(worldPosition))
+            }
         }
 
         override fun onDragStart(worldPosition: Offset): Boolean {
+            val mode = _state.value.editorMode
+            if (mode is EditorMode.CreatingItem) {
+                val snapped = snapToGrid(worldPosition, GRID_CELL_SIZE)
+                val nearIdx = findNearVertex(worldPosition, mode.vertices, VERTEX_HIT_RADIUS)
+                if (nearIdx != null && nearIdx == mode.selectedVertexIndex) {
+                    dragMode = DragMode.MOVE_VERTEX
+                    draggingVertexIndex = nearIdx
+                    return true
+                }
+                dragMode = DragMode.PAN
+                return false
+            }
             accept(ShipBuilderIntent.CanvasDragStart(worldPosition))
             return dragMode != DragMode.PAN && dragMode != DragMode.NONE
         }
 
         override fun onDragMove(worldPosition: Offset, worldDelta: Offset): Boolean {
+            if (dragMode == DragMode.MOVE_VERTEX) {
+                accept(ShipBuilderIntent.MoveVertex(draggingVertexIndex, worldPosition))
+                return true
+            }
             if (dragMode == DragMode.PAN || dragMode == DragMode.NONE) return false
             accept(ShipBuilderIntent.CanvasDragMove(worldPosition, worldDelta))
             return true
         }
 
         override fun onDragEnd(worldPosition: Offset) {
+            if (dragMode == DragMode.MOVE_VERTEX) {
+                val snapped = snapToGrid(worldPosition, GRID_CELL_SIZE)
+                accept(ShipBuilderIntent.MoveVertex(draggingVertexIndex, snapped))
+                draggingVertexIndex = -1
+                dragMode = DragMode.NONE
+                return
+            }
             accept(ShipBuilderIntent.CanvasDragEnd(worldPosition))
         }
     }
@@ -146,6 +186,10 @@ class ShipBuilderVM(
                             intent.worldPosition.x - itemPos.x,
                         )
                         _state.update { rotateItem(it, selectedId, angle) }
+                    }
+
+                    DragMode.MOVE_VERTEX -> {
+                        // Handled directly in canvasInputHandler.onDragMove
                     }
 
                     DragMode.PAN, DragMode.NONE -> {
@@ -264,6 +308,58 @@ class ShipBuilderVM(
             is ShipBuilderIntent.DismissLoadDialog -> {
                 _state.update { current ->
                     current.copy(showLoadDialog = false, savedDesigns = emptyList())
+                }
+            }
+
+            is ShipBuilderIntent.PlaceVertex -> {
+                _state.update { current ->
+                    val creating = current.editorMode as? EditorMode.CreatingItem
+                        ?: return@update current
+                    if (creating.vertices.size >= MAX_VERTICES) return@update current
+                    val insertIndex = if (creating.selectedVertexIndex != null) {
+                        creating.selectedVertexIndex + 1
+                    } else {
+                        creating.vertices.size
+                    }
+                    val newVertices = creating.vertices.toMutableList().apply {
+                        add(insertIndex, intent.worldPosition)
+                    }
+                    current.copy(
+                        editorMode = creating.copy(
+                            vertices = newVertices,
+                            selectedVertexIndex = insertIndex,
+                            isConvex = isConvex(newVertices),
+                        )
+                    )
+                }
+            }
+
+            is ShipBuilderIntent.SelectVertex -> {
+                _state.update { current ->
+                    val creating = current.editorMode as? EditorMode.CreatingItem
+                        ?: return@update current
+                    if (intent.index < 0 || intent.index >= creating.vertices.size) return@update current
+                    current.copy(
+                        editorMode = creating.copy(selectedVertexIndex = intent.index)
+                    )
+                }
+            }
+
+            is ShipBuilderIntent.MoveVertex -> {
+                _state.update { current ->
+                    val creating = current.editorMode as? EditorMode.CreatingItem
+                        ?: return@update current
+                    if (intent.index < 0 || intent.index >= creating.vertices.size) return@update current
+                    val snapped = snapToGrid(intent.worldPosition, GRID_CELL_SIZE)
+                    val newVertices = creating.vertices.toMutableList().apply {
+                        set(intent.index, snapped)
+                    }
+                    current.copy(
+                        editorMode = creating.copy(
+                            vertices = newVertices,
+                            isConvex = isConvex(newVertices),
+                        )
+                    )
                 }
             }
 
@@ -729,6 +825,27 @@ class ShipBuilderVM(
         ItemType.HULL -> "Custom Hull ${nextId}"
         ItemType.MODULE -> "Custom Module ${nextId}"
         ItemType.TURRET -> "Custom Turret ${nextId}"
+    }
+
+    /**
+     * Find the index of the vertex closest to [position] that is within [hitRadius],
+     * or null if none is close enough.
+     */
+    private fun findNearVertex(
+        position: Offset,
+        vertices: List<Offset>,
+        hitRadius: Float,
+    ): Int? {
+        var bestIndex: Int? = null
+        var bestDist = hitRadius
+        for (i in vertices.indices) {
+            val dist = (position - vertices[i]).getDistance()
+            if (dist < bestDist) {
+                bestDist = dist
+                bestIndex = i
+            }
+        }
+        return bestIndex
     }
 }
 

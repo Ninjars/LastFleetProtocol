@@ -22,6 +22,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasState.Companion.DRAG_THRESHOLD
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasState.Companion.SCROLL_ZOOM_FACTOR
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderState
 
 
@@ -159,11 +160,24 @@ fun DesignCanvas(
             viewportCentre = size.center,
         )
         drawGrid(canvasState)
-        drawPlacedItems(state, canvasState)
+        val creating = state.editorMode as? EditorMode.CreatingItem
+        drawPlacedItems(state, canvasState, alpha = if (creating != null) 0.3f else 1f)
+        if (creating != null) {
+            drawCreationPolygon(
+                vertices = creating.vertices,
+                selectedVertexIndex = creating.selectedVertexIndex,
+                isConvex = creating.isConvex,
+                canvasState = canvasState,
+            )
+        }
     }
 }
 
-private fun DrawScope.drawPlacedItems(state: ShipBuilderState, canvasState: CanvasState) {
+private fun DrawScope.drawPlacedItems(
+    state: ShipBuilderState,
+    canvasState: CanvasState,
+    alpha: Float = 1f,
+) {
     val selectedId = state.selectedItemId
 
     for (placed in state.placedHulls) {
@@ -174,8 +188,9 @@ private fun DrawScope.drawPlacedItems(state: ShipBuilderState, canvasState: Canv
             vertices = hullDef.vertices,
             isSelected = isSelected,
             canvasState = canvasState,
+            alpha = alpha,
         )
-        if (isSelected) {
+        if (isSelected && alpha >= 1f) {
             val worldPos = Offset(placed.position.x.raw, placed.position.y.raw)
             drawRotateHandle(
                 itemWorldPos = worldPos,
@@ -192,8 +207,9 @@ private fun DrawScope.drawPlacedItems(state: ShipBuilderState, canvasState: Canv
             isSelected = isSelected,
             isInvalid = placed.id in state.invalidPlacements,
             canvasState = canvasState,
+            alpha = alpha,
         )
-        if (isSelected) {
+        if (isSelected && alpha >= 1f) {
             val worldPos = Offset(placed.position.x.raw, placed.position.y.raw)
             drawRotateHandle(
                 itemWorldPos = worldPos,
@@ -210,8 +226,9 @@ private fun DrawScope.drawPlacedItems(state: ShipBuilderState, canvasState: Canv
             isSelected = isSelected,
             isInvalid = placed.id in state.invalidPlacements,
             canvasState = canvasState,
+            alpha = alpha,
         )
-        if (isSelected) {
+        if (isSelected && alpha >= 1f) {
             val worldPos = Offset(placed.position.x.raw, placed.position.y.raw)
             drawRotateHandle(
                 itemWorldPos = worldPos,
