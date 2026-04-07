@@ -50,7 +50,7 @@ fun DesignCanvas(
     modifier: Modifier = Modifier,
 ) {
     var canvasState by remember { mutableStateOf(CanvasState()) }
-    val inputHandlerRef = rememberUpdatedState(inputHandler)
+    val inputHandlerRef by rememberUpdatedState(inputHandler)
 
     Canvas(
         modifier = modifier
@@ -112,11 +112,11 @@ fun DesignCanvas(
                         if (change.changedToUp()) {
                             change.consume()
                             if (isDragging) {
-                                inputHandlerRef.value.onDragEnd(
+                                inputHandlerRef.onDragEnd(
                                     canvasState.screenToWorld(change.position)
                                 )
                             } else {
-                                inputHandlerRef.value.onTap(
+                                inputHandlerRef.onTap(
                                     canvasState.screenToWorld(downPos)
                                 )
                             }
@@ -128,7 +128,7 @@ fun DesignCanvas(
 
                         if (!isDragging && totalDrag.getDistance() > DRAG_THRESHOLD) {
                             isDragging = true
-                            val consumed = inputHandlerRef.value.onDragStart(
+                            val consumed = inputHandlerRef.onDragStart(
                                 canvasState.screenToWorld(downPos)
                             )
                             if (!consumed) {
@@ -140,7 +140,7 @@ fun DesignCanvas(
 
                         if (isDragging) {
                             change.consume()
-                            val consumed = inputHandlerRef.value.onDragMove(
+                            val consumed = inputHandlerRef.onDragMove(
                                 worldPosition = canvasState.screenToWorld(change.position),
                                 worldDelta = dragDelta / canvasState.zoom,
                             )
