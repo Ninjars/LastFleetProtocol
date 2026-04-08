@@ -41,4 +41,12 @@ data class ShipBuilderState(
             val catalogIds = PartsCatalog.allItems.map { it.id }.toSet()
             return itemDefinitions.filter { it.id !in catalogIds }
         }
+
+    /**
+     * Resolve an item definition by ID, checking the design's custom items first,
+     * then falling back to the pre-defined catalog.
+     */
+    fun resolveItemDefinition(id: String): ItemDefinition? =
+        itemDefinitions.find { it.id == id }
+            ?: PartsCatalog.allItems.find { it.id == id }
 }

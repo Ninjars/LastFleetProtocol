@@ -251,11 +251,9 @@ class ShipBuilderVM(
 
     private fun addHullItem(itemDef: ItemDefinition) {
         _state.update { current ->
-            val defId = generateId("itemdef")
             recalculate(current.copy(
-                itemDefinitions = current.itemDefinitions + itemDef.copy(id = defId),
                 placedHulls = current.placedHulls + PlacedHullPiece(
-                    id = generateId("hull"), itemDefinitionId = defId,
+                    id = generateId("hull"), itemDefinitionId = itemDef.id,
                     position = SceneOffset(0f.sceneUnit, 0f.sceneUnit), rotation = 0f.rad,
                 ),
             ))
@@ -264,12 +262,10 @@ class ShipBuilderVM(
 
     private fun addModuleItem(itemDef: ItemDefinition) {
         _state.update { current ->
-            val defId = generateId("itemdef")
             val attrs = itemDef.attributes as ItemAttributes.ModuleAttributes
             recalculate(current.copy(
-                itemDefinitions = current.itemDefinitions + itemDef.copy(id = defId),
                 placedModules = current.placedModules + PlacedModule(
-                    id = generateId("module"), itemDefinitionId = defId,
+                    id = generateId("module"), itemDefinitionId = itemDef.id,
                     systemType = attrs.systemType,
                     position = SceneOffset(0f.sceneUnit, 0f.sceneUnit), rotation = 0f.rad,
                     parentHullId = current.placedHulls.firstOrNull()?.id ?: "",
@@ -280,11 +276,9 @@ class ShipBuilderVM(
 
     private fun addTurretItem(itemDef: ItemDefinition) {
         _state.update { current ->
-            val defId = generateId("itemdef")
             recalculate(current.copy(
-                itemDefinitions = current.itemDefinitions + itemDef.copy(id = defId),
                 placedTurrets = current.placedTurrets + PlacedTurret(
-                    id = generateId("turret"), itemDefinitionId = defId,
+                    id = generateId("turret"), itemDefinitionId = itemDef.id,
                     turretConfigId = itemDef.id,
                     position = SceneOffset(0f.sceneUnit, 0f.sceneUnit), rotation = 0f.rad,
                     parentHullId = current.placedHulls.firstOrNull()?.id ?: "",
@@ -317,7 +311,7 @@ class ShipBuilderVM(
 
     private fun isInsideAnyHull(worldPoint: Offset, state: ShipBuilderState): Boolean {
         for (placed in state.placedHulls) {
-            val def = state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
+            val def = state.resolveItemDefinition(placed.itemDefinitionId) ?: continue
             if (def.vertices.size < 3) continue
             val pos = Offset(placed.position.x.raw, placed.position.y.raw)
             val rot = placed.rotation.normalized
@@ -341,11 +335,28 @@ class ShipBuilderVM(
     private fun mirrorItem(state: ShipBuilderState, id: String, mirrorX: Boolean): ShipBuilderState {
         val hullPlaced = state.placedHulls.find { it.id == id }
         if (hullPlaced != null) {
-            return state.copy(itemDefinitions = state.itemDefinitions.map { def ->
-                if (def.id == hullPlaced.itemDefinitionId) def.copy(vertices = def.vertices.map { v ->
-                    if (mirrorX) SceneOffset(v.x, (-v.y.raw).sceneUnit) else SceneOffset((-v.x.raw).sceneUnit, v.y)
-                }) else def
-            })
+            val originalDef = state.resolveItemDefinition(hullPlaced.itemDefinitionId) ?: return state
+            val mirroredVertices = originalDef.vertices.map { v ->
+                if (mirrorX) SceneOffset(v.x, (-v.y.raw).sceneUnit) else SceneOffset((-v.x.raw).sceneUnit, v.y)
+            }
+            // If the definition is from the catalog, create a custom copy with a new ID
+            val isCustom = state.itemDefinitions.any { it.id == originalDef.id }
+            return if (isCustom) {
+                // Mutate the existing custom definition in place
+                state.copy(itemDefinitions = state.itemDefinitions.map { def ->
+                    if (def.id == originalDef.id) def.copy(vertices = mirroredVertices) else def
+                })
+            } else {
+                // Fork from catalog: create a new custom definition and re-point the placed item
+                val newDefId = generateId("itemdef")
+                val newDef = originalDef.copy(id = newDefId, vertices = mirroredVertices)
+                state.copy(
+                    itemDefinitions = state.itemDefinitions + newDef,
+                    placedHulls = state.placedHulls.map {
+                        if (it.id == id) it.copy(itemDefinitionId = newDefId) else it
+                    },
+                )
+            }
         }
         return state.copy(
             placedModules = state.placedModules.map {

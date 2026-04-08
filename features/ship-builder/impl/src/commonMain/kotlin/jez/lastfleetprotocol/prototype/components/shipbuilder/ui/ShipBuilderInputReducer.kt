@@ -299,7 +299,7 @@ class ShipBuilderInputReducer {
         }
         for (placed in state.placedHulls.asReversed()) {
             val hullDef =
-                state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
+                state.resolveItemDefinition(placed.itemDefinitionId) ?: continue
             if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return placed.id
         }
         return null
@@ -309,7 +309,7 @@ class ShipBuilderInputReducer {
         for (placed in state.placedHulls) {
             if (placed.id != itemId) continue
             val hullDef =
-                state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
+                state.resolveItemDefinition(placed.itemDefinitionId) ?: continue
             if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return true
         }
         for (placed in state.placedModules) {

@@ -177,7 +177,7 @@ private fun DrawScope.drawPlacedItems(
     val selectedId = state.selectedItemId
 
     for (placed in state.placedHulls) {
-        val hullDef = state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
+        val hullDef = state.resolveItemDefinition(placed.itemDefinitionId) ?: continue
         val isSelected = placed.id == selectedId
         drawHullPiece(
             piece = placed,

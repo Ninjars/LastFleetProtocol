@@ -26,12 +26,10 @@ data class ShipStats(
  * - Acceleration: thrust / mass per axis (0 if mass is 0)
  */
 fun calculateStats(state: ShipBuilderState): ShipStats {
-    val itemDefs = state.itemDefinitions
-
     // Hull mass + armour contribution
     var hullMass = 0f
     for (placedHull in state.placedHulls) {
-        val def = itemDefs.find { it.id == placedHull.itemDefinitionId } ?: continue
+        val def = state.resolveItemDefinition(placedHull.itemDefinitionId) ?: continue
         val attrs = def.attributes as? ItemAttributes.HullAttributes ?: continue
         hullMass += attrs.mass
         hullMass += attrs.armour.density * attrs.mass * 0.1f
@@ -45,7 +43,7 @@ fun calculateStats(state: ShipBuilderState): ShipStats {
     var angularThrust = 0f
 
     for (module in state.placedModules) {
-        val def = itemDefs.find { it.id == module.itemDefinitionId }
+        val def = state.resolveItemDefinition(module.itemDefinitionId)
         val attrs = def?.attributes as? ItemAttributes.ModuleAttributes
         if (attrs != null) {
             moduleMass += attrs.mass
