@@ -14,7 +14,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurr
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesign
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesignRepository
-import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.pointInPolygon
+import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.pointInPlacedItem
 import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.calculateStats
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderIntent
@@ -312,18 +312,7 @@ class ShipBuilderVM(
     private fun isInsideAnyHull(worldPoint: Offset, state: ShipBuilderState): Boolean {
         for (placed in state.placedHulls) {
             val def = state.resolveItemDefinition(placed.itemDefinitionId) ?: continue
-            if (def.vertices.size < 3) continue
-            val pos = Offset(placed.position.x.raw, placed.position.y.raw)
-            val rot = placed.rotation.normalized
-            val lx = worldPoint.x - pos.x
-            val ly = worldPoint.y - pos.y
-            val cr = cos(-rot); val sr = sin(-rot)
-            var testX = lx * cr - ly * sr
-            var testY = lx * sr + ly * cr
-            // Apply inverse mirror to match how vertices are rendered
-            if (placed.mirrorY) testX = -testX
-            if (placed.mirrorX) testY = -testY
-            if (pointInPolygon(Offset(testX, testY), def.vertices.map { Offset(it.x.raw, it.y.raw) })) return true
+            if (pointInPlacedItem(worldPoint, placed, def.vertices)) return true
         }
         return false
     }

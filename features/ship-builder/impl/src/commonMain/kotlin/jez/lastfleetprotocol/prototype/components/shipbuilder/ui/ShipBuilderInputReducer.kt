@@ -4,11 +4,10 @@ import androidx.compose.ui.geometry.Offset
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
-import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGridCentre
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGridCorner
 import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.isConvex
-import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.pointInPolygon
+import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.pointInPlacedItem
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderIntent
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderState
@@ -288,77 +287,30 @@ class ShipBuilderInputReducer {
 
     // --- Hit testing ---
 
+    /**
+     * Hit test all placed items at [worldPos], checking topmost (turrets) first.
+     * Returns the ID of the hit item, or null.
+     */
     private fun hitTestAllItems(worldPos: Offset, state: ShipBuilderState): String? {
-        for (placed in state.placedTurrets.asReversed()) {
-            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
-            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_TURRET) return placed.id
-        }
-        for (placed in state.placedModules.asReversed()) {
-            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
-            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_MODULE) return placed.id
-        }
-        for (placed in state.placedHulls.asReversed()) {
-            val hullDef =
-                state.resolveItemDefinition(placed.itemDefinitionId) ?: continue
-            if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return placed.id
+        // Iterate in reverse draw order (topmost first): turrets, modules, hulls
+        for (placed in state.allPlacedItems.asReversed()) {
+            val def = state.resolveItemDefinition(placed.itemDefinitionId) ?: continue
+            if (pointInPlacedItem(worldPos, placed, def.vertices)) return placed.id
         }
         return null
     }
 
     private fun hitTestItem(worldPos: Offset, itemId: String, state: ShipBuilderState): Boolean {
-        for (placed in state.placedHulls) {
-            if (placed.id != itemId) continue
-            val hullDef =
-                state.resolveItemDefinition(placed.itemDefinitionId) ?: continue
-            if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return true
-        }
-        for (placed in state.placedModules) {
-            if (placed.id != itemId) continue
-            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
-            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_MODULE) return true
-        }
-        for (placed in state.placedTurrets) {
-            if (placed.id != itemId) continue
-            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
-            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_TURRET) return true
-        }
-        return false
-    }
-
-    private fun pointInHullPiece(
-        worldPoint: Offset,
-        placed: PlacedHullPiece,
-        vertices: List<SceneOffset>,
-    ): Boolean {
-        if (vertices.size < 3) return false
-        val rotation = placed.rotation.normalized
-        val pos = Offset(placed.position.x.raw, placed.position.y.raw)
-        val localX = worldPoint.x - pos.x
-        val localY = worldPoint.y - pos.y
-        val cosR = cos(-rotation)
-        val sinR = sin(-rotation)
-        var testX = localX * cosR - localY * sinR
-        var testY = localX * sinR + localY * cosR
-        // Apply inverse mirror (mirror is self-inverse) to match how vertices are rendered
-        if (placed.mirrorY) testX = -testX
-        if (placed.mirrorX) testY = -testY
-        val localVertices = vertices.map { Offset(it.x.raw, it.y.raw) }
-        return pointInPolygon(Offset(testX, testY), localVertices)
+        val placed = state.allPlacedItems.find { it.id == itemId } ?: return false
+        val def = state.resolveItemDefinition(placed.itemDefinitionId) ?: return false
+        return pointInPlacedItem(worldPos, placed, def.vertices)
     }
 
     // --- Spatial queries ---
 
     private fun getItemWorldPos(itemId: String, state: ShipBuilderState): Offset? {
-        state.placedHulls.find { it.id == itemId }?.let {
-            return Offset(it.position.x.raw, it.position.y.raw)
-        }
-        state.placedModules.find { it.id == itemId }?.let {
-            return Offset(it.position.x.raw, it.position.y.raw)
-        }
-        state.placedTurrets.find { it.id == itemId }?.let {
-            return Offset(it.position.x.raw, it.position.y.raw)
-        }
-        return null
+        val placed = state.allPlacedItems.find { it.id == itemId } ?: return null
+        return Offset(placed.position.x.raw, placed.position.y.raw)
     }
 
     private fun isOnRotateHandle(
@@ -367,17 +319,11 @@ class ShipBuilderInputReducer {
         itemId: String,
         state: ShipBuilderState,
     ): Boolean {
-        val rotation = getItemRotation(itemId, state) ?: return false
+        val placed = state.allPlacedItems.find { it.id == itemId } ?: return false
+        val rotation = placed.rotation.normalized
         val handleX = itemPos.x + cos(rotation) * ROTATE_HANDLE_DISTANCE
         val handleY = itemPos.y + sin(rotation) * ROTATE_HANDLE_DISTANCE
         return (worldPos - Offset(handleX, handleY)).getDistance() < ROTATE_HANDLE_HIT_RADIUS
-    }
-
-    private fun getItemRotation(itemId: String, state: ShipBuilderState): Float? {
-        state.placedHulls.find { it.id == itemId }?.let { return it.rotation.normalized }
-        state.placedModules.find { it.id == itemId }?.let { return it.rotation.normalized }
-        state.placedTurrets.find { it.id == itemId }?.let { return it.rotation.normalized }
-        return null
     }
 
     private fun findNearVertex(

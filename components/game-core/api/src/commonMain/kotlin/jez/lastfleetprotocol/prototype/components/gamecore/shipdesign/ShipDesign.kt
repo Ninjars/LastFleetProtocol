@@ -34,36 +34,36 @@ data class SerializableArmourStats(
 
 @Serializable
 data class PlacedHullPiece(
-    val id: String,
-    val itemDefinitionId: String,
-    @Serializable(with = SceneOffsetSerializer::class) val position: SceneOffset,
-    @Serializable(with = AngleRadiansSerializer::class) val rotation: AngleRadians,
-    val mirrorX: Boolean = false,
-    val mirrorY: Boolean = false,
+    override val id: String,
+    override val itemDefinitionId: String,
+    @Serializable(with = SceneOffsetSerializer::class) override val position: SceneOffset,
+    @Serializable(with = AngleRadiansSerializer::class) override val rotation: AngleRadians,
+    override val mirrorX: Boolean = false,
+    override val mirrorY: Boolean = false,
     @Deprecated("Use itemDefinitionId instead")
     val hullPieceId: String = "",
-)
+) : PlacedItem
 
 @Serializable
 data class PlacedModule(
-    val id: String,
-    val itemDefinitionId: String = "",
+    override val id: String,
+    override val itemDefinitionId: String = "",
     val systemType: String,
-    @Serializable(with = SceneOffsetSerializer::class) val position: SceneOffset,
-    @Serializable(with = AngleRadiansSerializer::class) val rotation: AngleRadians,
-    val mirrorX: Boolean = false,
-    val mirrorY: Boolean = false,
+    @Serializable(with = SceneOffsetSerializer::class) override val position: SceneOffset,
+    @Serializable(with = AngleRadiansSerializer::class) override val rotation: AngleRadians,
+    override val mirrorX: Boolean = false,
+    override val mirrorY: Boolean = false,
     val parentHullId: String,
-)
+) : PlacedItem
 
 @Serializable
 data class PlacedTurret(
-    val id: String,
-    val itemDefinitionId: String = "",
+    override val id: String,
+    override val itemDefinitionId: String = "",
     val turretConfigId: String,
-    @Serializable(with = SceneOffsetSerializer::class) val position: SceneOffset,
-    @Serializable(with = AngleRadiansSerializer::class) val rotation: AngleRadians,
-    val mirrorX: Boolean = false,
-    val mirrorY: Boolean = false,
+    @Serializable(with = SceneOffsetSerializer::class) override val position: SceneOffset,
+    @Serializable(with = AngleRadiansSerializer::class) override val rotation: AngleRadians,
+    override val mirrorX: Boolean = false,
+    override val mirrorY: Boolean = false,
     val parentHullId: String,
-)
+) : PlacedItem

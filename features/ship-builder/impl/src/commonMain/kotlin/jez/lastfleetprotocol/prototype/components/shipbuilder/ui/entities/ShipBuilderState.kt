@@ -5,6 +5,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttrib
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedItem
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurret
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.PartsCatalog
@@ -49,4 +50,10 @@ data class ShipBuilderState(
     fun resolveItemDefinition(id: String): ItemDefinition? =
         itemDefinitions.find { it.id == id }
             ?: PartsCatalog.allItems.find { it.id == id }
+
+    /**
+     * All placed items in draw order: hulls first (bottom), then modules, then turrets (top).
+     */
+    val allPlacedItems: List<PlacedItem>
+        get() = placedHulls + placedModules + placedTurrets
 }
