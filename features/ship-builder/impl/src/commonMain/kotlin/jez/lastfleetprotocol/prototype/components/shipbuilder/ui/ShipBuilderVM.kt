@@ -11,6 +11,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurret
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesign
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesignRepository
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasInputHandler
@@ -18,7 +19,6 @@ import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGrid
 import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.isConvex
 import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.pointInPolygon
 import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.calculateStats
-import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderIntent
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderSideEffect
@@ -83,7 +83,6 @@ class ShipBuilderVM(
         override fun onDragStart(worldPosition: Offset): Boolean {
             val mode = _state.value.editorMode
             if (mode is EditorMode.CreatingItem) {
-                val snapped = snapToGrid(worldPosition, GRID_CELL_SIZE)
                 val nearIdx = findNearVertex(worldPosition, mode.vertices, VERTEX_HIT_RADIUS)
                 if (nearIdx != null && nearIdx == mode.selectedVertexIndex) {
                     dragMode = DragMode.MOVE_VERTEX
@@ -457,14 +456,16 @@ class ShipBuilderVM(
 
             is ShipBuilderIntent.UpdateCreationName -> {
                 _state.update { current ->
-                    val creating = current.editorMode as? EditorMode.CreatingItem ?: return@update current
+                    val creating =
+                        current.editorMode as? EditorMode.CreatingItem ?: return@update current
                     current.copy(editorMode = creating.copy(name = intent.name))
                 }
             }
 
             is ShipBuilderIntent.UpdateCreationAttributes -> {
                 _state.update { current ->
-                    val creating = current.editorMode as? EditorMode.CreatingItem ?: return@update current
+                    val creating =
+                        current.editorMode as? EditorMode.CreatingItem ?: return@update current
                     current.copy(editorMode = creating.copy(attributes = intent.attributes))
                 }
             }
@@ -584,7 +585,8 @@ class ShipBuilderVM(
      */
     private fun isInsideAnyHull(worldPoint: Offset, state: ShipBuilderState): Boolean {
         for (placed in state.placedHulls) {
-            val hullDef = state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
+            val hullDef =
+                state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
             if (hullDef.vertices.size < 3) continue
 
             val hullPos = Offset(placed.position.x.raw, placed.position.y.raw)
@@ -621,7 +623,8 @@ class ShipBuilderVM(
             if ((worldPos - itemPos).getDistance() < HIT_RADIUS_MODULE) return placed.id
         }
         for (placed in state.placedHulls.asReversed()) {
-            val hullDef = state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
+            val hullDef =
+                state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
             if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return placed.id
         }
         return null
@@ -630,7 +633,8 @@ class ShipBuilderVM(
     private fun hitTestItem(worldPos: Offset, itemId: String, state: ShipBuilderState): Boolean {
         for (placed in state.placedHulls) {
             if (placed.id != itemId) continue
-            val hullDef = state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
+            val hullDef =
+                state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
             if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return true
         }
         for (placed in state.placedModules) {
@@ -799,6 +803,7 @@ class ShipBuilderVM(
             },
         )
     }
+
     private fun defaultAttributesFor(itemType: ItemType): ItemAttributes = when (itemType) {
         ItemType.HULL -> ItemAttributes.HullAttributes(
             armour = SerializableArmourStats(hardness = 5f, density = 2f),
