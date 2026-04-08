@@ -23,36 +23,24 @@ import androidx.compose.ui.input.pointer.positionChange
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasState.Companion.DRAG_THRESHOLD
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasState.Companion.SCROLL_ZOOM_FACTOR
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderIntent
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderState
 
-
 /**
- * Callback interface for raw canvas pointer events.
- * The canvas reports what happened; the VM decides what it means.
- * All positions are in world coordinates (accounting for pan/zoom).
+ * Callback for canvas pointer intents. Returns true if the intent was
+ * consumed by item interaction (move, rotate, vertex drag), false if
+ * the canvas should pan instead.
  */
-interface CanvasInputHandler {
-    /** Single tap (press + release within drag threshold) at a world position. */
-    fun onTap(worldPosition: Offset)
-
-    /** Drag started at a world position. Return true if consumed (e.g. item hit), false to pan. */
-    fun onDragStart(worldPosition: Offset): Boolean
-
-    /** Drag moved to a new world position with a world-space delta. Return true if consumed, false to pan. */
-    fun onDragMove(worldPosition: Offset, worldDelta: Offset): Boolean
-
-    /** Drag ended at a world position. */
-    fun onDragEnd(worldPosition: Offset)
-}
+private typealias CanvasIntentHandler = (ShipBuilderIntent) -> Boolean
 
 @Composable
 fun DesignCanvas(
     state: ShipBuilderState,
-    inputHandler: CanvasInputHandler,
+    onIntent: CanvasIntentHandler,
     modifier: Modifier = Modifier,
 ) {
     var canvasState by remember { mutableStateOf(CanvasState()) }
-    val inputHandlerRef by rememberUpdatedState(inputHandler)
+    val onIntentRef by rememberUpdatedState(onIntent)
 
     Canvas(
         modifier = modifier
@@ -114,12 +102,16 @@ fun DesignCanvas(
                         if (change.changedToUp()) {
                             change.consume()
                             if (isDragging) {
-                                inputHandlerRef.onDragEnd(
-                                    canvasState.screenToWorld(change.position)
+                                onIntentRef(
+                                    ShipBuilderIntent.CanvasDragEnd(
+                                        canvasState.screenToWorld(change.position)
+                                    )
                                 )
                             } else {
-                                inputHandlerRef.onTap(
-                                    canvasState.screenToWorld(downPos)
+                                onIntentRef(
+                                    ShipBuilderIntent.CanvasTap(
+                                        canvasState.screenToWorld(downPos)
+                                    )
                                 )
                             }
                             break
@@ -130,8 +122,10 @@ fun DesignCanvas(
 
                         if (!isDragging && totalDrag.getDistance() > DRAG_THRESHOLD) {
                             isDragging = true
-                            val consumed = inputHandlerRef.onDragStart(
-                                canvasState.screenToWorld(downPos)
+                            val consumed = onIntentRef(
+                                ShipBuilderIntent.CanvasDragStart(
+                                    canvasState.screenToWorld(downPos)
+                                )
                             )
                             if (!consumed) {
                                 canvasState = canvasState.copy(
@@ -142,9 +136,11 @@ fun DesignCanvas(
 
                         if (isDragging) {
                             change.consume()
-                            val consumed = inputHandlerRef.onDragMove(
-                                worldPosition = canvasState.screenToWorld(change.position),
-                                worldDelta = dragDelta / canvasState.zoom,
+                            val consumed = onIntentRef(
+                                ShipBuilderIntent.CanvasDragMove(
+                                    worldPosition = canvasState.screenToWorld(change.position),
+                                    worldDelta = dragDelta / canvasState.zoom,
+                                )
                             )
                             if (!consumed) {
                                 canvasState = canvasState.copy(

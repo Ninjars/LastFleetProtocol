@@ -28,7 +28,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
-import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasInputHandler
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.DesignCanvas
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderIntent
@@ -58,7 +57,7 @@ fun ShipBuilderScreen(
     ShipBuilderScreen(
         state = viewModel.state.collectAsStateWithLifecycle().value,
         onIntent = viewModel::accept,
-        canvasInputHandler = viewModel.canvasInputHandler,
+        onCanvasIntent = viewModel::handleCanvasIntent,
     )
 }
 
@@ -66,7 +65,7 @@ fun ShipBuilderScreen(
 private fun ShipBuilderScreen(
     state: ShipBuilderState,
     onIntent: (ShipBuilderIntent) -> Unit,
-    canvasInputHandler: CanvasInputHandler,
+    onCanvasIntent: (ShipBuilderIntent) -> Boolean,
 ) {
     val editorMode = state.editorMode
 
@@ -100,7 +99,7 @@ private fun ShipBuilderScreen(
         ) {
             DesignCanvas(
                 state = state,
-                inputHandler = canvasInputHandler,
+                onIntent = onCanvasIntent,
                 modifier = Modifier.fillMaxSize(),
             )
 

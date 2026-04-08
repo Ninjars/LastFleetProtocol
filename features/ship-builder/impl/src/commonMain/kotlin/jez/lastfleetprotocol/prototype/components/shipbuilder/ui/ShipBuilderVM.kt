@@ -14,9 +14,6 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurr
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesign
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesignRepository
-import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.CanvasInputHandler
-import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGrid
-import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.isConvex
 import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.pointInPolygon
 import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.calculateStats
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
@@ -30,22 +27,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.tatarka.inject.annotations.Inject
 import kotlin.math.PI
-import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
-
-private const val HIT_RADIUS_MODULE = 8f
-private const val HIT_RADIUS_TURRET = 6f
-private const val ROTATE_HANDLE_DISTANCE = 30f
-private const val ROTATE_HANDLE_HIT_RADIUS = 12f
-private const val GRID_CELL_SIZE = 10f
-private const val VERTEX_HIT_RADIUS = 8f
-private const val MAX_VERTICES = 12
-
-/**
- * Drag mode resolved at drag-start based on what was under the pointer.
- */
-private enum class DragMode { NONE, MOVE_ITEM, ROTATE_ITEM, MOVE_VERTEX, PAN }
 
 @Inject
 class ShipBuilderVM(
@@ -56,67 +39,7 @@ class ShipBuilderVM(
     override val state: StateFlow<ShipBuilderState> = _state
 
     private var nextId = 0
-
-    /** Current drag mode, set on drag-start, cleared on drag-end. */
-    private var dragMode: DragMode = DragMode.NONE
-
-    /** Index of the vertex being dragged in MOVE_VERTEX mode. */
-    private var draggingVertexIndex: Int = -1
-
-    /** The CanvasInputHandler that the UI captures once and passes to DesignCanvas. */
-    val canvasInputHandler = object : CanvasInputHandler {
-        override fun onTap(worldPosition: Offset) {
-            val mode = _state.value.editorMode
-            if (mode is EditorMode.CreatingItem) {
-                val snapped = snapToGrid(worldPosition, GRID_CELL_SIZE)
-                val nearIdx = findNearVertex(snapped, mode.vertices, VERTEX_HIT_RADIUS)
-                if (nearIdx != null) {
-                    accept(ShipBuilderIntent.SelectVertex(nearIdx))
-                } else {
-                    accept(ShipBuilderIntent.PlaceVertex(snapped))
-                }
-            } else {
-                accept(ShipBuilderIntent.CanvasTap(worldPosition))
-            }
-        }
-
-        override fun onDragStart(worldPosition: Offset): Boolean {
-            val mode = _state.value.editorMode
-            if (mode is EditorMode.CreatingItem) {
-                val nearIdx = findNearVertex(worldPosition, mode.vertices, VERTEX_HIT_RADIUS)
-                if (nearIdx != null && nearIdx == mode.selectedVertexIndex) {
-                    dragMode = DragMode.MOVE_VERTEX
-                    draggingVertexIndex = nearIdx
-                    return true
-                }
-                dragMode = DragMode.PAN
-                return false
-            }
-            accept(ShipBuilderIntent.CanvasDragStart(worldPosition))
-            return dragMode != DragMode.PAN && dragMode != DragMode.NONE
-        }
-
-        override fun onDragMove(worldPosition: Offset, worldDelta: Offset): Boolean {
-            if (dragMode == DragMode.MOVE_VERTEX) {
-                accept(ShipBuilderIntent.MoveVertex(draggingVertexIndex, worldPosition))
-                return true
-            }
-            if (dragMode == DragMode.PAN || dragMode == DragMode.NONE) return false
-            accept(ShipBuilderIntent.CanvasDragMove(worldPosition, worldDelta))
-            return true
-        }
-
-        override fun onDragEnd(worldPosition: Offset) {
-            if (dragMode == DragMode.MOVE_VERTEX) {
-                val snapped = snapToGrid(worldPosition, GRID_CELL_SIZE)
-                accept(ShipBuilderIntent.MoveVertex(draggingVertexIndex, snapped))
-                draggingVertexIndex = -1
-                dragMode = DragMode.NONE
-                return
-            }
-            accept(ShipBuilderIntent.CanvasDragEnd(worldPosition))
-        }
-    }
+    private val inputReducer = ShipBuilderInputReducer()
 
     init {
         nextId = repository.listAll().size
@@ -125,128 +48,58 @@ class ShipBuilderVM(
         autoSave()
     }
 
+    /**
+     * Handle a canvas input intent. Returns true if consumed (item interaction),
+     * false if the canvas should pan instead.
+     */
+    fun handleCanvasIntent(intent: ShipBuilderIntent): Boolean {
+        val result = inputReducer.reduce(_state.value, intent)
+        _state.value = result.state
+        if (result.shouldSave) autoSave()
+        return result.consumed
+    }
+
     override fun accept(intent: ShipBuilderIntent) {
+        // Canvas input intents route through the reducer.
+        if (inputReducer.handles(intent)) {
+            handleCanvasIntent(intent)
+            return
+        }
+
         when (intent) {
             is ShipBuilderIntent.Noop -> Unit
 
             is ShipBuilderIntent.AddItem -> {
-                val itemDef = intent.itemDefinition
-                when (itemDef.itemType) {
-                    ItemType.HULL -> addHullItem(itemDef)
-                    ItemType.MODULE -> addModuleItem(itemDef)
-                    ItemType.TURRET -> addTurretItem(itemDef)
+                when (intent.itemDefinition.itemType) {
+                    ItemType.HULL -> addHullItem(intent.itemDefinition)
+                    ItemType.MODULE -> addModuleItem(intent.itemDefinition)
+                    ItemType.TURRET -> addTurretItem(intent.itemDefinition)
                 }
                 autoSave()
             }
 
-            // --- Canvas input: VM resolves what the pointer events mean ---
-
-            is ShipBuilderIntent.CanvasTap -> {
-                val hitId = hitTestAllItems(intent.worldPosition, _state.value)
-                _state.update { it.copy(selectedItemId = hitId) }
-            }
-
-            is ShipBuilderIntent.CanvasDragStart -> {
-                val current = _state.value
-                val selectedId = current.selectedItemId
-                dragMode = if (selectedId != null) {
-                    val itemPos = getItemWorldPos(selectedId, current)
-                    if (itemPos != null && isOnRotateHandle(
-                            intent.worldPosition,
-                            itemPos,
-                            current
-                        )
-                    ) {
-                        DragMode.ROTATE_ITEM
-                    } else if (hitTestItem(intent.worldPosition, selectedId, current)) {
-                        DragMode.MOVE_ITEM
-                    } else {
-                        DragMode.PAN
-                    }
-                } else {
-                    DragMode.PAN
-                }
-            }
-
-            is ShipBuilderIntent.CanvasDragMove -> {
-                val current = _state.value
-                val selectedId = current.selectedItemId ?: return
-                when (dragMode) {
-                    DragMode.MOVE_ITEM -> {
-                        val currentPos = getItemWorldPos(selectedId, current) ?: return
-                        val newPos = currentPos + intent.worldDelta
-                        _state.update { moveItem(it, selectedId, newPos) }
-                    }
-
-                    DragMode.ROTATE_ITEM -> {
-                        val itemPos = getItemWorldPos(selectedId, current) ?: return
-                        val angle = atan2(
-                            intent.worldPosition.y - itemPos.y,
-                            intent.worldPosition.x - itemPos.x,
-                        )
-                        _state.update { rotateItem(it, selectedId, angle) }
-                    }
-
-                    DragMode.MOVE_VERTEX -> {
-                        // Handled directly in canvasInputHandler.onDragMove
-                    }
-
-                    DragMode.PAN, DragMode.NONE -> {
-                        // Pan is handled locally in DesignCanvas — nothing to do here
-                    }
-                }
-            }
-
-            is ShipBuilderIntent.CanvasDragEnd -> {
-                if (dragMode == DragMode.MOVE_ITEM) {
-                    val current = _state.value
-                    val selectedId = current.selectedItemId
-                    if (selectedId != null) {
-                        val pos = getItemWorldPos(selectedId, current)
-                        if (pos != null) {
-                            val snapped = snapToGrid(pos, GRID_CELL_SIZE)
-                            _state.update { recalculate(moveItem(it, selectedId, snapped)) }
-                            autoSave()
-                        }
-                    }
-                } else if (dragMode == DragMode.ROTATE_ITEM) {
-                    autoSave()
-                }
-                dragMode = DragMode.NONE
-            }
-
             is ShipBuilderIntent.RotateCW -> {
-                _state.update { current ->
-                    recalculate(rotateItemBy(current, intent.id, (PI / 2).toFloat()))
-                }
+                _state.update { recalculate(rotateItemBy(it, intent.id, (PI / 2).toFloat())) }
                 autoSave()
             }
 
             is ShipBuilderIntent.RotateCCW -> {
-                _state.update { current ->
-                    recalculate(rotateItemBy(current, intent.id, -(PI / 2).toFloat()))
-                }
+                _state.update { recalculate(rotateItemBy(it, intent.id, -(PI / 2).toFloat())) }
                 autoSave()
             }
 
             is ShipBuilderIntent.MirrorItemX -> {
-                _state.update { current ->
-                    recalculate(mirrorItem(current, intent.id, mirrorX = true))
-                }
+                _state.update { recalculate(mirrorItem(it, intent.id, mirrorX = true)) }
                 autoSave()
             }
 
             is ShipBuilderIntent.MirrorItemY -> {
-                _state.update { current ->
-                    recalculate(mirrorItem(current, intent.id, mirrorX = false))
-                }
+                _state.update { recalculate(mirrorItem(it, intent.id, mirrorX = false)) }
                 autoSave()
             }
 
             is ShipBuilderIntent.RenameDesign -> {
-                _state.update { current ->
-                    current.copy(designName = intent.name)
-                }
+                _state.update { it.copy(designName = intent.name) }
                 autoSave()
             }
 
@@ -258,35 +111,21 @@ class ShipBuilderVM(
                         println("Failed to load designs: $e")
                         emptyList()
                     }
-                    _state.update { current ->
-                        current.copy(
-                            showLoadDialog = true,
-                            savedDesigns = designs,
-                        )
-                    }
+                    _state.update { it.copy(showLoadDialog = true, savedDesigns = designs) }
                 }
             }
 
             is ShipBuilderIntent.ConfirmLoad -> {
                 viewModelScope.launch {
-                    // Save current design first
-                    try {
-                        repository.save(_state.value.toShipDesign())
-                    } catch (e: Exception) {
-                        println("Failed to save current design ${_state.value.designName}: $e")
-                    }
+                    try { repository.save(_state.value.toShipDesign()) }
+                    catch (e: Exception) { println("Failed to save: $e") }
 
-                    // Load selected design
-                    val loaded = try {
-                        repository.load(intent.name)
-                    } catch (e: Exception) {
-                        println("Failed to load design ${intent.name}: $e")
-                        null
-                    }
+                    val loaded = try { repository.load(intent.name) }
+                    catch (e: Exception) { println("Failed to load: $e"); null }
 
                     if (loaded != null) {
-                        _state.update { current ->
-                            val newState = current.copy(
+                        _state.update {
+                            recalculate(it.copy(
                                 designName = loaded.name,
                                 itemDefinitions = loaded.itemDefinitions,
                                 placedHulls = loaded.placedHulls,
@@ -295,8 +134,7 @@ class ShipBuilderVM(
                                 selectedItemId = null,
                                 showLoadDialog = false,
                                 savedDesigns = emptyList(),
-                            )
-                            recalculate(newState)
+                            ))
                         }
                     } else {
                         _state.update { it.copy(showLoadDialog = false) }
@@ -305,66 +143,12 @@ class ShipBuilderVM(
             }
 
             is ShipBuilderIntent.DismissLoadDialog -> {
-                _state.update { current ->
-                    current.copy(showLoadDialog = false, savedDesigns = emptyList())
-                }
-            }
-
-            is ShipBuilderIntent.PlaceVertex -> {
-                _state.update { current ->
-                    val creating = current.editorMode as? EditorMode.CreatingItem
-                        ?: return@update current
-                    if (creating.vertices.size >= MAX_VERTICES) return@update current
-                    val insertIndex = if (creating.selectedVertexIndex != null) {
-                        creating.selectedVertexIndex + 1
-                    } else {
-                        creating.vertices.size
-                    }
-                    val newVertices = creating.vertices.toMutableList().apply {
-                        add(insertIndex, intent.worldPosition)
-                    }
-                    current.copy(
-                        editorMode = creating.copy(
-                            vertices = newVertices,
-                            selectedVertexIndex = insertIndex,
-                            isConvex = isConvex(newVertices),
-                        )
-                    )
-                }
-            }
-
-            is ShipBuilderIntent.SelectVertex -> {
-                _state.update { current ->
-                    val creating = current.editorMode as? EditorMode.CreatingItem
-                        ?: return@update current
-                    if (intent.index < 0 || intent.index >= creating.vertices.size) return@update current
-                    current.copy(
-                        editorMode = creating.copy(selectedVertexIndex = intent.index)
-                    )
-                }
-            }
-
-            is ShipBuilderIntent.MoveVertex -> {
-                _state.update { current ->
-                    val creating = current.editorMode as? EditorMode.CreatingItem
-                        ?: return@update current
-                    if (intent.index < 0 || intent.index >= creating.vertices.size) return@update current
-                    val snapped = snapToGrid(intent.worldPosition, GRID_CELL_SIZE)
-                    val newVertices = creating.vertices.toMutableList().apply {
-                        set(intent.index, snapped)
-                    }
-                    current.copy(
-                        editorMode = creating.copy(
-                            vertices = newVertices,
-                            isConvex = isConvex(newVertices),
-                        )
-                    )
-                }
+                _state.update { it.copy(showLoadDialog = false, savedDesigns = emptyList()) }
             }
 
             is ShipBuilderIntent.EnterCreationMode -> {
-                _state.update { current ->
-                    current.copy(
+                _state.update {
+                    it.copy(
                         selectedItemId = null,
                         editorMode = EditorMode.CreatingItem(
                             itemType = intent.itemType,
@@ -379,488 +163,223 @@ class ShipBuilderVM(
             }
 
             is ShipBuilderIntent.ExitCreationMode -> {
-                _state.update { current ->
-                    current.copy(editorMode = EditorMode.EditingShip)
-                }
+                _state.update { it.copy(editorMode = EditorMode.EditingShip) }
             }
 
-            is ShipBuilderIntent.FinishCreation -> {
-                val current = _state.value
-                val creating = current.editorMode as? EditorMode.CreatingItem ?: return
-                if (creating.vertices.size < 3 || !creating.isConvex) return
-
-                val defId = generateId("itemdef")
-                val vertices = creating.vertices.map { v ->
-                    SceneOffset(v.x.sceneUnit, v.y.sceneUnit)
-                }
-                val newDef = ItemDefinition(
-                    id = defId,
-                    name = creating.name,
-                    vertices = vertices,
-                    itemType = creating.itemType,
-                    attributes = creating.attributes,
-                )
-
-                // Calculate centroid for placement position
-                val centroidX = creating.vertices.map { it.x }.average().toFloat()
-                val centroidY = creating.vertices.map { it.y }.average().toFloat()
-                val centroidPos = SceneOffset(centroidX.sceneUnit, centroidY.sceneUnit)
-
-                _state.update { s ->
-                    var newState = s.copy(
-                        itemDefinitions = s.itemDefinitions + newDef,
-                        editorMode = EditorMode.EditingShip,
-                    )
-                    newState = when (creating.itemType) {
-                        ItemType.HULL -> {
-                            val placed = PlacedHullPiece(
-                                id = generateId("hull"),
-                                itemDefinitionId = defId,
-                                position = centroidPos,
-                                rotation = 0f.rad,
-                            )
-                            newState.copy(placedHulls = newState.placedHulls + placed)
-                        }
-
-                        ItemType.MODULE -> {
-                            val attrs = creating.attributes as ItemAttributes.ModuleAttributes
-                            val parentHullId = newState.placedHulls.firstOrNull()?.id ?: ""
-                            val placed = PlacedModule(
-                                id = generateId("module"),
-                                itemDefinitionId = defId,
-                                systemType = attrs.systemType,
-                                position = centroidPos,
-                                rotation = 0f.rad,
-                                parentHullId = parentHullId,
-                            )
-                            newState.copy(placedModules = newState.placedModules + placed)
-                        }
-
-                        ItemType.TURRET -> {
-                            val parentHullId = newState.placedHulls.firstOrNull()?.id ?: ""
-                            val placed = PlacedTurret(
-                                id = generateId("turret"),
-                                itemDefinitionId = defId,
-                                turretConfigId = defId,
-                                position = centroidPos,
-                                rotation = 0f.rad,
-                                parentHullId = parentHullId,
-                            )
-                            newState.copy(placedTurrets = newState.placedTurrets + placed)
-                        }
-                    }
-                    recalculate(newState)
-                }
-                autoSave()
-            }
+            is ShipBuilderIntent.FinishCreation -> finishCreation()
 
             is ShipBuilderIntent.UpdateCreationName -> {
                 _state.update { current ->
-                    val creating =
-                        current.editorMode as? EditorMode.CreatingItem ?: return@update current
+                    val creating = current.editorMode as? EditorMode.CreatingItem
+                        ?: return@update current
                     current.copy(editorMode = creating.copy(name = intent.name))
                 }
             }
 
             is ShipBuilderIntent.UpdateCreationAttributes -> {
                 _state.update { current ->
-                    val creating =
-                        current.editorMode as? EditorMode.CreatingItem ?: return@update current
+                    val creating = current.editorMode as? EditorMode.CreatingItem
+                        ?: return@update current
                     current.copy(editorMode = creating.copy(attributes = intent.attributes))
                 }
             }
+
+            // Canvas intents handled by inputReducer — exhaustive when requires these branches.
+            is ShipBuilderIntent.CanvasTap,
+            is ShipBuilderIntent.CanvasDragStart,
+            is ShipBuilderIntent.CanvasDragMove,
+            is ShipBuilderIntent.CanvasDragEnd,
+            is ShipBuilderIntent.PlaceVertex,
+            is ShipBuilderIntent.SelectVertex,
+            is ShipBuilderIntent.MoveVertex -> Unit
         }
     }
+
+    // --- Creation ---
+
+    private fun finishCreation() {
+        val current = _state.value
+        val creating = current.editorMode as? EditorMode.CreatingItem ?: return
+        if (creating.vertices.size < 3 || !creating.isConvex) return
+
+        val defId = generateId("itemdef")
+        val vertices = creating.vertices.map { SceneOffset(it.x.sceneUnit, it.y.sceneUnit) }
+        val newDef = ItemDefinition(
+            id = defId, name = creating.name, vertices = vertices,
+            itemType = creating.itemType, attributes = creating.attributes,
+        )
+        val centroidX = creating.vertices.map { it.x }.average().toFloat()
+        val centroidY = creating.vertices.map { it.y }.average().toFloat()
+        val centroidPos = SceneOffset(centroidX.sceneUnit, centroidY.sceneUnit)
+
+        _state.update { s ->
+            var newState = s.copy(
+                itemDefinitions = s.itemDefinitions + newDef,
+                editorMode = EditorMode.EditingShip,
+            )
+            newState = when (creating.itemType) {
+                ItemType.HULL -> newState.copy(
+                    placedHulls = newState.placedHulls + PlacedHullPiece(
+                        id = generateId("hull"), itemDefinitionId = defId,
+                        position = centroidPos, rotation = 0f.rad,
+                    )
+                )
+                ItemType.MODULE -> {
+                    val attrs = creating.attributes as ItemAttributes.ModuleAttributes
+                    newState.copy(
+                        placedModules = newState.placedModules + PlacedModule(
+                            id = generateId("module"), itemDefinitionId = defId,
+                            systemType = attrs.systemType, position = centroidPos,
+                            rotation = 0f.rad, parentHullId = newState.placedHulls.firstOrNull()?.id ?: "",
+                        )
+                    )
+                }
+                ItemType.TURRET -> newState.copy(
+                    placedTurrets = newState.placedTurrets + PlacedTurret(
+                        id = generateId("turret"), itemDefinitionId = defId,
+                        turretConfigId = defId, position = centroidPos,
+                        rotation = 0f.rad, parentHullId = newState.placedHulls.firstOrNull()?.id ?: "",
+                    )
+                )
+            }
+            recalculate(newState)
+        }
+        autoSave()
+    }
+
+    // --- Item addition ---
 
     private fun addHullItem(itemDef: ItemDefinition) {
         _state.update { current ->
             val defId = generateId("itemdef")
-            val placedId = generateId("hull")
-            val attrs = itemDef.attributes as ItemAttributes.HullAttributes
-            val newDef = itemDef.copy(id = defId)
-            val placed = PlacedHullPiece(
-                id = placedId,
-                itemDefinitionId = defId,
-                position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
-                rotation = 0f.rad,
-            )
-            val newState = current.copy(
-                itemDefinitions = current.itemDefinitions + newDef,
-                placedHulls = current.placedHulls + placed,
-            )
-            recalculate(newState)
+            recalculate(current.copy(
+                itemDefinitions = current.itemDefinitions + itemDef.copy(id = defId),
+                placedHulls = current.placedHulls + PlacedHullPiece(
+                    id = generateId("hull"), itemDefinitionId = defId,
+                    position = SceneOffset(0f.sceneUnit, 0f.sceneUnit), rotation = 0f.rad,
+                ),
+            ))
         }
     }
 
     private fun addModuleItem(itemDef: ItemDefinition) {
         _state.update { current ->
             val defId = generateId("itemdef")
-            val moduleId = generateId("module")
-            val parentHullId = current.placedHulls.firstOrNull()?.id ?: ""
             val attrs = itemDef.attributes as ItemAttributes.ModuleAttributes
-            val newDef = itemDef.copy(id = defId)
-            val placed = PlacedModule(
-                id = moduleId,
-                itemDefinitionId = defId,
-                systemType = attrs.systemType,
-                position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
-                rotation = 0f.rad,
-                parentHullId = parentHullId,
-            )
-            val newState = current.copy(
-                itemDefinitions = current.itemDefinitions + newDef,
-                placedModules = current.placedModules + placed,
-            )
-            recalculate(newState)
+            recalculate(current.copy(
+                itemDefinitions = current.itemDefinitions + itemDef.copy(id = defId),
+                placedModules = current.placedModules + PlacedModule(
+                    id = generateId("module"), itemDefinitionId = defId,
+                    systemType = attrs.systemType,
+                    position = SceneOffset(0f.sceneUnit, 0f.sceneUnit), rotation = 0f.rad,
+                    parentHullId = current.placedHulls.firstOrNull()?.id ?: "",
+                ),
+            ))
         }
     }
 
     private fun addTurretItem(itemDef: ItemDefinition) {
         _state.update { current ->
             val defId = generateId("itemdef")
-            val turretId = generateId("turret")
-            val parentHullId = current.placedHulls.firstOrNull()?.id ?: ""
-            val newDef = itemDef.copy(id = defId)
-            val placed = PlacedTurret(
-                id = turretId,
-                itemDefinitionId = defId,
-                turretConfigId = itemDef.id,
-                position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
-                rotation = 0f.rad,
-                parentHullId = parentHullId,
-            )
-            val newState = current.copy(
-                itemDefinitions = current.itemDefinitions + newDef,
-                placedTurrets = current.placedTurrets + placed,
-            )
-            recalculate(newState)
+            recalculate(current.copy(
+                itemDefinitions = current.itemDefinitions + itemDef.copy(id = defId),
+                placedTurrets = current.placedTurrets + PlacedTurret(
+                    id = generateId("turret"), itemDefinitionId = defId,
+                    turretConfigId = itemDef.id,
+                    position = SceneOffset(0f.sceneUnit, 0f.sceneUnit), rotation = 0f.rad,
+                    parentHullId = current.placedHulls.firstOrNull()?.id ?: "",
+                ),
+            ))
         }
     }
 
     private fun generateId(prefix: String): String = "${prefix}_${nextId++}"
 
-    /**
-     * Recalculate derived state: invalid placements and stats.
-     */
+    // --- Derived state ---
+
     private fun recalculate(state: ShipBuilderState): ShipBuilderState {
-        val invalidPlacements = computeInvalidPlacements(state)
-        val stats = calculateStats(state)
         return state.copy(
-            invalidPlacements = invalidPlacements,
-            stats = stats,
+            invalidPlacements = computeInvalidPlacements(state),
+            stats = calculateStats(state),
         )
     }
 
-    /**
-     * Check which modules and turrets are placed outside all hull piece bounds.
-     */
     private fun computeInvalidPlacements(state: ShipBuilderState): Set<String> {
         val invalid = mutableSetOf<String>()
-
-        for (module in state.placedModules) {
-            if (!isInsideAnyHull(
-                    Offset(module.position.x.raw, module.position.y.raw),
-                    state,
-                )
-            ) {
-                invalid.add(module.id)
-            }
+        for (m in state.placedModules) {
+            if (!isInsideAnyHull(Offset(m.position.x.raw, m.position.y.raw), state)) invalid.add(m.id)
         }
-
-        for (turret in state.placedTurrets) {
-            if (!isInsideAnyHull(
-                    Offset(turret.position.x.raw, turret.position.y.raw),
-                    state,
-                )
-            ) {
-                invalid.add(turret.id)
-            }
+        for (t in state.placedTurrets) {
+            if (!isInsideAnyHull(Offset(t.position.x.raw, t.position.y.raw), state)) invalid.add(t.id)
         }
-
         return invalid
     }
 
-    /**
-     * Check if a world-space point is inside any placed hull piece.
-     */
     private fun isInsideAnyHull(worldPoint: Offset, state: ShipBuilderState): Boolean {
         for (placed in state.placedHulls) {
-            val hullDef =
-                state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
-            if (hullDef.vertices.size < 3) continue
-
-            val hullPos = Offset(placed.position.x.raw, placed.position.y.raw)
-            val rotation = placed.rotation.normalized
-
-            // Transform test point into hull local space
-            val localX = worldPoint.x - hullPos.x
-            val localY = worldPoint.y - hullPos.y
-            val cosR = cos(-rotation)
-            val sinR = sin(-rotation)
-            val testX = localX * cosR - localY * sinR
-            val testY = localX * sinR + localY * cosR
-
-            val localVertices = hullDef.vertices.map { v ->
-                Offset(v.x.raw, v.y.raw)
-            }
-
-            if (pointInPolygon(Offset(testX, testY), localVertices)) {
-                return true
-            }
+            val def = state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
+            if (def.vertices.size < 3) continue
+            val pos = Offset(placed.position.x.raw, placed.position.y.raw)
+            val rot = placed.rotation.normalized
+            val lx = worldPoint.x - pos.x
+            val ly = worldPoint.y - pos.y
+            val cr = cos(-rot); val sr = sin(-rot)
+            val test = Offset(lx * cr - ly * sr, lx * sr + ly * cr)
+            if (pointInPolygon(test, def.vertices.map { Offset(it.x.raw, it.y.raw) })) return true
         }
         return false
     }
 
-    // --- Hit testing (moved from DesignCanvas to VM) ---
+    // --- Item transforms ---
 
-    private fun hitTestAllItems(worldPos: Offset, state: ShipBuilderState): String? {
-        for (placed in state.placedTurrets.asReversed()) {
-            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
-            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_TURRET) return placed.id
-        }
-        for (placed in state.placedModules.asReversed()) {
-            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
-            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_MODULE) return placed.id
-        }
-        for (placed in state.placedHulls.asReversed()) {
-            val hullDef =
-                state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
-            if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return placed.id
-        }
-        return null
-    }
+    private fun rotateItemBy(state: ShipBuilderState, id: String, delta: Float) = state.copy(
+        placedHulls = state.placedHulls.map { if (it.id == id) it.copy(rotation = (it.rotation.normalized + delta).rad) else it },
+        placedModules = state.placedModules.map { if (it.id == id) it.copy(rotation = (it.rotation.normalized + delta).rad) else it },
+        placedTurrets = state.placedTurrets.map { if (it.id == id) it.copy(rotation = (it.rotation.normalized + delta).rad) else it },
+    )
 
-    private fun hitTestItem(worldPos: Offset, itemId: String, state: ShipBuilderState): Boolean {
-        for (placed in state.placedHulls) {
-            if (placed.id != itemId) continue
-            val hullDef =
-                state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
-            if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return true
+    private fun mirrorItem(state: ShipBuilderState, id: String, mirrorX: Boolean): ShipBuilderState {
+        val hullPlaced = state.placedHulls.find { it.id == id }
+        if (hullPlaced != null) {
+            return state.copy(itemDefinitions = state.itemDefinitions.map { def ->
+                if (def.id == hullPlaced.itemDefinitionId) def.copy(vertices = def.vertices.map { v ->
+                    if (mirrorX) SceneOffset(v.x, (-v.y.raw).sceneUnit) else SceneOffset((-v.x.raw).sceneUnit, v.y)
+                }) else def
+            })
         }
-        for (placed in state.placedModules) {
-            if (placed.id != itemId) continue
-            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
-            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_MODULE) return true
-        }
-        for (placed in state.placedTurrets) {
-            if (placed.id != itemId) continue
-            val itemPos = Offset(placed.position.x.raw, placed.position.y.raw)
-            if ((worldPos - itemPos).getDistance() < HIT_RADIUS_TURRET) return true
-        }
-        return false
-    }
-
-    private fun pointInHullPiece(
-        worldPoint: Offset,
-        placed: PlacedHullPiece,
-        vertices: List<SceneOffset>,
-    ): Boolean {
-        if (vertices.size < 3) return false
-        val rotation = placed.rotation.normalized
-        val pos = Offset(placed.position.x.raw, placed.position.y.raw)
-        val localX = worldPoint.x - pos.x
-        val localY = worldPoint.y - pos.y
-        val cosR = cos(-rotation)
-        val sinR = sin(-rotation)
-        val testPoint = Offset(localX * cosR - localY * sinR, localX * sinR + localY * cosR)
-        val localVertices = vertices.map { Offset(it.x.raw, it.y.raw) }
-        return pointInPolygon(testPoint, localVertices)
-    }
-
-    private fun getItemWorldPos(itemId: String, state: ShipBuilderState): Offset? {
-        for (placed in state.placedHulls) {
-            if (placed.id == itemId) return Offset(placed.position.x.raw, placed.position.y.raw)
-        }
-        for (placed in state.placedModules) {
-            if (placed.id == itemId) return Offset(placed.position.x.raw, placed.position.y.raw)
-        }
-        for (placed in state.placedTurrets) {
-            if (placed.id == itemId) return Offset(placed.position.x.raw, placed.position.y.raw)
-        }
-        return null
-    }
-
-    private fun isOnRotateHandle(
-        worldPos: Offset,
-        itemPos: Offset,
-        state: ShipBuilderState
-    ): Boolean {
-        val selectedId = state.selectedItemId ?: return false
-        val rotation = getItemRotation(selectedId, state) ?: return false
-        val handleX = itemPos.x + cos(rotation) * ROTATE_HANDLE_DISTANCE
-        val handleY = itemPos.y + sin(rotation) * ROTATE_HANDLE_DISTANCE
-        return (worldPos - Offset(handleX, handleY)).getDistance() < ROTATE_HANDLE_HIT_RADIUS
-    }
-
-    private fun getItemRotation(itemId: String, state: ShipBuilderState): Float? {
-        state.placedHulls.find { it.id == itemId }?.let { return it.rotation.normalized }
-        state.placedModules.find { it.id == itemId }?.let { return it.rotation.normalized }
-        state.placedTurrets.find { it.id == itemId }?.let { return it.rotation.normalized }
-        return null
-    }
-
-    // --- Item mutation helpers ---
-
-    private fun moveItem(state: ShipBuilderState, id: String, worldPos: Offset): ShipBuilderState {
-        val newPos = SceneOffset(worldPos.x.sceneUnit, worldPos.y.sceneUnit)
         return state.copy(
-            placedHulls = state.placedHulls.map { if (it.id == id) it.copy(position = newPos) else it },
-            placedModules = state.placedModules.map { if (it.id == id) it.copy(position = newPos) else it },
-            placedTurrets = state.placedTurrets.map { if (it.id == id) it.copy(position = newPos) else it },
+            placedModules = state.placedModules.map {
+                if (it.id == id) { val p = it.position; if (mirrorX) it.copy(position = SceneOffset(p.x, (-p.y.raw).sceneUnit)) else it.copy(position = SceneOffset((-p.x.raw).sceneUnit, p.y)) } else it
+            },
+            placedTurrets = state.placedTurrets.map {
+                if (it.id == id) { val p = it.position; if (mirrorX) it.copy(position = SceneOffset(p.x, (-p.y.raw).sceneUnit)) else it.copy(position = SceneOffset((-p.x.raw).sceneUnit, p.y)) } else it
+            },
         )
     }
 
-    private fun rotateItem(state: ShipBuilderState, id: String, angle: Float): ShipBuilderState {
-        val newRotation = angle.rad
-        return state.copy(
-            placedHulls = state.placedHulls.map { if (it.id == id) it.copy(rotation = newRotation) else it },
-            placedModules = state.placedModules.map { if (it.id == id) it.copy(rotation = newRotation) else it },
-            placedTurrets = state.placedTurrets.map { if (it.id == id) it.copy(rotation = newRotation) else it },
-        )
+    // --- Defaults ---
+
+    private fun defaultAttributesFor(itemType: ItemType): ItemAttributes = when (itemType) {
+        ItemType.HULL -> ItemAttributes.HullAttributes(armour = SerializableArmourStats(5f, 2f), sizeCategory = "Medium", mass = 50f)
+        ItemType.MODULE -> ItemAttributes.ModuleAttributes(systemType = "REACTOR", maxHp = 100f, density = 8f, mass = 20f)
+        ItemType.TURRET -> ItemAttributes.TurretAttributes(sizeCategory = "Medium", isFixed = false, defaultFacing = 0f, isLimitedRotation = false)
+    }
+
+    private fun defaultNameFor(itemType: ItemType) = when (itemType) {
+        ItemType.HULL -> "Custom Hull $nextId"
+        ItemType.MODULE -> "Custom Module $nextId"
+        ItemType.TURRET -> "Custom Turret $nextId"
     }
 
     private fun autoSave() {
         viewModelScope.launch {
-            try {
-                repository.save(_state.value.toShipDesign())
-            } catch (_: Exception) {
-                // Save failure should not crash the app
-            }
+            try { repository.save(_state.value.toShipDesign()) }
+            catch (_: Exception) {}
         }
-    }
-
-    private fun rotateItemBy(
-        state: ShipBuilderState,
-        id: String,
-        deltaRadians: Float
-    ): ShipBuilderState {
-        return state.copy(
-            placedHulls = state.placedHulls.map {
-                if (it.id == id) it.copy(rotation = (it.rotation.normalized + deltaRadians).rad) else it
-            },
-            placedModules = state.placedModules.map {
-                if (it.id == id) it.copy(rotation = (it.rotation.normalized + deltaRadians).rad) else it
-            },
-            placedTurrets = state.placedTurrets.map {
-                if (it.id == id) it.copy(rotation = (it.rotation.normalized + deltaRadians).rad) else it
-            },
-        )
-    }
-
-    /**
-     * Mirror an item. For hull pieces, negate vertex coordinates in the item definition.
-     * For modules/turrets, negate the relevant position axis.
-     *
-     * [mirrorX] = true mirrors across the Y axis (negates Y coordinates -- "flip horizontal").
-     * [mirrorX] = false mirrors across the X axis (negates X coordinates -- "flip vertical").
-     */
-    private fun mirrorItem(
-        state: ShipBuilderState,
-        id: String,
-        mirrorX: Boolean
-    ): ShipBuilderState {
-        // Check if this is a hull piece -- if so, mirror the item definition's vertices
-        val hullPlaced = state.placedHulls.find { it.id == id }
-        if (hullPlaced != null) {
-            val defId = hullPlaced.itemDefinitionId
-            val newItemDefs = state.itemDefinitions.map { def ->
-                if (def.id == defId) {
-                    def.copy(
-                        vertices = def.vertices.map { v ->
-                            if (mirrorX) {
-                                SceneOffset(v.x, (-v.y.raw).sceneUnit)
-                            } else {
-                                SceneOffset((-v.x.raw).sceneUnit, v.y)
-                            }
-                        }
-                    )
-                } else def
-            }
-            return state.copy(itemDefinitions = newItemDefs)
-        }
-
-        // For modules/turrets, negate the relevant position component
-        return state.copy(
-            placedModules = state.placedModules.map {
-                if (it.id == id) {
-                    val p = it.position
-                    if (mirrorX) {
-                        it.copy(position = SceneOffset(p.x, (-p.y.raw).sceneUnit))
-                    } else {
-                        it.copy(position = SceneOffset((-p.x.raw).sceneUnit, p.y))
-                    }
-                } else it
-            },
-            placedTurrets = state.placedTurrets.map {
-                if (it.id == id) {
-                    val p = it.position
-                    if (mirrorX) {
-                        it.copy(position = SceneOffset(p.x, (-p.y.raw).sceneUnit))
-                    } else {
-                        it.copy(position = SceneOffset((-p.x.raw).sceneUnit, p.y))
-                    }
-                } else it
-            },
-        )
-    }
-
-    private fun defaultAttributesFor(itemType: ItemType): ItemAttributes = when (itemType) {
-        ItemType.HULL -> ItemAttributes.HullAttributes(
-            armour = SerializableArmourStats(hardness = 5f, density = 2f),
-            sizeCategory = "Medium",
-            mass = 50f,
-        )
-
-        ItemType.MODULE -> ItemAttributes.ModuleAttributes(
-            systemType = "REACTOR",
-            maxHp = 100f,
-            density = 8f,
-            mass = 20f,
-        )
-
-        ItemType.TURRET -> ItemAttributes.TurretAttributes(
-            sizeCategory = "Medium",
-            isFixed = false,
-            defaultFacing = 0f,
-            isLimitedRotation = false,
-        )
-    }
-
-    private fun defaultNameFor(itemType: ItemType): String = when (itemType) {
-        ItemType.HULL -> "Custom Hull ${nextId}"
-        ItemType.MODULE -> "Custom Module ${nextId}"
-        ItemType.TURRET -> "Custom Turret ${nextId}"
-    }
-
-    /**
-     * Find the index of the vertex closest to [position] that is within [hitRadius],
-     * or null if none is close enough.
-     */
-    private fun findNearVertex(
-        position: Offset,
-        vertices: List<Offset>,
-        hitRadius: Float,
-    ): Int? {
-        var bestIndex: Int? = null
-        var bestDist = hitRadius
-        for (i in vertices.indices) {
-            val dist = (position - vertices[i]).getDistance()
-            if (dist < bestDist) {
-                bestDist = dist
-                bestIndex = i
-            }
-        }
-        return bestIndex
     }
 }
 
-/**
- * Convert the current builder state into a serializable [ShipDesign].
- */
 fun ShipBuilderState.toShipDesign(): ShipDesign = ShipDesign(
-    name = designName,
-    itemDefinitions = itemDefinitions,
-    placedHulls = placedHulls,
-    placedModules = placedModules,
-    placedTurrets = placedTurrets,
+    name = designName, itemDefinitions = itemDefinitions,
+    placedHulls = placedHulls, placedModules = placedModules, placedTurrets = placedTurrets,
 )
