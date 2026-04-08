@@ -5,7 +5,8 @@ import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
-import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGrid
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGridCentre
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGridCorner
 import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.isConvex
 import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.pointInPolygon
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
@@ -63,7 +64,12 @@ class ShipBuilderInputReducer {
             is ShipBuilderIntent.CanvasDragEnd -> handleDragEnd(state, intent.worldPosition)
             is ShipBuilderIntent.PlaceVertex -> handlePlaceVertex(state, intent.worldPosition)
             is ShipBuilderIntent.SelectVertex -> handleSelectVertex(state, intent.index)
-            is ShipBuilderIntent.MoveVertex -> handleMoveVertex(state, intent.index, intent.worldPosition)
+            is ShipBuilderIntent.MoveVertex -> handleMoveVertex(
+                state,
+                intent.index,
+                intent.worldPosition
+            )
+
             else -> InputResult(state) // Not a canvas input intent
         }
     }
@@ -77,6 +83,7 @@ class ShipBuilderInputReducer {
         is ShipBuilderIntent.PlaceVertex,
         is ShipBuilderIntent.SelectVertex,
         is ShipBuilderIntent.MoveVertex -> true
+
         else -> false
     }
 
@@ -85,7 +92,7 @@ class ShipBuilderInputReducer {
     private fun handleTap(state: ShipBuilderState, worldPos: Offset): InputResult {
         val mode = state.editorMode
         if (mode is EditorMode.CreatingItem) {
-            val snapped = snapToGrid(worldPos, GRID_CELL_SIZE)
+            val snapped = snapToGridCorner(worldPos, GRID_CELL_SIZE)
             val nearIdx = findNearVertex(snapped, mode.vertices, VERTEX_HIT_RADIUS)
             return if (nearIdx != null) {
                 handleSelectVertex(state, nearIdx)
@@ -131,7 +138,10 @@ class ShipBuilderInputReducer {
         return InputResult(state, consumed = consumed)
     }
 
-    private fun handleDragMove(state: ShipBuilderState, intent: ShipBuilderIntent.CanvasDragMove): InputResult {
+    private fun handleDragMove(
+        state: ShipBuilderState,
+        intent: ShipBuilderIntent.CanvasDragMove
+    ): InputResult {
         return when (dragMode) {
             DragMode.MOVE_VERTEX -> {
                 val creating = state.editorMode as? EditorMode.CreatingItem
@@ -182,7 +192,7 @@ class ShipBuilderInputReducer {
             DragMode.MOVE_VERTEX -> {
                 val creating = state.editorMode as? EditorMode.CreatingItem
                 if (creating != null && draggingVertexIndex in creating.vertices.indices) {
-                    val snapped = snapToGrid(worldPos, GRID_CELL_SIZE)
+                    val snapped = snapToGridCorner(worldPos, GRID_CELL_SIZE)
                     val newVertices = creating.vertices.toMutableList().apply {
                         set(draggingVertexIndex, snapped)
                     }
@@ -205,7 +215,7 @@ class ShipBuilderInputReducer {
                 if (selectedId != null) {
                     val pos = getItemWorldPos(selectedId, state)
                     if (pos != null) {
-                        val snapped = snapToGrid(pos, GRID_CELL_SIZE)
+                        val snapped = snapToGridCentre(pos, GRID_CELL_SIZE)
                         InputResult(moveItem(state, selectedId, snapped), shouldSave = true)
                     } else InputResult(state)
                 } else InputResult(state)
@@ -254,11 +264,15 @@ class ShipBuilderInputReducer {
         )
     }
 
-    private fun handleMoveVertex(state: ShipBuilderState, index: Int, worldPos: Offset): InputResult {
+    private fun handleMoveVertex(
+        state: ShipBuilderState,
+        index: Int,
+        worldPos: Offset
+    ): InputResult {
         val creating = state.editorMode as? EditorMode.CreatingItem
             ?: return InputResult(state)
         if (index < 0 || index >= creating.vertices.size) return InputResult(state)
-        val snapped = snapToGrid(worldPos, GRID_CELL_SIZE)
+        val snapped = snapToGridCentre(worldPos, GRID_CELL_SIZE)
         val newVertices = creating.vertices.toMutableList().apply {
             set(index, snapped)
         }
@@ -284,7 +298,8 @@ class ShipBuilderInputReducer {
             if ((worldPos - itemPos).getDistance() < HIT_RADIUS_MODULE) return placed.id
         }
         for (placed in state.placedHulls.asReversed()) {
-            val hullDef = state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
+            val hullDef =
+                state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
             if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return placed.id
         }
         return null
@@ -293,7 +308,8 @@ class ShipBuilderInputReducer {
     private fun hitTestItem(worldPos: Offset, itemId: String, state: ShipBuilderState): Boolean {
         for (placed in state.placedHulls) {
             if (placed.id != itemId) continue
-            val hullDef = state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
+            val hullDef =
+                state.itemDefinitions.find { it.id == placed.itemDefinitionId } ?: continue
             if (pointInHullPiece(worldPos, placed, hullDef.vertices)) return true
         }
         for (placed in state.placedModules) {
