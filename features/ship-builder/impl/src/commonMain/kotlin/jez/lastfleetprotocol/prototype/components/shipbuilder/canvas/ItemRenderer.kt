@@ -33,11 +33,13 @@ fun DrawScope.drawHullPiece(
 
     val rotation = piece.rotation.normalized
     val pos = Offset(piece.position.x.raw, piece.position.y.raw)
+    val mx = if (piece.mirrorX) -1f else 1f
+    val my = if (piece.mirrorY) -1f else 1f
 
     val path = Path()
     for (i in vertices.indices) {
-        val vx = vertices[i].x.raw
-        val vy = vertices[i].y.raw
+        val vx = vertices[i].x.raw * my   // mirrorY negates X (flip across Y axis)
+        val vy = vertices[i].y.raw * mx   // mirrorX negates Y (flip across X axis)
         val rx = vx * cos(rotation) - vy * sin(rotation)
         val ry = vx * sin(rotation) + vy * cos(rotation)
         val screenPoint = canvasState.worldToScreen(Offset(pos.x + rx, pos.y + ry))
@@ -127,11 +129,13 @@ fun DrawScope.drawTurret(
         style = Stroke(width = strokeWidth),
     )
 
-    // Direction indicator line
+    // Direction indicator line (apply mirror to facing direction)
     val rotation = turret.rotation.normalized
+    val localDirX = if (turret.mirrorY) -1f else 1f
+    val localDirY = if (turret.mirrorX) -1f else 1f
     val dirEnd = Offset(
-        screenPos.x + cos(rotation) * radius * 1.5f,
-        screenPos.y + sin(rotation) * radius * 1.5f,
+        screenPos.x + (cos(rotation) * localDirX) * radius * 1.5f,
+        screenPos.y + (sin(rotation) * localDirY) * radius * 1.5f,
     )
     drawLine(
         color = strokeColor,

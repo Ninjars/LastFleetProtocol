@@ -318,8 +318,12 @@ class ShipBuilderVM(
             val lx = worldPoint.x - pos.x
             val ly = worldPoint.y - pos.y
             val cr = cos(-rot); val sr = sin(-rot)
-            val test = Offset(lx * cr - ly * sr, lx * sr + ly * cr)
-            if (pointInPolygon(test, def.vertices.map { Offset(it.x.raw, it.y.raw) })) return true
+            var testX = lx * cr - ly * sr
+            var testY = lx * sr + ly * cr
+            // Apply inverse mirror to match how vertices are rendered
+            if (placed.mirrorY) testX = -testX
+            if (placed.mirrorX) testY = -testY
+            if (pointInPolygon(Offset(testX, testY), def.vertices.map { Offset(it.x.raw, it.y.raw) })) return true
         }
         return false
     }
@@ -333,37 +337,21 @@ class ShipBuilderVM(
     )
 
     private fun mirrorItem(state: ShipBuilderState, id: String, mirrorX: Boolean): ShipBuilderState {
-        val hullPlaced = state.placedHulls.find { it.id == id }
-        if (hullPlaced != null) {
-            val originalDef = state.resolveItemDefinition(hullPlaced.itemDefinitionId) ?: return state
-            val mirroredVertices = originalDef.vertices.map { v ->
-                if (mirrorX) SceneOffset(v.x, (-v.y.raw).sceneUnit) else SceneOffset((-v.x.raw).sceneUnit, v.y)
-            }
-            // If the definition is from the catalog, create a custom copy with a new ID
-            val isCustom = state.itemDefinitions.any { it.id == originalDef.id }
-            return if (isCustom) {
-                // Mutate the existing custom definition in place
-                state.copy(itemDefinitions = state.itemDefinitions.map { def ->
-                    if (def.id == originalDef.id) def.copy(vertices = mirroredVertices) else def
-                })
-            } else {
-                // Fork from catalog: create a new custom definition and re-point the placed item
-                val newDefId = generateId("itemdef")
-                val newDef = originalDef.copy(id = newDefId, vertices = mirroredVertices)
-                state.copy(
-                    itemDefinitions = state.itemDefinitions + newDef,
-                    placedHulls = state.placedHulls.map {
-                        if (it.id == id) it.copy(itemDefinitionId = newDefId) else it
-                    },
-                )
-            }
-        }
         return state.copy(
+            placedHulls = state.placedHulls.map {
+                if (it.id == id) {
+                    if (mirrorX) it.copy(mirrorX = !it.mirrorX) else it.copy(mirrorY = !it.mirrorY)
+                } else it
+            },
             placedModules = state.placedModules.map {
-                if (it.id == id) { val p = it.position; if (mirrorX) it.copy(position = SceneOffset(p.x, (-p.y.raw).sceneUnit)) else it.copy(position = SceneOffset((-p.x.raw).sceneUnit, p.y)) } else it
+                if (it.id == id) {
+                    if (mirrorX) it.copy(mirrorX = !it.mirrorX) else it.copy(mirrorY = !it.mirrorY)
+                } else it
             },
             placedTurrets = state.placedTurrets.map {
-                if (it.id == id) { val p = it.position; if (mirrorX) it.copy(position = SceneOffset(p.x, (-p.y.raw).sceneUnit)) else it.copy(position = SceneOffset((-p.x.raw).sceneUnit, p.y)) } else it
+                if (it.id == id) {
+                    if (mirrorX) it.copy(mirrorX = !it.mirrorX) else it.copy(mirrorY = !it.mirrorY)
+                } else it
             },
         )
     }

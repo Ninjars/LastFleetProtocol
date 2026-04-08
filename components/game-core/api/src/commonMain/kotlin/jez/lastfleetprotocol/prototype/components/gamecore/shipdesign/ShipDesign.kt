@@ -38,6 +38,8 @@ data class PlacedHullPiece(
     val itemDefinitionId: String,
     @Serializable(with = SceneOffsetSerializer::class) val position: SceneOffset,
     @Serializable(with = AngleRadiansSerializer::class) val rotation: AngleRadians,
+    val mirrorX: Boolean = false,
+    val mirrorY: Boolean = false,
     @Deprecated("Use itemDefinitionId instead")
     val hullPieceId: String = "",
 )
@@ -49,6 +51,8 @@ data class PlacedModule(
     val systemType: String,
     @Serializable(with = SceneOffsetSerializer::class) val position: SceneOffset,
     @Serializable(with = AngleRadiansSerializer::class) val rotation: AngleRadians,
+    val mirrorX: Boolean = false,
+    val mirrorY: Boolean = false,
     val parentHullId: String,
 )
 
@@ -59,5 +63,7 @@ data class PlacedTurret(
     val turretConfigId: String,
     @Serializable(with = SceneOffsetSerializer::class) val position: SceneOffset,
     @Serializable(with = AngleRadiansSerializer::class) val rotation: AngleRadians,
+    val mirrorX: Boolean = false,
+    val mirrorY: Boolean = false,
     val parentHullId: String,
 )

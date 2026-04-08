@@ -337,9 +337,13 @@ class ShipBuilderInputReducer {
         val localY = worldPoint.y - pos.y
         val cosR = cos(-rotation)
         val sinR = sin(-rotation)
-        val testPoint = Offset(localX * cosR - localY * sinR, localX * sinR + localY * cosR)
+        var testX = localX * cosR - localY * sinR
+        var testY = localX * sinR + localY * cosR
+        // Apply inverse mirror (mirror is self-inverse) to match how vertices are rendered
+        if (placed.mirrorY) testX = -testX
+        if (placed.mirrorX) testY = -testY
         val localVertices = vertices.map { Offset(it.x.raw, it.y.raw) }
-        return pointInPolygon(testPoint, localVertices)
+        return pointInPolygon(Offset(testX, testY), localVertices)
     }
 
     // --- Spatial queries ---
