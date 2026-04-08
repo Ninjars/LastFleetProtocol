@@ -197,9 +197,11 @@ private fun DrawScope.drawPlacedItems(
     }
 
     for (placed in state.placedModules) {
+        val moduleDef = state.resolveItemDefinition(placed.itemDefinitionId)
         val isSelected = placed.id == selectedId
         drawModule(
             module = placed,
+            vertices = moduleDef?.vertices ?: emptyList(),
             isSelected = isSelected,
             isInvalid = placed.id in state.invalidPlacements,
             canvasState = canvasState,
@@ -216,9 +218,11 @@ private fun DrawScope.drawPlacedItems(
     }
 
     for (placed in state.placedTurrets) {
+        val turretDef = state.resolveItemDefinition(placed.itemDefinitionId)
         val isSelected = placed.id == selectedId
         drawTurret(
             turret = placed,
+            vertices = turretDef?.vertices ?: emptyList(),
             isSelected = isSelected,
             isInvalid = placed.id in state.invalidPlacements,
             canvasState = canvasState,
