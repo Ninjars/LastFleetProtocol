@@ -258,12 +258,18 @@ class ShipBuilderVM(
 
     // --- Item addition ---
 
+    /** Snap the origin to the nearest grid centre for initial placement. */
+    private val snappedOrigin: SceneOffset
+        get() = snapToGridCentre(Offset.Zero, GRID_CELL_SIZE).let {
+            SceneOffset(it.x.sceneUnit, it.y.sceneUnit)
+        }
+
     private fun addHullItem(itemDef: ItemDefinition) {
         _state.update { current ->
             recalculate(current.copy(
                 placedHulls = current.placedHulls + PlacedHullPiece(
                     id = generateId("hull"), itemDefinitionId = itemDef.id,
-                    position = SceneOffset(0f.sceneUnit, 0f.sceneUnit), rotation = 0f.rad,
+                    position = snappedOrigin, rotation = 0f.rad,
                 ),
             ))
         }
@@ -276,7 +282,7 @@ class ShipBuilderVM(
                 placedModules = current.placedModules + PlacedModule(
                     id = generateId("module"), itemDefinitionId = itemDef.id,
                     systemType = attrs.systemType,
-                    position = SceneOffset(0f.sceneUnit, 0f.sceneUnit), rotation = 0f.rad,
+                    position = snappedOrigin, rotation = 0f.rad,
                     parentHullId = current.placedHulls.firstOrNull()?.id ?: "",
                 ),
             ))
@@ -289,7 +295,7 @@ class ShipBuilderVM(
                 placedTurrets = current.placedTurrets + PlacedTurret(
                     id = generateId("turret"), itemDefinitionId = itemDef.id,
                     turretConfigId = itemDef.id,
-                    position = SceneOffset(0f.sceneUnit, 0f.sceneUnit), rotation = 0f.rad,
+                    position = snappedOrigin, rotation = 0f.rad,
                     parentHullId = current.placedHulls.firstOrNull()?.id ?: "",
                 ),
             ))
