@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.GRID_CELL_SIZE
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGridCentre
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGridCorner
 import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.isConvex

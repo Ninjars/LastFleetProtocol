@@ -3,6 +3,8 @@ package jez.lastfleetprotocol.prototype.components.shipbuilder.canvas
 import androidx.compose.ui.geometry.Offset
 import kotlin.math.roundToInt
 
+const val GRID_CELL_SIZE = 10f
+
 /**
  * Snaps a position to the nearest grid centre. Used for placing modules
  * Each coordinate is rounded to the nearest multiple of [cellSize].

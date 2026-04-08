@@ -14,6 +14,8 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurr
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesign
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesignRepository
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.GRID_CELL_SIZE
+import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.snapToGridCentre
 import jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.pointInPlacedItem
 import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.calculateStats
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
@@ -203,14 +205,21 @@ class ShipBuilderVM(
         if (creating.vertices.size < 3 || !creating.isConvex) return
 
         val defId = generateId("itemdef")
-        val vertices = creating.vertices.map { SceneOffset(it.x.sceneUnit, it.y.sceneUnit) }
+
+        // Snap the pivot to the grid centre closest to the average of the vertices
+        val avgX = creating.vertices.map { it.x }.average().toFloat()
+        val avgY = creating.vertices.map { it.y }.average().toFloat()
+        val pivot = snapToGridCentre(Offset(avgX, avgY), GRID_CELL_SIZE)
+        val centroidPos = SceneOffset(pivot.x.sceneUnit, pivot.y.sceneUnit)
+
+        // Store vertices relative to the pivot so the definition's origin is the pivot point
+        val vertices = creating.vertices.map {
+            SceneOffset((it.x - pivot.x).sceneUnit, (it.y - pivot.y).sceneUnit)
+        }
         val newDef = ItemDefinition(
             id = defId, name = creating.name, vertices = vertices,
             itemType = creating.itemType, attributes = creating.attributes,
         )
-        val centroidX = creating.vertices.map { it.x }.average().toFloat()
-        val centroidY = creating.vertices.map { it.y }.average().toFloat()
-        val centroidPos = SceneOffset(centroidX.sceneUnit, centroidY.sceneUnit)
 
         _state.update { s ->
             var newState = s.copy(
