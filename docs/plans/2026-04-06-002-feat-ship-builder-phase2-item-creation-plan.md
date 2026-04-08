@@ -1,7 +1,7 @@
 ---
 title: "feat: Ship builder Phase 2 — item creation mode with polygon tool"
 type: feat
-status: active
+status: completed
 date: 2026-04-06
 origin: docs/brainstorms/2026-04-06-ship-builder-requirements.md
 ---
