@@ -109,7 +109,6 @@ private fun LandingScreenContent(
             } else {
                 LFRes.String.button_new_game
             },
-            enabled = state.hasSaveGame != null,
         ) {
             eventHandler.accept(LandingIntent.PlayClicked)
         }
