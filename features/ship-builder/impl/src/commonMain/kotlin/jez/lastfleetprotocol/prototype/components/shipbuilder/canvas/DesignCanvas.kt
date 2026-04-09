@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -45,6 +46,7 @@ fun DesignCanvas(
     Canvas(
         modifier = modifier
             .fillMaxSize()
+            .clipToBounds()
             // Scroll-wheel zoom. Uses awaitPointerEventScope to detect scroll
             // events cross-platform (onPointerEvent is Desktop-only).
             .pointerInput(Unit) {
