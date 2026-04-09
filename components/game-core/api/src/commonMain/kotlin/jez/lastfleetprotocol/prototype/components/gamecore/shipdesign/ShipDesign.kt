@@ -12,18 +12,6 @@ data class ShipDesign(
     val placedHulls: List<PlacedHullPiece> = emptyList(),
     val placedModules: List<PlacedModule> = emptyList(),
     val placedTurrets: List<PlacedTurret> = emptyList(),
-    @Deprecated("Use itemDefinitions instead")
-    val hullPieces: List<HullPieceDefinition> = emptyList(),
-)
-
-@Deprecated("Use ItemDefinition with ItemAttributes.HullAttributes instead")
-@Serializable
-data class HullPieceDefinition(
-    val id: String,
-    val vertices: List<@Serializable(with = SceneOffsetSerializer::class) SceneOffset>,
-    val armour: SerializableArmourStats,
-    val sizeCategory: String,
-    val mass: Float,
 )
 
 @Serializable
@@ -40,8 +28,6 @@ data class PlacedHullPiece(
     @Serializable(with = AngleRadiansSerializer::class) override val rotation: AngleRadians,
     override val mirrorX: Boolean = false,
     override val mirrorY: Boolean = false,
-    @Deprecated("Use itemDefinitionId instead")
-    val hullPieceId: String = "",
 ) : PlacedItem
 
 @Serializable
