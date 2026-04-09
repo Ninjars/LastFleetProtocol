@@ -1,9 +1,10 @@
 package jez.lastfleetprotocol.prototype.utils
 
+import jez.lastfleetprotocol.prototype.utils.FileStorage.appDirs
 import java.io.File
 
 private val baseDir: File
-    get() = File(System.getProperty("user.home"), ".lastfleetprotocol")
+    get() = File(appDirs.getUserDataDir())
 
 actual fun saveFile(directory: String, name: String, content: String) {
     val dir = File(baseDir, directory)
