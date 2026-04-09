@@ -35,8 +35,8 @@ private fun buildPolygonPath(
 
     val path = Path()
     for (i in vertices.indices) {
-        val vx = vertices[i].x.raw * my
-        val vy = vertices[i].y.raw * mx
+        val vx = vertices[i].x.raw * mx
+        val vy = vertices[i].y.raw * my
         val rx = vx * cosR - vy * sinR
         val ry = vx * sinR + vy * cosR
         val screen = canvasState.worldToScreen(Offset(posX + rx, posY + ry))
@@ -63,7 +63,8 @@ fun DrawScope.drawHullPiece(
     )
     drawPath(path, Color.Cyan.copy(alpha = 0.2f * alpha))
     drawPath(
-        path, if (isSelected) Color.Cyan.copy(alpha = alpha) else Color.Cyan.copy(alpha = 0.6f * alpha),
+        path,
+        if (isSelected) Color.Cyan.copy(alpha = alpha) else Color.Cyan.copy(alpha = 0.6f * alpha),
         style = Stroke(width = if (isSelected) 3f else 1.5f),
     )
 }
@@ -82,7 +83,8 @@ fun DrawScope.drawModule(
 ) {
     val baseColor = if (isInvalid) Color.Red else Color.Yellow
     val fillAlpha = (if (isSelected) 0.6f else 0.4f) * alpha
-    val strokeColor = if (isSelected) baseColor.copy(alpha = alpha) else baseColor.copy(alpha = 0.7f * alpha)
+    val strokeColor =
+        if (isSelected) baseColor.copy(alpha = alpha) else baseColor.copy(alpha = 0.7f * alpha)
     val strokeWidth = if (isSelected) 2f else 1f
 
     if (vertices.isNotEmpty()) {
@@ -94,10 +96,20 @@ fun DrawScope.drawModule(
         drawPath(path, strokeColor, style = Stroke(width = strokeWidth))
     } else {
         // Fallback: simple square for definitions without vertices
-        val screenPos = canvasState.worldToScreen(Offset(module.position.x.raw, module.position.y.raw))
+        val screenPos =
+            canvasState.worldToScreen(Offset(module.position.x.raw, module.position.y.raw))
         val halfSize = 5f * canvasState.zoom
-        drawRect(baseColor.copy(alpha = fillAlpha), Offset(screenPos.x - halfSize, screenPos.y - halfSize), androidx.compose.ui.geometry.Size(halfSize * 2, halfSize * 2))
-        drawRect(strokeColor, Offset(screenPos.x - halfSize, screenPos.y - halfSize), androidx.compose.ui.geometry.Size(halfSize * 2, halfSize * 2), style = Stroke(width = strokeWidth))
+        drawRect(
+            baseColor.copy(alpha = fillAlpha),
+            Offset(screenPos.x - halfSize, screenPos.y - halfSize),
+            androidx.compose.ui.geometry.Size(halfSize * 2, halfSize * 2)
+        )
+        drawRect(
+            strokeColor,
+            Offset(screenPos.x - halfSize, screenPos.y - halfSize),
+            androidx.compose.ui.geometry.Size(halfSize * 2, halfSize * 2),
+            style = Stroke(width = strokeWidth)
+        )
     }
 }
 
@@ -115,7 +127,8 @@ fun DrawScope.drawTurret(
 ) {
     val baseColor = if (isInvalid) Color.Magenta else Color.Red
     val fillAlpha = (if (isSelected) 0.6f else 0.4f) * alpha
-    val strokeColor = if (isSelected) baseColor.copy(alpha = alpha) else baseColor.copy(alpha = 0.7f * alpha)
+    val strokeColor =
+        if (isSelected) baseColor.copy(alpha = alpha) else baseColor.copy(alpha = 0.7f * alpha)
     val strokeWidth = if (isSelected) 2f else 1f
 
     val pos = Offset(turret.position.x.raw, turret.position.y.raw)
