@@ -29,8 +29,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.tatarka.inject.annotations.Inject
 import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 @Inject
 class ShipBuilderVM(
@@ -72,10 +70,14 @@ class ShipBuilderVM(
             is ShipBuilderIntent.Noop -> Unit
 
             is ShipBuilderIntent.AddItem -> {
-                when (intent.itemDefinition.itemType) {
-                    ItemType.HULL -> addHullItem(intent.itemDefinition)
-                    ItemType.MODULE -> addModuleItem(intent.itemDefinition)
-                    ItemType.TURRET -> addTurretItem(intent.itemDefinition)
+                when (val attributes = intent.itemDefinition.attributes) {
+                    is ItemAttributes.HullAttributes -> addHullItem(intent.itemDefinition)
+                    is ItemAttributes.ModuleAttributes -> addModuleItem(
+                        intent.itemDefinition,
+                        attributes
+                    )
+
+                    is ItemAttributes.TurretAttributes -> addTurretItem(intent.itemDefinition)
                 }
                 autoSave()
             }
@@ -119,24 +121,32 @@ class ShipBuilderVM(
 
             is ShipBuilderIntent.ConfirmLoad -> {
                 viewModelScope.launch {
-                    try { repository.save(_state.value.toShipDesign()) }
-                    catch (e: Exception) { println("Failed to save: $e") }
+                    try {
+                        repository.save(_state.value.toShipDesign())
+                    } catch (e: Exception) {
+                        println("Failed to save: $e")
+                    }
 
-                    val loaded = try { repository.load(intent.name) }
-                    catch (e: Exception) { println("Failed to load: $e"); null }
+                    val loaded = try {
+                        repository.load(intent.name)
+                    } catch (e: Exception) {
+                        println("Failed to load: $e"); null
+                    }
 
                     if (loaded != null) {
                         _state.update {
-                            recalculate(it.copy(
-                                designName = loaded.name,
-                                itemDefinitions = loaded.itemDefinitions,
-                                placedHulls = loaded.placedHulls,
-                                placedModules = loaded.placedModules,
-                                placedTurrets = loaded.placedTurrets,
-                                selectedItemId = null,
-                                showLoadDialog = false,
-                                savedDesigns = emptyList(),
-                            ))
+                            recalculate(
+                                it.copy(
+                                    designName = loaded.name,
+                                    itemDefinitions = loaded.itemDefinitions,
+                                    placedHulls = loaded.placedHulls,
+                                    placedModules = loaded.placedModules,
+                                    placedTurrets = loaded.placedTurrets,
+                                    selectedItemId = null,
+                                    showLoadDialog = false,
+                                    savedDesigns = emptyList(),
+                                )
+                            )
                         }
                     } else {
                         _state.update { it.copy(showLoadDialog = false) }
@@ -217,8 +227,10 @@ class ShipBuilderVM(
             SceneOffset((it.x - pivot.x).sceneUnit, (it.y - pivot.y).sceneUnit)
         }
         val newDef = ItemDefinition(
-            id = defId, name = creating.name, vertices = vertices,
-            itemType = creating.itemType, attributes = creating.attributes,
+            id = defId,
+            name = creating.name,
+            vertices = vertices,
+            attributes = creating.attributes,
         )
 
         _state.update { s ->
@@ -229,26 +241,36 @@ class ShipBuilderVM(
             newState = when (creating.itemType) {
                 ItemType.HULL -> newState.copy(
                     placedHulls = newState.placedHulls + PlacedHullPiece(
-                        id = generateId("hull"), itemDefinitionId = defId,
-                        position = centroidPos, rotation = 0f.rad,
+                        id = generateId("hull"),
+                        itemDefinitionId = defId,
+                        position = centroidPos,
+                        rotation = 0f.rad,
                     )
                 )
+
                 ItemType.MODULE -> {
                     val attrs = creating.attributes as? ItemAttributes.ModuleAttributes
                         ?: return
                     newState.copy(
                         placedModules = newState.placedModules + PlacedModule(
-                            id = generateId("module"), itemDefinitionId = defId,
-                            systemType = attrs.systemType, position = centroidPos,
-                            rotation = 0f.rad, parentHullId = newState.placedHulls.firstOrNull()?.id ?: "",
+                            id = generateId("module"),
+                            itemDefinitionId = defId,
+                            systemType = attrs.systemType,
+                            position = centroidPos,
+                            rotation = 0f.rad,
+                            parentHullId = newState.placedHulls.firstOrNull()?.id ?: "",
                         )
                     )
                 }
+
                 ItemType.TURRET -> newState.copy(
                     placedTurrets = newState.placedTurrets + PlacedTurret(
-                        id = generateId("turret"), itemDefinitionId = defId,
-                        turretConfigId = defId, position = centroidPos,
-                        rotation = 0f.rad, parentHullId = newState.placedHulls.firstOrNull()?.id ?: "",
+                        id = generateId("turret"),
+                        itemDefinitionId = defId,
+                        turretConfigId = defId,
+                        position = centroidPos,
+                        rotation = 0f.rad,
+                        parentHullId = newState.placedHulls.firstOrNull()?.id ?: "",
                     )
                 )
             }
@@ -267,40 +289,53 @@ class ShipBuilderVM(
 
     private fun addHullItem(itemDef: ItemDefinition) {
         _state.update { current ->
-            recalculate(current.copy(
-                placedHulls = current.placedHulls + PlacedHullPiece(
-                    id = generateId("hull"), itemDefinitionId = itemDef.id,
-                    position = snappedOrigin, rotation = 0f.rad,
-                ),
-            ))
+            recalculate(
+                current.copy(
+                    placedHulls = current.placedHulls + PlacedHullPiece(
+                        id = generateId("hull"),
+                        itemDefinitionId = itemDef.id,
+                        position = snappedOrigin,
+                        rotation = 0f.rad,
+                    ),
+                )
+            )
         }
     }
 
-    private fun addModuleItem(itemDef: ItemDefinition) {
+    private fun addModuleItem(
+        itemDef: ItemDefinition,
+        attributes: ItemAttributes.ModuleAttributes
+    ) {
         _state.update { current ->
-            val attrs = itemDef.attributes as? ItemAttributes.ModuleAttributes
-                ?: return@update current
-            recalculate(current.copy(
-                placedModules = current.placedModules + PlacedModule(
-                    id = generateId("module"), itemDefinitionId = itemDef.id,
-                    systemType = attrs.systemType,
-                    position = snappedOrigin, rotation = 0f.rad,
-                    parentHullId = current.placedHulls.firstOrNull()?.id ?: "",
-                ),
-            ))
+            recalculate(
+                current.copy(
+                    placedModules = current.placedModules + PlacedModule(
+                        id = generateId("module"),
+                        itemDefinitionId = itemDef.id,
+                        systemType = attributes.systemType,
+                        position = snappedOrigin,
+                        rotation = 0f.rad,
+                        parentHullId = current.placedHulls.firstOrNull()?.id ?: "",
+                    ),
+                )
+            )
         }
     }
 
     private fun addTurretItem(itemDef: ItemDefinition) {
         _state.update { current ->
-            recalculate(current.copy(
-                placedTurrets = current.placedTurrets + PlacedTurret(
-                    id = generateId("turret"), itemDefinitionId = itemDef.id,
-                    turretConfigId = itemDef.id,
-                    position = snappedOrigin, rotation = 0f.rad,
-                    parentHullId = current.placedHulls.firstOrNull()?.id ?: "",
-                ),
-            ))
+            recalculate(
+                current.copy(
+                    placedTurrets = current.placedTurrets + PlacedTurret(
+                        id = generateId("turret"),
+                        itemDefinitionId = itemDef.id,
+                        turretConfigId = itemDef.id,
+                        position = snappedOrigin,
+                        rotation = 0f.rad,
+                        parentHullId = current.placedHulls.firstOrNull()?.id ?: "",
+                    ),
+                )
+            )
         }
     }
 
@@ -318,10 +353,18 @@ class ShipBuilderVM(
     private fun computeInvalidPlacements(state: ShipBuilderState): Set<String> {
         val invalid = mutableSetOf<String>()
         for (m in state.placedModules) {
-            if (!isInsideAnyHull(Offset(m.position.x.raw, m.position.y.raw), state)) invalid.add(m.id)
+            if (!isInsideAnyHull(
+                    Offset(m.position.x.raw, m.position.y.raw),
+                    state
+                )
+            ) invalid.add(m.id)
         }
         for (t in state.placedTurrets) {
-            if (!isInsideAnyHull(Offset(t.position.x.raw, t.position.y.raw), state)) invalid.add(t.id)
+            if (!isInsideAnyHull(
+                    Offset(t.position.x.raw, t.position.y.raw),
+                    state
+                )
+            ) invalid.add(t.id)
         }
         return invalid
     }
@@ -342,7 +385,11 @@ class ShipBuilderVM(
         placedTurrets = state.placedTurrets.map { if (it.id == id) it.copy(rotation = (it.rotation.normalized + delta).rad) else it },
     )
 
-    private fun mirrorItem(state: ShipBuilderState, id: String, mirrorX: Boolean): ShipBuilderState {
+    private fun mirrorItem(
+        state: ShipBuilderState,
+        id: String,
+        mirrorX: Boolean
+    ): ShipBuilderState {
         return state.copy(
             placedHulls = state.placedHulls.map {
                 if (it.id == id) {
@@ -365,9 +412,25 @@ class ShipBuilderVM(
     // --- Defaults ---
 
     private fun defaultAttributesFor(itemType: ItemType): ItemAttributes = when (itemType) {
-        ItemType.HULL -> ItemAttributes.HullAttributes(armour = SerializableArmourStats(5f, 2f), sizeCategory = "Medium", mass = 50f)
-        ItemType.MODULE -> ItemAttributes.ModuleAttributes(systemType = "REACTOR", maxHp = 100f, density = 8f, mass = 20f)
-        ItemType.TURRET -> ItemAttributes.TurretAttributes(sizeCategory = "Medium", isFixed = false, defaultFacing = 0f, isLimitedRotation = false)
+        ItemType.HULL -> ItemAttributes.HullAttributes(
+            armour = SerializableArmourStats(5f, 2f),
+            sizeCategory = "Medium",
+            mass = 50f
+        )
+
+        ItemType.MODULE -> ItemAttributes.ModuleAttributes(
+            systemType = "REACTOR",
+            maxHp = 100f,
+            density = 8f,
+            mass = 20f
+        )
+
+        ItemType.TURRET -> ItemAttributes.TurretAttributes(
+            sizeCategory = "Medium",
+            isFixed = false,
+            defaultFacing = 0f,
+            isLimitedRotation = false
+        )
     }
 
     private fun defaultNameFor(itemType: ItemType) = when (itemType) {
@@ -378,8 +441,10 @@ class ShipBuilderVM(
 
     private fun autoSave() {
         viewModelScope.launch {
-            try { repository.save(_state.value.toShipDesign()) }
-            catch (_: Exception) {}
+            try {
+                repository.save(_state.value.toShipDesign())
+            } catch (_: Exception) {
+            }
         }
     }
 }

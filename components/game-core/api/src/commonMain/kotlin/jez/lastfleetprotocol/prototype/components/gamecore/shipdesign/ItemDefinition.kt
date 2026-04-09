@@ -9,9 +9,16 @@ data class ItemDefinition(
     val id: String,
     val name: String,
     val vertices: List<@Serializable(with = SceneOffsetSerializer::class) SceneOffset>,
-    val itemType: ItemType,
     val attributes: ItemAttributes,
-)
+) {
+    val itemType: ItemType by lazy {
+        when (attributes) {
+            is ItemAttributes.HullAttributes -> ItemType.HULL
+            is ItemAttributes.ModuleAttributes -> ItemType.MODULE
+            is ItemAttributes.TurretAttributes -> ItemType.TURRET
+        }
+    }
+}
 
 @Serializable
 enum class ItemType { HULL, MODULE, TURRET }

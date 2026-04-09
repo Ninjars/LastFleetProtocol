@@ -27,7 +27,6 @@ object PartsCatalog {
                 SceneOffset((-56f).sceneUnit, (-20f).sceneUnit),
                 SceneOffset((-30f).sceneUnit, (-37f).sceneUnit),
             ),
-            itemType = ItemType.HULL,
             attributes = ItemAttributes.HullAttributes(
                 armour = SerializableArmourStats(hardness = 5f, density = 2f),
                 sizeCategory = "medium",
@@ -44,7 +43,6 @@ object PartsCatalog {
                 SceneOffset((-42f).sceneUnit, (-15f).sceneUnit),
                 SceneOffset((-20f).sceneUnit, (-30f).sceneUnit),
             ),
-            itemType = ItemType.HULL,
             attributes = ItemAttributes.HullAttributes(
                 armour = SerializableArmourStats(hardness = 3f, density = 1f),
                 sizeCategory = "light",
@@ -61,7 +59,6 @@ object PartsCatalog {
                 SceneOffset((-52f).sceneUnit, (-25f).sceneUnit),
                 SceneOffset((-25f).sceneUnit, (-42f).sceneUnit),
             ),
-            itemType = ItemType.HULL,
             attributes = ItemAttributes.HullAttributes(
                 armour = SerializableArmourStats(hardness = 5f, density = 2f),
                 sizeCategory = "medium",
@@ -78,7 +75,6 @@ object PartsCatalog {
                 SceneOffset((-52f).sceneUnit, (-35f).sceneUnit),
                 SceneOffset((-20f).sceneUnit, (-50f).sceneUnit),
             ),
-            itemType = ItemType.HULL,
             attributes = ItemAttributes.HullAttributes(
                 armour = SerializableArmourStats(hardness = 8f, density = 4f),
                 sizeCategory = "heavy",
@@ -107,7 +103,6 @@ object PartsCatalog {
             id = "system_reactor",
             name = "Reactor",
             vertices = moduleSquareVertices,
-            itemType = ItemType.MODULE,
             attributes = ItemAttributes.ModuleAttributes(
                 systemType = "REACTOR",
                 maxHp = 100f,
@@ -119,7 +114,6 @@ object PartsCatalog {
             id = "system_engine",
             name = "Main Engine",
             vertices = moduleSquareVertices,
-            itemType = ItemType.MODULE,
             attributes = ItemAttributes.ModuleAttributes(
                 systemType = "MAIN_ENGINE",
                 maxHp = 80f,
@@ -135,7 +129,6 @@ object PartsCatalog {
             id = "system_bridge",
             name = "Bridge",
             vertices = moduleSquareVertices,
-            itemType = ItemType.MODULE,
             attributes = ItemAttributes.ModuleAttributes(
                 systemType = "BRIDGE",
                 maxHp = 60f,
@@ -150,7 +143,6 @@ object PartsCatalog {
             id = "turret_standard",
             name = "Standard Turret",
             vertices = turretOctagonVertices,
-            itemType = ItemType.TURRET,
             attributes = ItemAttributes.TurretAttributes(
                 sizeCategory = "medium",
             ),
@@ -159,7 +151,6 @@ object PartsCatalog {
             id = "turret_light",
             name = "Light Turret",
             vertices = turretOctagonVertices,
-            itemType = ItemType.TURRET,
             attributes = ItemAttributes.TurretAttributes(
                 sizeCategory = "light",
             ),
@@ -168,7 +159,6 @@ object PartsCatalog {
             id = "turret_heavy",
             name = "Heavy Turret",
             vertices = turretOctagonVertices,
-            itemType = ItemType.TURRET,
             attributes = ItemAttributes.TurretAttributes(
                 sizeCategory = "heavy",
             ),
