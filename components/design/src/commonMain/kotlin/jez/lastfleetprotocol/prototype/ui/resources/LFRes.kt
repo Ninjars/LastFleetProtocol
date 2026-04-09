@@ -2,46 +2,46 @@ package jez.lastfleetprotocol.prototype.ui.resources
 
 import lastfleetprotocol.components.design.generated.resources.Res
 import lastfleetprotocol.components.design.generated.resources.builder_acceleration
+import lastfleetprotocol.components.design.generated.resources.builder_angular
+import lastfleetprotocol.components.design.generated.resources.builder_angular_thrust
+import lastfleetprotocol.components.design.generated.resources.builder_area
+import lastfleetprotocol.components.design.generated.resources.builder_armour_density
+import lastfleetprotocol.components.design.generated.resources.builder_armour_hardness
 import lastfleetprotocol.components.design.generated.resources.builder_cancel_creation
 import lastfleetprotocol.components.design.generated.resources.builder_create_hull
 import lastfleetprotocol.components.design.generated.resources.builder_create_module
 import lastfleetprotocol.components.design.generated.resources.builder_create_turret
-import lastfleetprotocol.components.design.generated.resources.builder_finish
-import lastfleetprotocol.components.design.generated.resources.builder_item_name
-import lastfleetprotocol.components.design.generated.resources.builder_area
-import lastfleetprotocol.components.design.generated.resources.builder_armour_hardness
-import lastfleetprotocol.components.design.generated.resources.builder_armour_density
-import lastfleetprotocol.components.design.generated.resources.builder_size_category
-import lastfleetprotocol.components.design.generated.resources.builder_module_type
-import lastfleetprotocol.components.design.generated.resources.builder_max_hp
-import lastfleetprotocol.components.design.generated.resources.builder_density
-import lastfleetprotocol.components.design.generated.resources.builder_forward_thrust
-import lastfleetprotocol.components.design.generated.resources.builder_lateral_thrust
-import lastfleetprotocol.components.design.generated.resources.builder_reverse_thrust
-import lastfleetprotocol.components.design.generated.resources.builder_angular_thrust
-import lastfleetprotocol.components.design.generated.resources.builder_fixed
-import lastfleetprotocol.components.design.generated.resources.builder_rotating
-import lastfleetprotocol.components.design.generated.resources.builder_default_facing
-import lastfleetprotocol.components.design.generated.resources.builder_limited_rotation
-import lastfleetprotocol.components.design.generated.resources.builder_min_angle
-import lastfleetprotocol.components.design.generated.resources.builder_max_angle
-import lastfleetprotocol.components.design.generated.resources.builder_item_attributes
 import lastfleetprotocol.components.design.generated.resources.builder_custom_items
+import lastfleetprotocol.components.design.generated.resources.builder_default_facing
+import lastfleetprotocol.components.design.generated.resources.builder_density
+import lastfleetprotocol.components.design.generated.resources.builder_design_name
+import lastfleetprotocol.components.design.generated.resources.builder_finish
+import lastfleetprotocol.components.design.generated.resources.builder_fixed
+import lastfleetprotocol.components.design.generated.resources.builder_forward
+import lastfleetprotocol.components.design.generated.resources.builder_forward_thrust
+import lastfleetprotocol.components.design.generated.resources.builder_hull_pieces
+import lastfleetprotocol.components.design.generated.resources.builder_item_attributes
+import lastfleetprotocol.components.design.generated.resources.builder_item_name
+import lastfleetprotocol.components.design.generated.resources.builder_lateral
+import lastfleetprotocol.components.design.generated.resources.builder_lateral_thrust
+import lastfleetprotocol.components.design.generated.resources.builder_limited_rotation
+import lastfleetprotocol.components.design.generated.resources.builder_load_design
+import lastfleetprotocol.components.design.generated.resources.builder_mass
+import lastfleetprotocol.components.design.generated.resources.builder_max_angle
+import lastfleetprotocol.components.design.generated.resources.builder_max_hp
+import lastfleetprotocol.components.design.generated.resources.builder_min_angle
 import lastfleetprotocol.components.design.generated.resources.builder_module_bridge
 import lastfleetprotocol.components.design.generated.resources.builder_module_main_engine
 import lastfleetprotocol.components.design.generated.resources.builder_module_reactor
+import lastfleetprotocol.components.design.generated.resources.builder_module_type
+import lastfleetprotocol.components.design.generated.resources.builder_no_saved_designs
+import lastfleetprotocol.components.design.generated.resources.builder_reverse
+import lastfleetprotocol.components.design.generated.resources.builder_reverse_thrust
+import lastfleetprotocol.components.design.generated.resources.builder_rotating
+import lastfleetprotocol.components.design.generated.resources.builder_size_category
 import lastfleetprotocol.components.design.generated.resources.builder_size_large
 import lastfleetprotocol.components.design.generated.resources.builder_size_medium
 import lastfleetprotocol.components.design.generated.resources.builder_size_small
-import lastfleetprotocol.components.design.generated.resources.builder_angular
-import lastfleetprotocol.components.design.generated.resources.builder_design_name
-import lastfleetprotocol.components.design.generated.resources.builder_forward
-import lastfleetprotocol.components.design.generated.resources.builder_hull_pieces
-import lastfleetprotocol.components.design.generated.resources.builder_lateral
-import lastfleetprotocol.components.design.generated.resources.builder_load_design
-import lastfleetprotocol.components.design.generated.resources.builder_mass
-import lastfleetprotocol.components.design.generated.resources.builder_no_saved_designs
-import lastfleetprotocol.components.design.generated.resources.builder_reverse
 import lastfleetprotocol.components.design.generated.resources.builder_stats
 import lastfleetprotocol.components.design.generated.resources.builder_systems
 import lastfleetprotocol.components.design.generated.resources.builder_thrust
@@ -60,6 +60,7 @@ import lastfleetprotocol.components.design.generated.resources.desc_toggle_sound
 import lastfleetprotocol.components.design.generated.resources.game_defeat
 import lastfleetprotocol.components.design.generated.resources.game_paused
 import lastfleetprotocol.components.design.generated.resources.game_victory
+import lastfleetprotocol.components.design.generated.resources.ic_add_2
 import lastfleetprotocol.components.design.generated.resources.ic_back
 import lastfleetprotocol.components.design.generated.resources.ic_exit
 import lastfleetprotocol.components.design.generated.resources.ic_menu
@@ -96,6 +97,7 @@ object LFRes {
         val ic_music_on: DrawableResource = Res.drawable.ic_music_on
         val ic_sound_effects_off: DrawableResource = Res.drawable.ic_sound_effects_off
         val ic_sound_effects_on: DrawableResource = Res.drawable.ic_sound_effects_on
+        val ic_add: DrawableResource = Res.drawable.ic_add_2
         val sprite_ship: DrawableResource = Res.drawable.sprite_ship
         val sprite_alien_ship: DrawableResource = Res.drawable.sprite_alien_ship
         val sprite_power_up: DrawableResource = Res.drawable.sprite_power_up

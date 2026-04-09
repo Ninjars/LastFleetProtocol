@@ -15,6 +15,7 @@
     <string name="button_resume">Resume</string>
     <string name="button_restart">Restart</string>
     <string name="button_exit">Exit</string>
+    <string name="button_add">Add</string>
 
     <string name="builder_stats">Stats</string>
     <string name="builder_design_name">Design Name</string>

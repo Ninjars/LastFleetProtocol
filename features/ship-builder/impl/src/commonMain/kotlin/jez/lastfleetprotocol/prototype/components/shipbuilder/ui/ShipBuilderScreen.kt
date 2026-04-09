@@ -14,10 +14,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,13 +25,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.DesignCanvas
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderIntent
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderSideEffect
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderState
 import jez.lastfleetprotocol.prototype.ui.common.HandleSideEffect
+import jez.lastfleetprotocol.prototype.ui.common.composables.LFTextButton
 import jez.lastfleetprotocol.prototype.ui.resources.LFRes
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
@@ -75,21 +74,14 @@ private fun ShipBuilderScreen(
             is EditorMode.EditingShip -> {
                 PartsPanel(
                     onAddItem = { onIntent(ShipBuilderIntent.AddItem(it)) },
-                    onCreateHull = { onIntent(ShipBuilderIntent.EnterCreationMode(ItemType.HULL)) },
-                    onCreateModule = { onIntent(ShipBuilderIntent.EnterCreationMode(ItemType.MODULE)) },
-                    onCreateTurret = { onIntent(ShipBuilderIntent.EnterCreationMode(ItemType.TURRET)) },
+                    onCreateItem = { onIntent(ShipBuilderIntent.EnterCreationMode(it)) },
                     customItems = state.customItemDefinitions,
                     modifier = Modifier.width(200.dp).fillMaxHeight(),
                 )
             }
 
             is EditorMode.CreatingItem -> {
-                // Minimal left panel in creation mode — just cancel/finish
-                CreationControlsPanel(
-                    onCancel = { onIntent(ShipBuilderIntent.ExitCreationMode) },
-                    onFinish = { onIntent(ShipBuilderIntent.FinishCreation) },
-                    modifier = Modifier.width(200.dp).fillMaxHeight(),
-                )
+                // Hide items sidebar whilst in item creation mode
             }
         }
 
@@ -124,26 +116,36 @@ private fun ShipBuilderScreen(
         }
 
         // Right panel: Stats (editing mode) or Item Attributes (creation mode)
-        when (editorMode) {
-            is EditorMode.EditingShip -> {
-                StatsPanel(
-                    stats = state.stats,
-                    designName = state.designName,
-                    onNameChanged = { onIntent(ShipBuilderIntent.RenameDesign(it)) },
-                    onLoadClicked = { onIntent(ShipBuilderIntent.LoadDesignClicked) },
-                    modifier = Modifier.width(200.dp).fillMaxHeight(),
-                )
-            }
+        Column(
+            modifier = Modifier.width(200.dp).padding(8.dp).fillMaxHeight(),
+        ) {
+            when (editorMode) {
+                is EditorMode.EditingShip -> {
+                    StatsPanel(
+                        stats = state.stats,
+                        designName = state.designName,
+                        onNameChanged = { onIntent(ShipBuilderIntent.RenameDesign(it)) },
+                        onLoadClicked = { onIntent(ShipBuilderIntent.LoadDesignClicked) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
 
-            is EditorMode.CreatingItem -> {
-                ItemCreationAttributesPanel(
-                    creatingItem = editorMode,
-                    onNameChanged = { onIntent(ShipBuilderIntent.UpdateCreationName(it)) },
-                    onAttributesChanged = { onIntent(ShipBuilderIntent.UpdateCreationAttributes(it)) },
-                    onFinish = { onIntent(ShipBuilderIntent.FinishCreation) },
-                    onCancel = { onIntent(ShipBuilderIntent.ExitCreationMode) },
-                    modifier = Modifier.width(200.dp).fillMaxHeight(),
-                )
+                is EditorMode.CreatingItem -> {
+                    ItemCreationAttributesPanel(
+                        creatingItem = editorMode,
+                        onNameChanged = { onIntent(ShipBuilderIntent.UpdateCreationName(it)) },
+                        onAttributesChanged = {
+                            onIntent(
+                                ShipBuilderIntent.UpdateCreationAttributes(
+                                    it
+                                )
+                            )
+                        },
+                        onFinish = { onIntent(ShipBuilderIntent.FinishCreation) },
+                        onCancel = { onIntent(ShipBuilderIntent.ExitCreationMode) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
     }
@@ -159,42 +161,16 @@ private fun ShipBuilderScreen(
 }
 
 @Composable
-private fun CreationControlsPanel(
-    onCancel: () -> Unit,
-    onFinish: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.padding(8.dp),
-    ) {
-        Spacer(modifier = Modifier.weight(1f))
-        FilledTonalButton(
-            onClick = onFinish,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(LFRes.String.builder_finish))
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = onCancel,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(LFRes.String.builder_cancel_creation))
-        }
-    }
-}
-
-@Composable
 private fun ItemCreationAttributesPanel(
     creatingItem: EditorMode.CreatingItem,
     onNameChanged: (String) -> Unit,
-    onAttributesChanged: (jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes) -> Unit,
+    onAttributesChanged: (ItemAttributes) -> Unit,
     onFinish: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.padding(8.dp),
+        modifier
     ) {
         ItemAttributesPanel(
             creatingItem = creatingItem,
@@ -203,19 +179,17 @@ private fun ItemCreationAttributesPanel(
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
 
-        FilledTonalButton(
+        LFTextButton(
+            text = stringResource(LFRes.String.builder_finish),
             onClick = onFinish,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(LFRes.String.builder_finish))
-        }
+        )
         Spacer(modifier = Modifier.height(8.dp))
-        OutlinedButton(
+        LFTextButton(
+            text = stringResource(LFRes.String.builder_cancel_creation),
             onClick = onCancel,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(LFRes.String.builder_cancel_creation))
-        }
+        )
     }
 }
 

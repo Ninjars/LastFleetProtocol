@@ -2,12 +2,13 @@ package jez.lastfleetprotocol.prototype.components.shipbuilder.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,8 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
@@ -32,18 +33,22 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttrib
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.PartsCatalog
+import jez.lastfleetprotocol.prototype.ui.common.composables.LFIconButton
 import jez.lastfleetprotocol.prototype.ui.resources.LFRes
-import androidx.compose.material3.FilledTonalButton
+import lastfleetprotocol.components.design.generated.resources.Res
+import lastfleetprotocol.components.design.generated.resources.button_add
+import lastfleetprotocol.components.design.generated.resources.ic_add_2
+import lastfleetprotocol.components.design.generated.resources.pointer_down
+import lastfleetprotocol.components.design.generated.resources.pointer_right
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun PartsPanel(
     onAddItem: (ItemDefinition) -> Unit,
-    onCreateHull: () -> Unit,
-    onCreateModule: () -> Unit,
-    onCreateTurret: () -> Unit,
-    customItems: List<ItemDefinition> = emptyList(),
+    onCreateItem: (ItemType) -> Unit,
     modifier: Modifier = Modifier,
+    customItems: List<ItemDefinition> = emptyList(),
 ) {
     val customHulls = customItems.filter { it.itemType == ItemType.HULL }
     val customModules = customItems.filter { it.itemType == ItemType.MODULE }
@@ -54,7 +59,10 @@ fun PartsPanel(
             .verticalScroll(rememberScrollState())
             .padding(8.dp)
     ) {
-        CollapsibleSection(title = stringResource(LFRes.String.builder_hull_pieces)) {
+        CollapsibleSection(
+            title = stringResource(LFRes.String.builder_hull_pieces),
+            onAdd = { onCreateItem(ItemType.HULL) },
+        ) {
             for (item in PartsCatalog.hullItems) {
                 HullPieceItem(
                     item = item,
@@ -71,7 +79,10 @@ fun PartsPanel(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-        CollapsibleSection(title = stringResource(LFRes.String.builder_systems)) {
+        CollapsibleSection(
+            title = stringResource(LFRes.String.builder_systems),
+            onAdd = { onCreateItem(ItemType.MODULE) },
+        ) {
             for (item in PartsCatalog.moduleItems) {
                 SystemModuleItem(
                     item = item,
@@ -88,7 +99,10 @@ fun PartsPanel(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-        CollapsibleSection(title = stringResource(LFRes.String.builder_turrets)) {
+        CollapsibleSection(
+            title = stringResource(LFRes.String.builder_turrets),
+            onAdd = { onCreateItem(ItemType.TURRET) },
+        ) {
             for (item in PartsCatalog.turretItems) {
                 TurretModuleItem(
                     item = item,
@@ -102,47 +116,57 @@ fun PartsPanel(
                 )
             }
         }
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-        FilledTonalButton(
-            onClick = onCreateHull,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(LFRes.String.builder_create_hull))
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        FilledTonalButton(
-            onClick = onCreateModule,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(LFRes.String.builder_create_module))
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        FilledTonalButton(
-            onClick = onCreateTurret,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(LFRes.String.builder_create_turret))
-        }
     }
 }
 
 @Composable
 private fun CollapsibleSection(
     title: String,
+    onAdd: () -> Unit,
     content: @Composable () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(true) }
 
-    Text(
-        text = "${if (expanded) "v" else ">"} $title",
-        style = MaterialTheme.typography.titleSmall,
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .clickable { expanded = !expanded }
-            .padding(vertical = 4.dp),
-    )
+            .padding(vertical = 4.dp)
+    ) {
+        Image(
+            painter = painterResource(
+                if (expanded) {
+                    Res.drawable.pointer_down
+                } else {
+                    Res.drawable.pointer_right
+                }
+            ),
+            contentDescription = stringResource(Res.string.button_add),
+            colorFilter = MaterialTheme.colorScheme.onBackground.let { ColorFilter.tint(it) },
+            modifier = Modifier.size(24.dp)
+        )
+//        LFIconButton(
+//            drawable = if (expanded) {
+//                Res.drawable.pointer_down
+//            } else {
+//                Res.drawable.pointer_right
+//            },
+//            contentDescription = stringResource(Res.string.button_add),
+//            modifier = Modifier.size(36.dp)
+//        ) { expanded = !expanded }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.weight(1f)
+        )
+        LFIconButton(
+            drawable = Res.drawable.ic_add_2,
+            contentDescription = stringResource(Res.string.button_add),
+            onClick = onAdd
+        )
+    }
 
     AnimatedVisibility(visible = expanded) {
         Column(modifier = Modifier.padding(start = 8.dp)) {
