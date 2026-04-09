@@ -1,6 +1,7 @@
-package jez.lastfleetprotocol.prototype.components.shipbuilder.ui
+package jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -96,7 +97,7 @@ fun StatsPanel(
 
 @Composable
 private fun StatRow(label: String, value: String) {
-    androidx.compose.foundation.layout.Row(
+    Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
     ) {
         Text(

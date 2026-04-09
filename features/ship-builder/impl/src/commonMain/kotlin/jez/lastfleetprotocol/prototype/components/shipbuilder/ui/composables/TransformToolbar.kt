@@ -1,4 +1,4 @@
-package jez.lastfleetprotocol.prototype.components.shipbuilder.ui
+package jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement

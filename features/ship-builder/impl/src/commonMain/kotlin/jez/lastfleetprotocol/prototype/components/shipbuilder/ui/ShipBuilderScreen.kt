@@ -27,6 +27,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.DesignCanvas
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.ItemAttributesPanel
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.PartsPanel
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.StatsPanel
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.TransformToolbar
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderIntent
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderSideEffect
