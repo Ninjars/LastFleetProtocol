@@ -27,6 +27,12 @@ import lastfleetprotocol.components.design.generated.resources.builder_min_angle
 import lastfleetprotocol.components.design.generated.resources.builder_max_angle
 import lastfleetprotocol.components.design.generated.resources.builder_item_attributes
 import lastfleetprotocol.components.design.generated.resources.builder_custom_items
+import lastfleetprotocol.components.design.generated.resources.builder_module_bridge
+import lastfleetprotocol.components.design.generated.resources.builder_module_main_engine
+import lastfleetprotocol.components.design.generated.resources.builder_module_reactor
+import lastfleetprotocol.components.design.generated.resources.builder_size_large
+import lastfleetprotocol.components.design.generated.resources.builder_size_medium
+import lastfleetprotocol.components.design.generated.resources.builder_size_small
 import lastfleetprotocol.components.design.generated.resources.builder_angular
 import lastfleetprotocol.components.design.generated.resources.builder_design_name
 import lastfleetprotocol.components.design.generated.resources.builder_forward
@@ -156,6 +162,12 @@ object LFRes {
         val builder_max_angle: StringResource = Res.string.builder_max_angle
         val builder_item_attributes: StringResource = Res.string.builder_item_attributes
         val builder_custom_items: StringResource = Res.string.builder_custom_items
+        val builder_module_reactor: StringResource = Res.string.builder_module_reactor
+        val builder_module_main_engine: StringResource = Res.string.builder_module_main_engine
+        val builder_module_bridge: StringResource = Res.string.builder_module_bridge
+        val builder_size_small: StringResource = Res.string.builder_size_small
+        val builder_size_medium: StringResource = Res.string.builder_size_medium
+        val builder_size_large: StringResource = Res.string.builder_size_large
     }
 
     object Font {

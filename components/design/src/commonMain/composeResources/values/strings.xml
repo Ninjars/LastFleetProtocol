@@ -56,4 +56,10 @@
     <string name="builder_max_angle">Max Angle</string>
     <string name="builder_item_attributes">Item Attributes</string>
     <string name="builder_custom_items">Custom Items</string>
+    <string name="builder_module_reactor">Reactor</string>
+    <string name="builder_module_main_engine">Main Engine</string>
+    <string name="builder_module_bridge">Bridge</string>
+    <string name="builder_size_small">Small</string>
+    <string name="builder_size_medium">Medium</string>
+    <string name="builder_size_large">Large</string>
 </resources>

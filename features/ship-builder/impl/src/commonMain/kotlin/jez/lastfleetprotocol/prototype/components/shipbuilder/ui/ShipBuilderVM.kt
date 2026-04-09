@@ -234,7 +234,8 @@ class ShipBuilderVM(
                     )
                 )
                 ItemType.MODULE -> {
-                    val attrs = creating.attributes as ItemAttributes.ModuleAttributes
+                    val attrs = creating.attributes as? ItemAttributes.ModuleAttributes
+                        ?: return
                     newState.copy(
                         placedModules = newState.placedModules + PlacedModule(
                             id = generateId("module"), itemDefinitionId = defId,
@@ -277,7 +278,8 @@ class ShipBuilderVM(
 
     private fun addModuleItem(itemDef: ItemDefinition) {
         _state.update { current ->
-            val attrs = itemDef.attributes as ItemAttributes.ModuleAttributes
+            val attrs = itemDef.attributes as? ItemAttributes.ModuleAttributes
+                ?: return@update current
             recalculate(current.copy(
                 placedModules = current.placedModules + PlacedModule(
                     id = generateId("module"), itemDefinitionId = itemDef.id,
