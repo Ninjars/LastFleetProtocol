@@ -11,6 +11,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurr
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.PartsCatalog
 import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.ShipStats
 
+
 sealed interface EditorMode {
     data object EditingShip : EditorMode
     data class CreatingItem(
@@ -26,6 +27,7 @@ sealed interface EditorMode {
 data class ShipBuilderState(
     val designName: String = "New Ship",
     val itemDefinitions: List<ItemDefinition> = emptyList(),
+    val libraryItems: List<ItemDefinition> = emptyList(),
     val placedHulls: List<PlacedHullPiece> = emptyList(),
     val placedModules: List<PlacedModule> = emptyList(),
     val placedTurrets: List<PlacedTurret> = emptyList(),
@@ -36,19 +38,22 @@ data class ShipBuilderState(
     val savedDesigns: List<String> = emptyList(),
     val editorMode: EditorMode = EditorMode.EditingShip,
 ) {
-    /** Custom item definitions (those not in the pre-defined catalog). */
+    /**
+     * Custom items available in the parts panel — sourced from the on-disk item library.
+     * Pre-defined catalog items are excluded.
+     */
     val customItemDefinitions: List<ItemDefinition>
-        get() {
-            val catalogIds = PartsCatalog.allItems.map { it.id }.toSet()
-            return itemDefinitions.filter { it.id !in catalogIds }
-        }
+        get() = libraryItems
 
     /**
-     * Resolve an item definition by ID, checking the design's custom items first,
-     * then falling back to the pre-defined catalog.
+     * Resolve an item definition by ID, checking (in priority order):
+     *  1. The design's inline [itemDefinitions] (snapshot for placed items)
+     *  2. The on-disk [libraryItems] (custom items)
+     *  3. The pre-defined [PartsCatalog]
      */
     fun resolveItemDefinition(id: String): ItemDefinition? =
         itemDefinitions.find { it.id == id }
+            ?: libraryItems.find { it.id == id }
             ?: PartsCatalog.allItems.find { it.id == id }
 
     /**

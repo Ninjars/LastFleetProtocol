@@ -50,7 +50,6 @@ class ShipDesignSerializationTest {
                         SceneOffset(-5f.sceneUnit, 8f.sceneUnit),
                         SceneOffset(-5f.sceneUnit, (-8f).sceneUnit),
                     ),
-                    itemType = ItemType.HULL,
                     attributes = ItemAttributes.HullAttributes(
                         armour = SerializableArmourStats(hardness = 1.5f, density = 2.0f),
                         sizeCategory = "medium",
@@ -61,7 +60,6 @@ class ShipDesignSerializationTest {
                     id = "module-def-1",
                     name = "Reactor",
                     vertices = emptyList(),
-                    itemType = ItemType.MODULE,
                     attributes = ItemAttributes.ModuleAttributes(
                         systemType = "REACTOR",
                         maxHp = 100f,
@@ -73,7 +71,6 @@ class ShipDesignSerializationTest {
                     id = "turret-def-1",
                     name = "Standard Turret",
                     vertices = emptyList(),
-                    itemType = ItemType.TURRET,
                     attributes = ItemAttributes.TurretAttributes(
                         sizeCategory = "medium",
                     ),
@@ -173,7 +170,6 @@ class ShipDesignSerializationTest {
                     id = "unique-hull-def-42",
                     name = "Test Hull",
                     vertices = emptyList(),
-                    itemType = ItemType.HULL,
                     attributes = ItemAttributes.HullAttributes(
                         armour = SerializableArmourStats(hardness = 1f, density = 1f),
                         sizeCategory = "small",
@@ -184,7 +180,6 @@ class ShipDesignSerializationTest {
                     id = "engine-def-1",
                     name = "Engine",
                     vertices = emptyList(),
-                    itemType = ItemType.MODULE,
                     attributes = ItemAttributes.ModuleAttributes(
                         systemType = "MAIN_ENGINE",
                         maxHp = 80f,
@@ -235,7 +230,6 @@ class ShipDesignSerializationTest {
                 SceneOffset(-5f.sceneUnit, 5f.sceneUnit),
                 SceneOffset(-5f.sceneUnit, (-5f).sceneUnit),
             ),
-            itemType = ItemType.HULL,
             attributes = ItemAttributes.HullAttributes(
                 armour = SerializableArmourStats(hardness = 5f, density = 2f),
                 sizeCategory = "heavy",
@@ -260,7 +254,6 @@ class ShipDesignSerializationTest {
             id = "module-attrs-test",
             name = "Engine Test",
             vertices = emptyList(),
-            itemType = ItemType.MODULE,
             attributes = ItemAttributes.ModuleAttributes(
                 systemType = "MAIN_ENGINE",
                 maxHp = 80f,
@@ -294,7 +287,6 @@ class ShipDesignSerializationTest {
             id = "turret-attrs-test",
             name = "Turret Test",
             vertices = emptyList(),
-            itemType = ItemType.TURRET,
             attributes = ItemAttributes.TurretAttributes(
                 sizeCategory = "medium",
                 isFixed = true,
@@ -325,7 +317,6 @@ class ShipDesignSerializationTest {
                 id = "type-test-${type.name}",
                 name = "Type Test",
                 vertices = emptyList(),
-                itemType = type,
                 attributes = when (type) {
                     ItemType.HULL -> ItemAttributes.HullAttributes(
                         armour = SerializableArmourStats(hardness = 1f, density = 1f),

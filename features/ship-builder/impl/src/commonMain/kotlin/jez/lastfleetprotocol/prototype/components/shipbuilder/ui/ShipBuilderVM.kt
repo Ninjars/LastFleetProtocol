@@ -7,6 +7,7 @@ import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemLibraryRepository
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
@@ -33,6 +34,7 @@ import kotlin.math.PI
 @Inject
 class ShipBuilderVM(
     private val repository: ShipDesignRepository,
+    private val itemLibrary: ItemLibraryRepository,
 ) : ViewModelContract<ShipBuilderIntent, ShipBuilderState, ShipBuilderSideEffect>() {
 
     private val _state = MutableStateFlow(ShipBuilderState())
@@ -44,7 +46,13 @@ class ShipBuilderVM(
     init {
         nextId = repository.listAll().size
         val initialName = "Untitled Ship ${nextId++}"
-        _state.update { it.copy(designName = initialName) }
+        val library = try {
+            itemLibrary.loadAll()
+        } catch (e: Exception) {
+            println("Failed to load item library: $e")
+            emptyList()
+        }
+        _state.update { it.copy(designName = initialName, libraryItems = library) }
         autoSave()
     }
 
@@ -233,9 +241,13 @@ class ShipBuilderVM(
             attributes = creating.attributes,
         )
 
+        // Persist the new item to the library so it survives across designs/sessions
+        persistLibraryItem(newDef)
+
         _state.update { s ->
             var newState = s.copy(
                 itemDefinitions = s.itemDefinitions + newDef,
+                libraryItems = s.libraryItems + newDef,
                 editorMode = EditorMode.EditingShip,
             )
             newState = when (creating.itemType) {
@@ -444,6 +456,20 @@ class ShipBuilderVM(
             try {
                 repository.save(_state.value.toShipDesign())
             } catch (_: Exception) {
+            }
+        }
+    }
+
+    /**
+     * Persist an item definition to the on-disk library. Fire-and-forget; failures
+     * are logged but do not block the in-memory state update.
+     */
+    private fun persistLibraryItem(item: ItemDefinition) {
+        viewModelScope.launch {
+            try {
+                itemLibrary.save(item)
+            } catch (e: Exception) {
+                println("Failed to save item to library: $e")
             }
         }
     }

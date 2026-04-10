@@ -37,7 +37,6 @@ class ShipStatsCalculatorTest {
                 SceneOffset((-5f).sceneUnit, 5f.sceneUnit),
                 SceneOffset((-5f).sceneUnit, (-5f).sceneUnit),
             ),
-            itemType = ItemType.HULL,
             attributes = ItemAttributes.HullAttributes(
                 armour = SerializableArmourStats(hardness = 5f, density = 2f),
                 sizeCategory = "medium",
@@ -75,7 +74,6 @@ class ShipStatsCalculatorTest {
                 SceneOffset((-5f).sceneUnit, 5f.sceneUnit),
                 SceneOffset((-5f).sceneUnit, (-5f).sceneUnit),
             ),
-            itemType = ItemType.HULL,
             attributes = ItemAttributes.HullAttributes(
                 armour = SerializableArmourStats(hardness = 5f, density = 2f),
                 sizeCategory = "medium",
@@ -86,7 +84,6 @@ class ShipStatsCalculatorTest {
             id = "reactor_def",
             name = "Reactor",
             vertices = emptyList(),
-            itemType = ItemType.MODULE,
             attributes = ItemAttributes.ModuleAttributes(
                 systemType = "REACTOR",
                 maxHp = 100f,
@@ -131,7 +128,6 @@ class ShipStatsCalculatorTest {
                 SceneOffset((-5f).sceneUnit, 5f.sceneUnit),
                 SceneOffset((-5f).sceneUnit, (-5f).sceneUnit),
             ),
-            itemType = ItemType.HULL,
             attributes = ItemAttributes.HullAttributes(
                 armour = SerializableArmourStats(hardness = 5f, density = 0f),
                 sizeCategory = "medium",
@@ -142,7 +138,6 @@ class ShipStatsCalculatorTest {
             id = "engine_def",
             name = "Main Engine",
             vertices = emptyList(),
-            itemType = ItemType.MODULE,
             attributes = ItemAttributes.ModuleAttributes(
                 systemType = "MAIN_ENGINE",
                 maxHp = 80f,
