@@ -1,9 +1,12 @@
 package jez.lastfleetprotocol.prototype.components.shipbuilder.ui
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.lifecycle.viewModelScope
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
+import com.pandulapeter.kubriko.helpers.extensions.toOffset
+import com.pandulapeter.kubriko.types.Scale
 import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
@@ -218,7 +221,10 @@ class ShipBuilderVM(
                 // creation flow's coordinate space is centred at world origin, which
                 // matches the pivot, so we can use the stored vertices directly.
                 val item = intent.item
-                val vertices = item.vertices.map { Offset(it.x.raw, it.y.raw) }
+                val scale = Scale(Size(1f, 1f))
+                val vertices = item.vertices.map {
+                    (it + snappedOrigin).toOffset(scale)
+                }
                 _state.update {
                     it.copy(
                         selectedItemId = null,
@@ -227,7 +233,9 @@ class ShipBuilderVM(
                             vertices = vertices,
                             selectedVertexIndex = vertices.lastIndex.takeIf { idx -> idx >= 0 },
                             attributes = item.attributes,
-                            isConvex = jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.isConvex(vertices),
+                            isConvex = jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.isConvex(
+                                vertices
+                            ),
                             name = item.name,
                             editingItemId = item.id,
                         ),
@@ -277,13 +285,14 @@ class ShipBuilderVM(
         persistLibraryItem(newDef)
 
         _state.update { s ->
-            val updatedItemDefinitions = if (isEditing && s.itemDefinitions.any { it.id == defId }) {
-                s.itemDefinitions.map { if (it.id == defId) newDef else it }
-            } else if (isEditing) {
-                s.itemDefinitions
-            } else {
-                s.itemDefinitions + newDef
-            }
+            val updatedItemDefinitions =
+                if (isEditing && s.itemDefinitions.any { it.id == defId }) {
+                    s.itemDefinitions.map { if (it.id == defId) newDef else it }
+                } else if (isEditing) {
+                    s.itemDefinitions
+                } else {
+                    s.itemDefinitions + newDef
+                }
             val updatedLibrary = if (isEditing) {
                 s.libraryItems.map { if (it.id == defId) newDef else it }
             } else {
@@ -343,10 +352,9 @@ class ShipBuilderVM(
     // --- Item addition ---
 
     /** Snap the origin to the nearest grid centre for initial placement. */
-    private val snappedOrigin: SceneOffset
-        get() = snapToGridCentre(Offset.Zero, GRID_CELL_SIZE).let {
-            SceneOffset(it.x.sceneUnit, it.y.sceneUnit)
-        }
+    private val snappedOrigin: SceneOffset = snapToGridCentre(Offset.Zero, GRID_CELL_SIZE).let {
+        SceneOffset(it.x.sceneUnit, it.y.sceneUnit)
+    }
 
     private fun addHullItem(itemDef: ItemDefinition) {
         _state.update { current ->
