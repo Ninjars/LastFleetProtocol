@@ -173,6 +173,7 @@ object LFRes {
         val builder_size_medium: StringResource = Res.string.builder_size_medium
         val builder_size_large: StringResource = Res.string.builder_size_large
         val builder_duplicate: StringResource = Res.string.builder_duplicate
+        val builder_delete: StringResource = Res.string.builder_edit
         val builder_edit: StringResource = Res.string.builder_edit
     }
 

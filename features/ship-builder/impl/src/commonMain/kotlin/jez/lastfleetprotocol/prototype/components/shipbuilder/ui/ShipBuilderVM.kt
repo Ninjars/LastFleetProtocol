@@ -216,6 +216,11 @@ class ShipBuilderVM(
                 _state.update { it.copy(libraryItems = it.libraryItems + copy) }
             }
 
+            is ShipBuilderIntent.DeleteLibraryItem -> {
+                deleteLibraryItem(intent.item)
+                _state.update { it.copy(libraryItems = it.libraryItems - intent.item) }
+            }
+
             is ShipBuilderIntent.EditLibraryItem -> {
                 // Vertices in the library are stored relative to the item's pivot. The
                 // creation flow's coordinate space is centred at world origin, which
@@ -484,21 +489,22 @@ class ShipBuilderVM(
         ItemType.HULL -> ItemAttributes.HullAttributes(
             armour = SerializableArmourStats(5f, 2f),
             sizeCategory = "Medium",
-            mass = 50f
+            mass = 50f,
         )
 
         ItemType.MODULE -> ItemAttributes.ModuleAttributes(
             systemType = "REACTOR",
             maxHp = 100f,
             density = 8f,
-            mass = 20f
+            mass = 20f,
         )
 
         ItemType.TURRET -> ItemAttributes.TurretAttributes(
             sizeCategory = "Medium",
             isFixed = false,
             defaultFacing = 0f,
-            isLimitedRotation = false
+            isLimitedRotation = false,
+            mass = 10f,
         )
     }
 
@@ -527,6 +533,16 @@ class ShipBuilderVM(
                 itemLibrary.save(item)
             } catch (e: Exception) {
                 println("Failed to save item to library: $e")
+            }
+        }
+    }
+
+    private fun deleteLibraryItem(item: ItemDefinition) {
+        viewModelScope.launch {
+            try {
+                itemLibrary.delete(item.id)
+            } catch (e: Exception) {
+                println("Failed to delete item ${item.id}: $e")
             }
         }
     }

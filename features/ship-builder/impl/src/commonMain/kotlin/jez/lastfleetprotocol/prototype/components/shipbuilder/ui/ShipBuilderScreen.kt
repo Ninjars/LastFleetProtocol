@@ -81,6 +81,7 @@ private fun ShipBuilderScreen(
                     onCreateItem = { onIntent(ShipBuilderIntent.EnterCreationMode(it)) },
                     onDuplicateItem = { onIntent(ShipBuilderIntent.DuplicateLibraryItem(it)) },
                     onEditItem = { onIntent(ShipBuilderIntent.EditLibraryItem(it)) },
+                    onDeleteItem = { onIntent(ShipBuilderIntent.DeleteLibraryItem(it)) },
                     customItems = state.customItemDefinitions,
                     modifier = Modifier.width(200.dp).fillMaxHeight(),
                 )

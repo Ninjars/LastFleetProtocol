@@ -63,7 +63,14 @@ fun calculateStats(state: ShipBuilderState): ShipStats {
         }
     }
 
-    val totalMass = hullMass + moduleMass
+    var turretMass = 0f
+    for (turret in state.placedTurrets) {
+        state.resolveItemDefinition(turret.itemDefinitionId)?.run {
+            turretMass += attributes.mass
+        }
+    }
+
+    val totalMass = hullMass + moduleMass + turretMass
 
     // Acceleration = thrust / mass
     val forwardAccel = if (totalMass > 0f) forwardThrust / totalMass else 0f

@@ -145,6 +145,7 @@ object PartsCatalog {
             vertices = turretOctagonVertices,
             attributes = ItemAttributes.TurretAttributes(
                 sizeCategory = "medium",
+                mass = 10f,
             ),
         ),
         ItemDefinition(
@@ -153,6 +154,7 @@ object PartsCatalog {
             vertices = turretOctagonVertices,
             attributes = ItemAttributes.TurretAttributes(
                 sizeCategory = "light",
+                mass = 5f,
             ),
         ),
         ItemDefinition(
@@ -161,6 +163,7 @@ object PartsCatalog {
             vertices = turretOctagonVertices,
             attributes = ItemAttributes.TurretAttributes(
                 sizeCategory = "heavy",
+                mass = 20f,
             ),
         ),
     )

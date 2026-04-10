@@ -25,12 +25,14 @@ enum class ItemType { HULL, MODULE, TURRET }
 
 @Serializable
 sealed interface ItemAttributes {
+    val mass: Float
+
     @Serializable
     @SerialName("hull")
     data class HullAttributes(
         val armour: SerializableArmourStats,
         val sizeCategory: String,
-        val mass: Float,
+        override val mass: Float,
     ) : ItemAttributes
 
     @Serializable
@@ -39,7 +41,7 @@ sealed interface ItemAttributes {
         val systemType: String,
         val maxHp: Float,
         val density: Float,
-        val mass: Float,
+        override val mass: Float,
         val forwardThrust: Float = 0f,
         val lateralThrust: Float = 0f,
         val reverseThrust: Float = 0f,
@@ -49,6 +51,7 @@ sealed interface ItemAttributes {
     @Serializable
     @SerialName("turret")
     data class TurretAttributes(
+        override val mass: Float,
         val sizeCategory: String,
         val isFixed: Boolean = false,
         val defaultFacing: Float = 0f,

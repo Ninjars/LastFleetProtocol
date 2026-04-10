@@ -42,4 +42,5 @@ sealed interface ShipBuilderIntent {
     // Library item management
     data class DuplicateLibraryItem(val item: ItemDefinition) : ShipBuilderIntent
     data class EditLibraryItem(val item: ItemDefinition) : ShipBuilderIntent
+    data class DeleteLibraryItem(val item: ItemDefinition) : ShipBuilderIntent
 }

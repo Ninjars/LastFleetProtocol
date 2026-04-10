@@ -310,6 +310,14 @@ private fun TurretAttributesContent(
 
     Spacer(modifier = Modifier.height(8.dp))
 
+    NumericField(
+        label = stringResource(LFRes.String.builder_mass),
+        value = attributes.mass,
+        onValueChange = { onAttributesChanged(attributes.copy(mass = it)) },
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
     // Fixed vs Rotating toggle
     Row(
         verticalAlignment = Alignment.CenterVertically,

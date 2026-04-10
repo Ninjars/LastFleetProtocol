@@ -7,11 +7,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -29,6 +27,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
@@ -39,6 +38,7 @@ import lastfleetprotocol.components.design.generated.resources.Res
 import lastfleetprotocol.components.design.generated.resources.button_add
 import lastfleetprotocol.components.design.generated.resources.ic_add_2
 import lastfleetprotocol.components.design.generated.resources.ic_copy
+import lastfleetprotocol.components.design.generated.resources.ic_delete
 import lastfleetprotocol.components.design.generated.resources.ic_edit
 import lastfleetprotocol.components.design.generated.resources.pointer_down
 import lastfleetprotocol.components.design.generated.resources.pointer_right
@@ -51,6 +51,7 @@ fun PartsPanel(
     onCreateItem: (ItemType) -> Unit,
     onDuplicateItem: (ItemDefinition) -> Unit,
     onEditItem: (ItemDefinition) -> Unit,
+    onDeleteItem: (ItemDefinition) -> Unit,
     modifier: Modifier = Modifier,
     customItems: List<ItemDefinition> = emptyList(),
 ) {
@@ -68,19 +69,29 @@ fun PartsPanel(
             onAdd = { onCreateItem(ItemType.HULL) },
         ) {
             for (item in PartsCatalog.hullItems) {
-                HullPieceItem(
-                    item = item,
+                ItemRow(
+                    name = item.name,
+                    detail = (item.attributes as? ItemAttributes.HullAttributes)?.sizeCategory,
+                    mass = item.attributes.mass,
+                    previewColor = Color.Cyan,
+                    previewVerts = item.vertices,
                     onClick = { onAddItem(item) },
                     onDuplicate = null,
                     onEdit = null,
+                    onDelete = null,
                 )
             }
             for (item in customHulls) {
-                HullPieceItem(
-                    item = item,
+                ItemRow(
+                    name = item.name,
+                    detail = (item.attributes as? ItemAttributes.HullAttributes)?.sizeCategory,
+                    mass = item.attributes.mass,
+                    previewColor = Color.Cyan,
+                    previewVerts = item.vertices,
                     onClick = { onAddItem(item) },
                     onDuplicate = { onDuplicateItem(item) },
                     onEdit = { onEditItem(item) },
+                    onDelete = { onDeleteItem(item) },
                 )
             }
         }
@@ -92,19 +103,29 @@ fun PartsPanel(
             onAdd = { onCreateItem(ItemType.MODULE) },
         ) {
             for (item in PartsCatalog.moduleItems) {
-                SystemModuleItem(
-                    item = item,
+                ItemRow(
+                    name = item.name,
+                    detail = (item.attributes as? ItemAttributes.ModuleAttributes)?.systemType,
+                    mass = item.attributes.mass,
+                    previewColor = Color.Yellow,
+                    previewVerts = item.vertices,
                     onClick = { onAddItem(item) },
                     onDuplicate = null,
                     onEdit = null,
+                    onDelete = null,
                 )
             }
             for (item in customModules) {
-                SystemModuleItem(
-                    item = item,
+                ItemRow(
+                    name = item.name,
+                    detail = (item.attributes as? ItemAttributes.ModuleAttributes)?.systemType,
+                    mass = item.attributes.mass,
+                    previewColor = Color.Yellow,
+                    previewVerts = item.vertices,
                     onClick = { onAddItem(item) },
                     onDuplicate = { onDuplicateItem(item) },
                     onEdit = { onEditItem(item) },
+                    onDelete = { onDeleteItem(item) },
                 )
             }
         }
@@ -116,19 +137,29 @@ fun PartsPanel(
             onAdd = { onCreateItem(ItemType.TURRET) },
         ) {
             for (item in PartsCatalog.turretItems) {
-                TurretModuleItem(
-                    item = item,
+                ItemRow(
+                    name = item.name,
+                    detail = (item.attributes as? ItemAttributes.TurretAttributes)?.sizeCategory,
+                    mass = item.attributes.mass,
+                    previewColor = Color.Red,
+                    previewVerts = item.vertices,
                     onClick = { onAddItem(item) },
                     onDuplicate = null,
                     onEdit = null,
+                    onDelete = null,
                 )
             }
             for (item in customTurrets) {
-                TurretModuleItem(
-                    item = item,
+                ItemRow(
+                    name = item.name,
+                    detail = (item.attributes as? ItemAttributes.TurretAttributes)?.sizeCategory,
+                    mass = item.attributes.mass,
+                    previewColor = Color.Red,
+                    previewVerts = item.vertices,
                     onClick = { onAddItem(item) },
                     onDuplicate = { onDuplicateItem(item) },
                     onEdit = { onEditItem(item) },
+                    onDelete = { onDeleteItem(item) },
                 )
             }
         }
@@ -163,15 +194,6 @@ private fun CollapsibleSection(
             colorFilter = MaterialTheme.colorScheme.onBackground.let { ColorFilter.tint(it) },
             modifier = Modifier.size(24.dp)
         )
-//        LFIconButton(
-//            drawable = if (expanded) {
-//                Res.drawable.pointer_down
-//            } else {
-//                Res.drawable.pointer_right
-//            },
-//            contentDescription = stringResource(Res.string.button_add),
-//            modifier = Modifier.size(36.dp)
-//        ) { expanded = !expanded }
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
@@ -192,68 +214,85 @@ private fun CollapsibleSection(
 }
 
 @Composable
-private fun HullPieceItem(
-    item: ItemDefinition,
+private fun ItemRow(
+    name: String,
+    detail: String?,
+    mass: Float,
+    previewColor: Color,
+    previewVerts: List<SceneOffset>,
     onClick: () -> Unit,
     onDuplicate: (() -> Unit)?,
     onEdit: (() -> Unit)?,
+    onDelete: (() -> Unit)?,
 ) {
-    val attrs = item.attributes as? ItemAttributes.HullAttributes
     Row(
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 4.dp),
     ) {
-        ItemPreview(item = item, color = Color.Cyan)
-        Spacer(modifier = Modifier.width(8.dp))
+        ItemPreview(previewVerts = previewVerts, color = previewColor)
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = item.name,
+                text = name,
                 style = MaterialTheme.typography.bodyMedium,
             )
-            if (attrs != null) {
-                Text(
-                    text = "${attrs.sizeCategory} - ${attrs.mass}t",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text(
+                text = "$detail - ${mass}t",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Column {
+            if (onEdit != null) {
+                LFIconButton(
+                    drawable = Res.drawable.ic_edit,
+                    contentDescription = stringResource(LFRes.String.builder_edit),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = onEdit,
+                    modifier = Modifier.size(32.dp)
                 )
             }
-        }
-        if (onEdit != null) {
-            LFIconButton(
-                drawable = Res.drawable.ic_edit,
-                contentDescription = stringResource(LFRes.String.builder_edit),
-                onClick = onEdit,
-            )
-        }
-        if (onDuplicate != null) {
-            LFIconButton(
-                drawable = Res.drawable.ic_copy,
-                contentDescription = stringResource(LFRes.String.builder_duplicate),
-                onClick = onDuplicate,
-            )
+            if (onDuplicate != null) {
+                LFIconButton(
+                    drawable = Res.drawable.ic_copy,
+                    contentDescription = stringResource(LFRes.String.builder_duplicate),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = onDuplicate,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            if (onDelete != null) {
+                LFIconButton(
+                    drawable = Res.drawable.ic_delete,
+                    contentDescription = stringResource(LFRes.String.builder_delete),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = onDelete,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun ItemPreview(
-    item: ItemDefinition,
+    previewVerts: List<SceneOffset>,
     color: Color,
     modifier: Modifier = Modifier,
 ) {
     val previewSize = 40.dp
     Canvas(modifier = modifier.size(previewSize)) {
-        if (item.vertices.isEmpty()) return@Canvas
+        if (previewVerts.isEmpty()) return@Canvas
 
         // Find bounds to scale preview
         var minX = Float.MAX_VALUE
         var maxX = Float.MIN_VALUE
         var minY = Float.MAX_VALUE
         var maxY = Float.MIN_VALUE
-        for (v in item.vertices) {
+        for (v in previewVerts) {
             val vx = v.x.raw
             val vy = v.y.raw
             if (vx < minX) minX = vx
@@ -273,90 +312,14 @@ private fun ItemPreview(
         val midY = (minY + maxY) / 2f
 
         val path = Path()
-        for (i in item.vertices.indices) {
-            val px = cx + (item.vertices[i].x.raw - midX) * scale
-            val py = cy + (item.vertices[i].y.raw - midY) * scale
+        for (i in previewVerts.indices) {
+            val px = cx + (previewVerts[i].x.raw - midX) * scale
+            val py = cy + (previewVerts[i].y.raw - midY) * scale
             if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
         }
         path.close()
 
         drawPath(path = path, color = color.copy(alpha = 0.3f))
         drawPath(path = path, color = color, style = Stroke(width = 1f))
-    }
-}
-
-@Composable
-private fun SystemModuleItem(
-    item: ItemDefinition,
-    onClick: () -> Unit,
-    onDuplicate: (() -> Unit)?,
-    onEdit: (() -> Unit)?,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-    ) {
-        ItemPreview(item = item, color = Color.Yellow)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = item.name,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
-        if (onEdit != null) {
-            LFIconButton(
-                drawable = Res.drawable.ic_edit,
-                contentDescription = stringResource(LFRes.String.builder_edit),
-                onClick = onEdit,
-            )
-        }
-        if (onDuplicate != null) {
-            LFIconButton(
-                drawable = Res.drawable.ic_copy,
-                contentDescription = stringResource(LFRes.String.builder_duplicate),
-                onClick = onDuplicate,
-            )
-        }
-    }
-}
-
-@Composable
-private fun TurretModuleItem(
-    item: ItemDefinition,
-    onClick: () -> Unit,
-    onDuplicate: (() -> Unit)?,
-    onEdit: (() -> Unit)?,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-    ) {
-        ItemPreview(item = item, color = Color.Red)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = item.name,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
-        if (onEdit != null) {
-            LFIconButton(
-                drawable = Res.drawable.ic_edit,
-                contentDescription = stringResource(LFRes.String.builder_edit),
-                onClick = onEdit,
-            )
-        }
-        if (onDuplicate != null) {
-            LFIconButton(
-                drawable = Res.drawable.ic_copy,
-                contentDescription = stringResource(LFRes.String.builder_duplicate),
-                onClick = onDuplicate,
-            )
-        }
     }
 }
