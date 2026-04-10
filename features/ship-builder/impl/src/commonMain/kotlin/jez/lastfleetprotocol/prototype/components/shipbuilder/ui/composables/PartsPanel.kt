@@ -39,6 +39,7 @@ import lastfleetprotocol.components.design.generated.resources.Res
 import lastfleetprotocol.components.design.generated.resources.button_add
 import lastfleetprotocol.components.design.generated.resources.ic_add_2
 import lastfleetprotocol.components.design.generated.resources.ic_copy
+import lastfleetprotocol.components.design.generated.resources.ic_edit
 import lastfleetprotocol.components.design.generated.resources.pointer_down
 import lastfleetprotocol.components.design.generated.resources.pointer_right
 import org.jetbrains.compose.resources.painterResource
@@ -49,6 +50,7 @@ fun PartsPanel(
     onAddItem: (ItemDefinition) -> Unit,
     onCreateItem: (ItemType) -> Unit,
     onDuplicateItem: (ItemDefinition) -> Unit,
+    onEditItem: (ItemDefinition) -> Unit,
     modifier: Modifier = Modifier,
     customItems: List<ItemDefinition> = emptyList(),
 ) {
@@ -70,6 +72,7 @@ fun PartsPanel(
                     item = item,
                     onClick = { onAddItem(item) },
                     onDuplicate = null,
+                    onEdit = null,
                 )
             }
             for (item in customHulls) {
@@ -77,6 +80,7 @@ fun PartsPanel(
                     item = item,
                     onClick = { onAddItem(item) },
                     onDuplicate = { onDuplicateItem(item) },
+                    onEdit = { onEditItem(item) },
                 )
             }
         }
@@ -92,6 +96,7 @@ fun PartsPanel(
                     item = item,
                     onClick = { onAddItem(item) },
                     onDuplicate = null,
+                    onEdit = null,
                 )
             }
             for (item in customModules) {
@@ -99,6 +104,7 @@ fun PartsPanel(
                     item = item,
                     onClick = { onAddItem(item) },
                     onDuplicate = { onDuplicateItem(item) },
+                    onEdit = { onEditItem(item) },
                 )
             }
         }
@@ -114,6 +120,7 @@ fun PartsPanel(
                     item = item,
                     onClick = { onAddItem(item) },
                     onDuplicate = null,
+                    onEdit = null,
                 )
             }
             for (item in customTurrets) {
@@ -121,6 +128,7 @@ fun PartsPanel(
                     item = item,
                     onClick = { onAddItem(item) },
                     onDuplicate = { onDuplicateItem(item) },
+                    onEdit = { onEditItem(item) },
                 )
             }
         }
@@ -188,6 +196,7 @@ private fun HullPieceItem(
     item: ItemDefinition,
     onClick: () -> Unit,
     onDuplicate: (() -> Unit)?,
+    onEdit: (() -> Unit)?,
 ) {
     val attrs = item.attributes as? ItemAttributes.HullAttributes
     Row(
@@ -211,6 +220,13 @@ private fun HullPieceItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+        if (onEdit != null) {
+            LFIconButton(
+                drawable = Res.drawable.ic_edit,
+                contentDescription = stringResource(LFRes.String.builder_edit),
+                onClick = onEdit,
+            )
         }
         if (onDuplicate != null) {
             LFIconButton(
@@ -274,6 +290,7 @@ private fun SystemModuleItem(
     item: ItemDefinition,
     onClick: () -> Unit,
     onDuplicate: (() -> Unit)?,
+    onEdit: (() -> Unit)?,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -289,6 +306,13 @@ private fun SystemModuleItem(
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
         )
+        if (onEdit != null) {
+            LFIconButton(
+                drawable = Res.drawable.ic_edit,
+                contentDescription = stringResource(LFRes.String.builder_edit),
+                onClick = onEdit,
+            )
+        }
         if (onDuplicate != null) {
             LFIconButton(
                 drawable = Res.drawable.ic_copy,
@@ -304,6 +328,7 @@ private fun TurretModuleItem(
     item: ItemDefinition,
     onClick: () -> Unit,
     onDuplicate: (() -> Unit)?,
+    onEdit: (() -> Unit)?,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -319,6 +344,13 @@ private fun TurretModuleItem(
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
         )
+        if (onEdit != null) {
+            LFIconButton(
+                drawable = Res.drawable.ic_edit,
+                contentDescription = stringResource(LFRes.String.builder_edit),
+                onClick = onEdit,
+            )
+        }
         if (onDuplicate != null) {
             LFIconButton(
                 drawable = Res.drawable.ic_copy,

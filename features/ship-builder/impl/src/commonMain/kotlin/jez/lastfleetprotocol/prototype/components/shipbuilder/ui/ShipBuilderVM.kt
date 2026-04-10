@@ -213,6 +213,28 @@ class ShipBuilderVM(
                 _state.update { it.copy(libraryItems = it.libraryItems + copy) }
             }
 
+            is ShipBuilderIntent.EditLibraryItem -> {
+                // Vertices in the library are stored relative to the item's pivot. The
+                // creation flow's coordinate space is centred at world origin, which
+                // matches the pivot, so we can use the stored vertices directly.
+                val item = intent.item
+                val vertices = item.vertices.map { Offset(it.x.raw, it.y.raw) }
+                _state.update {
+                    it.copy(
+                        selectedItemId = null,
+                        editorMode = EditorMode.CreatingItem(
+                            itemType = item.itemType,
+                            vertices = vertices,
+                            selectedVertexIndex = vertices.lastIndex.takeIf { idx -> idx >= 0 },
+                            attributes = item.attributes,
+                            isConvex = jez.lastfleetprotocol.prototype.components.shipbuilder.geometry.isConvex(vertices),
+                            name = item.name,
+                            editingItemId = item.id,
+                        ),
+                    )
+                }
+            }
+
             // Canvas intents handled by inputReducer — exhaustive when requires these branches.
             is ShipBuilderIntent.CanvasTap,
             is ShipBuilderIntent.CanvasDragStart,
@@ -231,7 +253,8 @@ class ShipBuilderVM(
         val creating = current.editorMode as? EditorMode.CreatingItem ?: return
         if (creating.vertices.size < 3 || !creating.isConvex) return
 
-        val defId = generateId("itemdef")
+        val isEditing = creating.editingItemId != null
+        val defId = creating.editingItemId ?: generateId("itemdef")
 
         // Snap the pivot to the grid centre closest to the average of the vertices
         val avgX = creating.vertices.map { it.x }.average().toFloat()
@@ -250,50 +273,67 @@ class ShipBuilderVM(
             attributes = creating.attributes,
         )
 
-        // Persist the new item to the library so it survives across designs/sessions
+        // Persist the new/updated item to the library so it survives across designs/sessions
         persistLibraryItem(newDef)
 
         _state.update { s ->
+            val updatedItemDefinitions = if (isEditing && s.itemDefinitions.any { it.id == defId }) {
+                s.itemDefinitions.map { if (it.id == defId) newDef else it }
+            } else if (isEditing) {
+                s.itemDefinitions
+            } else {
+                s.itemDefinitions + newDef
+            }
+            val updatedLibrary = if (isEditing) {
+                s.libraryItems.map { if (it.id == defId) newDef else it }
+            } else {
+                s.libraryItems + newDef
+            }
             var newState = s.copy(
-                itemDefinitions = s.itemDefinitions + newDef,
-                libraryItems = s.libraryItems + newDef,
+                itemDefinitions = updatedItemDefinitions,
+                libraryItems = updatedLibrary,
                 editorMode = EditorMode.EditingShip,
             )
-            newState = when (creating.itemType) {
-                ItemType.HULL -> newState.copy(
-                    placedHulls = newState.placedHulls + PlacedHullPiece(
-                        id = generateId("hull"),
-                        itemDefinitionId = defId,
-                        position = centroidPos,
-                        rotation = 0f.rad,
-                    )
-                )
-
-                ItemType.MODULE -> {
-                    val attrs = creating.attributes as? ItemAttributes.ModuleAttributes
-                        ?: return
-                    newState.copy(
-                        placedModules = newState.placedModules + PlacedModule(
-                            id = generateId("module"),
+            // When creating a brand-new item, drop an instance on the canvas at the pivot.
+            // When editing an existing library item, leave existing placements untouched —
+            // they will pick up the new definition automatically via id resolution.
+            if (!isEditing) {
+                newState = when (creating.itemType) {
+                    ItemType.HULL -> newState.copy(
+                        placedHulls = newState.placedHulls + PlacedHullPiece(
+                            id = generateId("hull"),
                             itemDefinitionId = defId,
-                            systemType = attrs.systemType,
+                            position = centroidPos,
+                            rotation = 0f.rad,
+                        )
+                    )
+
+                    ItemType.MODULE -> {
+                        val attrs = creating.attributes as? ItemAttributes.ModuleAttributes
+                            ?: return
+                        newState.copy(
+                            placedModules = newState.placedModules + PlacedModule(
+                                id = generateId("module"),
+                                itemDefinitionId = defId,
+                                systemType = attrs.systemType,
+                                position = centroidPos,
+                                rotation = 0f.rad,
+                                parentHullId = newState.placedHulls.firstOrNull()?.id ?: "",
+                            )
+                        )
+                    }
+
+                    ItemType.TURRET -> newState.copy(
+                        placedTurrets = newState.placedTurrets + PlacedTurret(
+                            id = generateId("turret"),
+                            itemDefinitionId = defId,
+                            turretConfigId = defId,
                             position = centroidPos,
                             rotation = 0f.rad,
                             parentHullId = newState.placedHulls.firstOrNull()?.id ?: "",
                         )
                     )
                 }
-
-                ItemType.TURRET -> newState.copy(
-                    placedTurrets = newState.placedTurrets + PlacedTurret(
-                        id = generateId("turret"),
-                        itemDefinitionId = defId,
-                        turretConfigId = defId,
-                        position = centroidPos,
-                        rotation = 0f.rad,
-                        parentHullId = newState.placedHulls.firstOrNull()?.id ?: "",
-                    )
-                )
             }
             recalculate(newState)
         }

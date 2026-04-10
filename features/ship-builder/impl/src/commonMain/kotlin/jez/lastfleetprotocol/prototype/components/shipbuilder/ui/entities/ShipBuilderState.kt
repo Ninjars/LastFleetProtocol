@@ -21,6 +21,11 @@ sealed interface EditorMode {
         val attributes: ItemAttributes,
         val isConvex: Boolean,
         val name: String,
+        /**
+         * If non-null, this session is editing an existing library item rather than
+         * creating a new one. Finishing creation overwrites the item with this id.
+         */
+        val editingItemId: String? = null,
     ) : EditorMode
 }
 
