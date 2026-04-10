@@ -63,4 +63,6 @@
     <string name="builder_size_small">Small</string>
     <string name="builder_size_medium">Medium</string>
     <string name="builder_size_large">Large</string>
+    <string name="builder_duplicate">Duplicate</string>
+    <string name="builder_edit">Edit</string>
 </resources>

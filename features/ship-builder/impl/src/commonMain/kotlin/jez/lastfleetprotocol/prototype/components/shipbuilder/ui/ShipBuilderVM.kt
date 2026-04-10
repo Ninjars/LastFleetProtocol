@@ -204,6 +204,15 @@ class ShipBuilderVM(
                 }
             }
 
+            is ShipBuilderIntent.DuplicateLibraryItem -> {
+                val copy = intent.item.copy(
+                    id = generateId("itemdef"),
+                    name = "${intent.item.name} (copy)",
+                )
+                persistLibraryItem(copy)
+                _state.update { it.copy(libraryItems = it.libraryItems + copy) }
+            }
+
             // Canvas intents handled by inputReducer — exhaustive when requires these branches.
             is ShipBuilderIntent.CanvasTap,
             is ShipBuilderIntent.CanvasDragStart,

@@ -41,6 +41,8 @@ import lastfleetprotocol.components.design.generated.resources.builder_rotating
 import lastfleetprotocol.components.design.generated.resources.builder_size_category
 import lastfleetprotocol.components.design.generated.resources.builder_size_large
 import lastfleetprotocol.components.design.generated.resources.builder_size_medium
+import lastfleetprotocol.components.design.generated.resources.builder_duplicate
+import lastfleetprotocol.components.design.generated.resources.builder_edit
 import lastfleetprotocol.components.design.generated.resources.builder_size_small
 import lastfleetprotocol.components.design.generated.resources.builder_stats
 import lastfleetprotocol.components.design.generated.resources.builder_systems
@@ -170,6 +172,8 @@ object LFRes {
         val builder_size_small: StringResource = Res.string.builder_size_small
         val builder_size_medium: StringResource = Res.string.builder_size_medium
         val builder_size_large: StringResource = Res.string.builder_size_large
+        val builder_duplicate: StringResource = Res.string.builder_duplicate
+        val builder_edit: StringResource = Res.string.builder_edit
     }
 
     object Font {

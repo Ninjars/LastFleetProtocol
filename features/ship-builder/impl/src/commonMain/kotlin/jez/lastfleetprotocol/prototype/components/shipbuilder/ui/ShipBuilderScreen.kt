@@ -79,6 +79,7 @@ private fun ShipBuilderScreen(
                 PartsPanel(
                     onAddItem = { onIntent(ShipBuilderIntent.AddItem(it)) },
                     onCreateItem = { onIntent(ShipBuilderIntent.EnterCreationMode(it)) },
+                    onDuplicateItem = { onIntent(ShipBuilderIntent.DuplicateLibraryItem(it)) },
                     customItems = state.customItemDefinitions,
                     modifier = Modifier.width(200.dp).fillMaxHeight(),
                 )

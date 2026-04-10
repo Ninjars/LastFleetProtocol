@@ -38,6 +38,7 @@ import jez.lastfleetprotocol.prototype.ui.resources.LFRes
 import lastfleetprotocol.components.design.generated.resources.Res
 import lastfleetprotocol.components.design.generated.resources.button_add
 import lastfleetprotocol.components.design.generated.resources.ic_add_2
+import lastfleetprotocol.components.design.generated.resources.ic_copy
 import lastfleetprotocol.components.design.generated.resources.pointer_down
 import lastfleetprotocol.components.design.generated.resources.pointer_right
 import org.jetbrains.compose.resources.painterResource
@@ -47,6 +48,7 @@ import org.jetbrains.compose.resources.stringResource
 fun PartsPanel(
     onAddItem: (ItemDefinition) -> Unit,
     onCreateItem: (ItemType) -> Unit,
+    onDuplicateItem: (ItemDefinition) -> Unit,
     modifier: Modifier = Modifier,
     customItems: List<ItemDefinition> = emptyList(),
 ) {
@@ -67,12 +69,14 @@ fun PartsPanel(
                 HullPieceItem(
                     item = item,
                     onClick = { onAddItem(item) },
+                    onDuplicate = null,
                 )
             }
             for (item in customHulls) {
                 HullPieceItem(
                     item = item,
                     onClick = { onAddItem(item) },
+                    onDuplicate = { onDuplicateItem(item) },
                 )
             }
         }
@@ -87,12 +91,14 @@ fun PartsPanel(
                 SystemModuleItem(
                     item = item,
                     onClick = { onAddItem(item) },
+                    onDuplicate = null,
                 )
             }
             for (item in customModules) {
                 SystemModuleItem(
                     item = item,
                     onClick = { onAddItem(item) },
+                    onDuplicate = { onDuplicateItem(item) },
                 )
             }
         }
@@ -107,12 +113,14 @@ fun PartsPanel(
                 TurretModuleItem(
                     item = item,
                     onClick = { onAddItem(item) },
+                    onDuplicate = null,
                 )
             }
             for (item in customTurrets) {
                 TurretModuleItem(
                     item = item,
                     onClick = { onAddItem(item) },
+                    onDuplicate = { onDuplicateItem(item) },
                 )
             }
         }
@@ -179,6 +187,7 @@ private fun CollapsibleSection(
 private fun HullPieceItem(
     item: ItemDefinition,
     onClick: () -> Unit,
+    onDuplicate: (() -> Unit)?,
 ) {
     val attrs = item.attributes as? ItemAttributes.HullAttributes
     Row(
@@ -190,7 +199,7 @@ private fun HullPieceItem(
     ) {
         ItemPreview(item = item, color = Color.Cyan)
         Spacer(modifier = Modifier.width(8.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = item.name,
                 style = MaterialTheme.typography.bodyMedium,
@@ -202,6 +211,13 @@ private fun HullPieceItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+        if (onDuplicate != null) {
+            LFIconButton(
+                drawable = Res.drawable.ic_copy,
+                contentDescription = stringResource(LFRes.String.builder_duplicate),
+                onClick = onDuplicate,
+            )
         }
     }
 }
@@ -257,6 +273,7 @@ private fun ItemPreview(
 private fun SystemModuleItem(
     item: ItemDefinition,
     onClick: () -> Unit,
+    onDuplicate: (() -> Unit)?,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -270,7 +287,15 @@ private fun SystemModuleItem(
         Text(
             text = item.name,
             style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
         )
+        if (onDuplicate != null) {
+            LFIconButton(
+                drawable = Res.drawable.ic_copy,
+                contentDescription = stringResource(LFRes.String.builder_duplicate),
+                onClick = onDuplicate,
+            )
+        }
     }
 }
 
@@ -278,6 +303,7 @@ private fun SystemModuleItem(
 private fun TurretModuleItem(
     item: ItemDefinition,
     onClick: () -> Unit,
+    onDuplicate: (() -> Unit)?,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -291,6 +317,14 @@ private fun TurretModuleItem(
         Text(
             text = item.name,
             style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
         )
+        if (onDuplicate != null) {
+            LFIconButton(
+                drawable = Res.drawable.ic_copy,
+                contentDescription = stringResource(LFRes.String.builder_duplicate),
+                onClick = onDuplicate,
+            )
+        }
     }
 }

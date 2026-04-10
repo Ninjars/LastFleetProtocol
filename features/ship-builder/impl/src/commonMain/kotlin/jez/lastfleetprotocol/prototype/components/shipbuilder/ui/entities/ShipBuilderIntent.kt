@@ -38,4 +38,7 @@ sealed interface ShipBuilderIntent {
     data object FinishCreation : ShipBuilderIntent
     data class UpdateCreationName(val name: String) : ShipBuilderIntent
     data class UpdateCreationAttributes(val attributes: ItemAttributes) : ShipBuilderIntent
+
+    // Library item management
+    data class DuplicateLibraryItem(val item: ItemDefinition) : ShipBuilderIntent
 }
