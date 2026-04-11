@@ -1,7 +1,18 @@
 package jez.lastfleetprotocol.prototype.components.game.data
 
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
+import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
+import jez.lastfleetprotocol.prototype.components.gamecore.data.ArmourStats
+import jez.lastfleetprotocol.prototype.components.gamecore.data.CombatStats
+import jez.lastfleetprotocol.prototype.components.gamecore.data.GunData
+import jez.lastfleetprotocol.prototype.components.gamecore.data.HullDefinition
+import jez.lastfleetprotocol.prototype.components.gamecore.data.InternalSystemSpec
+import jez.lastfleetprotocol.prototype.components.gamecore.data.InternalSystemType
+import jez.lastfleetprotocol.prototype.components.gamecore.data.MovementConfig
+import jez.lastfleetprotocol.prototype.components.gamecore.data.ProjectileStats
+import jez.lastfleetprotocol.prototype.components.gamecore.data.ShipConfig
+import jez.lastfleetprotocol.prototype.components.gamecore.data.TurretConfig
 import lastfleetprotocol.components.design.generated.resources.Res
 import lastfleetprotocol.components.design.generated.resources.ship_enemy_1
 import lastfleetprotocol.components.design.generated.resources.ship_player_1
@@ -130,11 +141,12 @@ object DemoScenarioConfig {
         gunData = GunData(
             drawable = Res.drawable.turret_simple_1,
             projectileStats = standardProjectile,
+            aimTolerance = AngleRadians.TwoPi / 1440f,
             magazineCapacity = Int.MAX_VALUE,
             reloadMilliseconds = 2000,
-            cycleMilliseconds = 700,
             shotsPerBurst = 3,
             burstCycleMilliseconds = 100,
+            cycleMilliseconds = 700,
         ),
     )
 
@@ -146,11 +158,12 @@ object DemoScenarioConfig {
         gunData = GunData(
             drawable = Res.drawable.turret_simple_1,
             projectileStats = lightProjectile,
+            aimTolerance = AngleRadians.TwoPi / 1440f,
             magazineCapacity = Int.MAX_VALUE,
             reloadMilliseconds = 1500,
-            cycleMilliseconds = 400,
             shotsPerBurst = 5,
             burstCycleMilliseconds = 80,
+            cycleMilliseconds = 400,
         ),
     )
 
@@ -162,11 +175,12 @@ object DemoScenarioConfig {
         gunData = GunData(
             drawable = Res.drawable.turret_simple_1,
             projectileStats = heavyProjectile,
+            aimTolerance = AngleRadians.TwoPi / 1440f,
             magazineCapacity = Int.MAX_VALUE,
             reloadMilliseconds = 3000,
-            cycleMilliseconds = 1500,
             shotsPerBurst = 1,
             burstCycleMilliseconds = 0,
+            cycleMilliseconds = 1500,
         ),
     )
 

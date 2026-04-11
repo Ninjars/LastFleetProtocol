@@ -77,6 +77,7 @@ Use platform source sets only when platform APIs are required.
 - New behavior goes in `impl`; expose only required contracts in `api`.
 - Preserve module boundaries—do not add convenience dependencies that bypass feature/component APIs.
 - When changing cross-module contracts, update all affected modules in one cohesive change.
+- **UI text must not be hardcoded in composables.** Define all user-visible strings in `:components:design` `commonMain/composeResources/values/strings.xml`, add a corresponding entry to `LFRes.String` in `LFRes.kt`, and reference it in layouts via `stringResource(LFRes.String.<id>)`. See `LandingScreen.kt` for the pattern.
 
 ## AI Agent Docs
 

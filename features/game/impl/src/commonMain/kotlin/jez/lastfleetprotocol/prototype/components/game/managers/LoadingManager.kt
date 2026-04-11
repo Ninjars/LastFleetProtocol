@@ -13,10 +13,10 @@ import com.pandulapeter.kubriko.uiComponents.utilities.preloadedImageVector
 import com.pandulapeter.kubriko.uiComponents.utilities.preloadedString
 import jez.lastfleetprotocol.prototype.components.gamecore.GameLoadingStatus
 import jez.lastfleetprotocol.prototype.di.Singleton
+import jez.lastfleetprotocol.prototype.ui.resources.LFRes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
-import jez.lastfleetprotocol.prototype.ui.resources.LFRes
 import me.tatarka.inject.annotations.Inject
 
 @Singleton
@@ -88,18 +88,22 @@ class LoadingManager(
             && areStringResourcesLoaded()
 
     @Composable
-    private fun areIconResourcesLoaded() = preloadedImageVector(LFRes.Drawable.ic_exit).value != null
-            && preloadedImageVector(LFRes.Drawable.ic_music_off).value != null
-            && preloadedImageVector(LFRes.Drawable.ic_music_on).value != null
-            && preloadedImageVector(LFRes.Drawable.ic_sound_effects_off).value != null
-            && preloadedImageVector(LFRes.Drawable.ic_sound_effects_on).value != null
-            && preloadedImageVector(LFRes.Drawable.ic_back).value != null
+    private fun areIconResourcesLoaded() =
+        preloadedImageVector(LFRes.Drawable.ic_exit).value != null
+                && preloadedImageVector(LFRes.Drawable.ic_music_off).value != null
+                && preloadedImageVector(LFRes.Drawable.ic_music_on).value != null
+                && preloadedImageVector(LFRes.Drawable.ic_sound_effects_off).value != null
+                && preloadedImageVector(LFRes.Drawable.ic_sound_effects_on).value != null
+                && preloadedImageVector(LFRes.Drawable.ic_back).value != null
+                && preloadedImageVector(LFRes.Drawable.ic_add).value != null
 
     @Composable
-    private fun areImageResourcesLoaded() = true//preloadedImageBitmap(LFRes.Drawable.compose_multiplatform).value != null
+    private fun areImageResourcesLoaded() =
+        true//preloadedImageBitmap(LFRes.Drawable.compose_multiplatform).value != null
 
     @Composable
-    private fun areStringResourcesLoaded() = preloadedString(LFRes.String.button_new_game).value.isNotBlank()
-            && preloadedString(LFRes.String.button_continue).value.isNotBlank()
-            && preloadedString(LFRes.String.button_settings).value.isNotBlank()
+    private fun areStringResourcesLoaded() =
+        preloadedString(LFRes.String.button_new_game).value.isNotBlank()
+                && preloadedString(LFRes.String.button_continue).value.isNotBlank()
+                && preloadedString(LFRes.String.button_settings).value.isNotBlank()
 }

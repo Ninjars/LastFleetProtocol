@@ -12,27 +12,8 @@ import jez.lastfleetprotocol.prototype.components.game.actors.BulletData
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.utils.getRelativePoint
 import jez.lastfleetprotocol.prototype.components.game.utils.rotate
-import lastfleetprotocol.components.design.generated.resources.Res
-import lastfleetprotocol.components.design.generated.resources.turret_simple_1
-import org.jetbrains.compose.resources.DrawableResource
+import jez.lastfleetprotocol.prototype.components.gamecore.data.GunData
 import kotlin.math.abs
-
-data class GunData(
-    val drawable: DrawableResource = Res.drawable.turret_simple_1,
-    val projectileStats: ProjectileStats = ProjectileStats(
-        damage = 10f,
-        armourPiercing = 5f,
-        toHitModifier = 0.1f,
-        speed = 100f,
-        lifetimeMs = 5000,
-    ),
-    val aimTolerance: AngleRadians = AngleRadians.TwoPi / 1440f,
-    val magazineCapacity: Int,
-    val reloadMilliseconds: Int,
-    val shotsPerBurst: Int = 1,
-    val burstCycleMilliseconds: Int = 0,
-    val cycleMilliseconds: Int,
-)
 
 class Gun(
     private val turretBody: BoxBody,

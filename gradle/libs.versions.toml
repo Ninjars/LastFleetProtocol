@@ -20,6 +20,7 @@ kubriko = "0.0.8"
 navigation = "2.9.2"
 ksp = "2.3.4"
 kotlin-inject = "0.9.0"
+kmp-appdirs = "2.0.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -40,6 +41,7 @@ backhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", version.ref 
 
 kotlininject-compiler = { module = "me.tatarka.inject:kotlin-inject-compiler-ksp", version.ref = "kotlin-inject" }
 kotlininject-runtime = { module = "me.tatarka.inject:kotlin-inject-runtime-kmp", version.ref = "kotlin-inject" }
+kmp-appdirs = { module = "ca.gosyer:kotlin-multiplatform-appdirs", version.ref = "kmp-appdirs" }
 
 kubriko-engine = { module = "io.github.pandulapeter.kubriko:engine", version.ref = "kubriko" }
 kubriko-plugin-audio = { module = "io.github.pandulapeter.kubriko:plugin-audio-playback", version.ref = "kubriko" }

@@ -15,7 +15,7 @@ import jez.lastfleetprotocol.prototype.components.game.ai.AIModule
 import jez.lastfleetprotocol.prototype.components.game.ai.BasicAI
 import jez.lastfleetprotocol.prototype.components.game.data.DemoScenarioConfig
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
-import jez.lastfleetprotocol.prototype.components.game.data.ShipConfig
+import jez.lastfleetprotocol.prototype.components.gamecore.data.ShipConfig
 import jez.lastfleetprotocol.prototype.components.game.debug.DebugVisualiser
 import jez.lastfleetprotocol.prototype.components.game.input.InputController
 import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems

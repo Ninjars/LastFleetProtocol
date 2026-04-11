@@ -18,7 +18,7 @@ import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.game.data.Gun
-import jez.lastfleetprotocol.prototype.components.game.data.GunData
+import jez.lastfleetprotocol.prototype.components.gamecore.data.GunData
 
 class Turret(
     parent: Parent,

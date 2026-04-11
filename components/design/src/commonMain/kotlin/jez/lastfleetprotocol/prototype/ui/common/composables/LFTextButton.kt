@@ -24,6 +24,7 @@ fun LFTextButton(
         text = stringResource(textRes),
         modifier = modifier,
         fillWidth = fillWidth,
+        enabled = enabled,
         onClick = onClick,
     )
 }

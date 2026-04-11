@@ -1,9 +1,9 @@
 package jez.lastfleetprotocol.prototype.components.game.actors
 
-import jez.lastfleetprotocol.prototype.components.game.data.CombatStats
-import jez.lastfleetprotocol.prototype.components.game.data.HullDefinition
-import jez.lastfleetprotocol.prototype.components.game.data.MovementConfig
-import jez.lastfleetprotocol.prototype.components.game.data.ShipConfig
+import jez.lastfleetprotocol.prototype.components.gamecore.data.CombatStats
+import jez.lastfleetprotocol.prototype.components.gamecore.data.HullDefinition
+import jez.lastfleetprotocol.prototype.components.gamecore.data.MovementConfig
+import jez.lastfleetprotocol.prototype.components.gamecore.data.ShipConfig
 
 /**
  * Runtime-computed ship specification derived from ShipConfig.
