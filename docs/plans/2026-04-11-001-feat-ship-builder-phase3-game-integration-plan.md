@@ -3,6 +3,7 @@ title: "feat: Ship Builder Phase 3 — game integration (bridge builder designs 
 type: feat
 status: active
 date: 2026-04-11
+updated: 2026-04-11
 origin: docs/brainstorms/2026-04-06-ship-builder-requirements.md
 ---
 
@@ -10,33 +11,39 @@ origin: docs/brainstorms/2026-04-06-ship-builder-requirements.md
 
 ## Overview
 
-Replace the hard-coded `DemoScenarioConfig` ships with builder-authored ship designs loaded at runtime. Build a conversion layer that bridges the builder's `ShipDesign` format (`List<PlacedHullPiece>` + `List<PlacedModule>` + `List<PlacedTurret>` + `List<ItemDefinition>`) to the runtime `ShipConfig` format consumed by `GameStateManager.createShip`. Extend `ShipConfig.hull` from a single `HullDefinition` to `hulls: List<HullDefinition>` so multi-hull designs survive the conversion unchanged. Replace sprite-based ship rendering with polygon rendering derived from hull vertices, matching the recent bullet vector-rendering refactor and removing the missing drawable→resource registry entirely. Ship the first real playable builder→combat loop for the project.
+Replace the hard-coded `DemoScenarioConfig` ships with builder-authored ship designs loaded at runtime. The plan has two conversion layers:
 
-This plan is a prerequisite for the atmospheric movement work (`docs/brainstorms/2026-04-10-atmospheric-movement-requirements.md`). It ships against the **current frictionless physics** — atmospheric is a separate plan that runs after this one.
+1. **A one-off migration script** (temporary, deleted after use) that reads `DemoScenarioConfig` and mechanically writes bundled `ShipDesign` JSON files plus a `turret_guns.json` file. This replaces hand-authoring default ships; values are preserved exactly.
+2. **A permanent runtime converter** (`ShipDesign → ShipConfig`) that loads bundled `ShipDesign` JSON at startup and produces the `ShipConfig` consumed by `GameStateManager.createShip`.
+
+Alongside the bridge, the plan extends `ShipConfig.hull` from a single `HullDefinition` to `hulls: List<HullDefinition>` and introduces a new `MultiPolygonCollisionMask` implementing Kubriko's `ComplexCollisionMask` so multi-hull designs can collide correctly. It also replaces all sprite-based rendering (ships, modules, turrets) with polygon/vector rendering in line with the recent bullet vector-rendering direction.
+
+This plan ships against the **current frictionless physics** — atmospheric is a separate plan that follows this one. It is a prerequisite for `docs/brainstorms/2026-04-10-atmospheric-movement-requirements.md`.
 
 ## Problem Frame
 
-The ship builder currently produces `ShipDesign` JSON files that nothing in the game simulation knows how to load. `GameStateManager.startDemoScene` instantiates ships from hard-coded `ShipConfig` constants in `DemoScenarioConfig.kt`. Two entirely separate data models coexist:
+The ship builder produces `ShipDesign` JSON files that nothing in the game simulation knows how to load. `GameStateManager.startDemoScene` instantiates ships from hard-coded `ShipConfig` constants in `DemoScenarioConfig.kt`. Two separate data models coexist:
 
 - The **builder model** (`ShipDesign`, `ItemDefinition`, `PlacedHullPiece/Module/Turret`) is rich, convex-polygon-based, multi-hull-aware, and loose-typed (e.g., `systemType: String`).
 - The **runtime model** (`ShipConfig`, `HullDefinition`, `InternalSystemSpec`, `TurretConfig`, `GunData`) is flat, single-hull, enum-based, and fully-specified.
 
-Until these two models are bridged:
-- The ship builder is a dead-end tool — its output cannot be played.
-- The atmospheric movement brainstorm cannot be validated because it depends on a working builder→combat loop.
-- Success criteria for the builder (R31, R32 from the origin doc) are unmet.
+Until these are bridged: the ship builder is a dead-end tool, the atmospheric brainstorm cannot be validated, and R31/R32 from the origin doc are unmet.
 
-Gap summary (full field-by-field mapping in Context & Research below):
+Gap summary (full field mapping in Context & Research):
 
 | Area | Builder | Runtime | Resolution |
 |---|---|---|---|
-| Hulls | `List<PlacedHullPiece>` (multi-hull) | `HullDefinition` (single) | **Extend runtime to `List<HullDefinition>`** (Unit 1) |
+| Hulls | `List<PlacedHullPiece>` (multi-hull) | `HullDefinition` (single) | Extend runtime to `List<HullDefinition>` + new `MultiPolygonCollisionMask` (Unit 1) |
 | Module type | `systemType: String` | `InternalSystemType` enum | Converter validates and maps; rejects unknowns (Unit 4) |
-| Module count per type | Unrestricted | `Map<InternalSystemType, _>` (1 each) | Converter aggregates by type (Unit 4) |
-| Turret gun specs | `turretConfigId: String` only | Full `GunData` record | **New `TurretGunRegistry`** keyed by `turretConfigId` (Unit 2) |
-| Ship sprite | Not stored | `drawable: DrawableResource` | **Polygon rendering — remove the field** (Unit 3) |
-| Combat stats | Not stored | `CombatStats.evasionModifier` | Default value; future builder field (Unit 4) |
-| Startup ship source | Saved files only | Hard-coded constants | **Bundled JSON designs under composeResources** (Units 5–7) |
+| Module count per type | Unrestricted | `Map<InternalSystemType, _>` (one per type) | **Reject multi-module-per-type in v1** with a clear error (Unit 4) |
+| Turret gun specs | `turretConfigId: String` only | Full `GunData` record | Bundled `turret_guns.json` + `TurretGunLoader` (Units 5, 6) |
+| Ship/module/turret sprites | Not stored | `drawable: DrawableResource` | **Polygon/vector rendering — remove drawable fields entirely** (Unit 2) |
+| Combat stats | Not stored | `CombatStats.evasionModifier` | Default value at conversion time; future builder field |
+| Startup ship source | Saved files only | Hard-coded constants | Bundled JSON (produced by one-off migration script) + loader (Units 3, 5, 6) |
+
+### Corrections from initial research
+
+An initial feasibility review flagged "`Ship` uses `CircleCollisionMask`, so multi-hull collision is a phantom problem." That was wrong. **Bullet collision tests against the ship's `PolygonCollisionMask`**, so ships today are polygon-collidable — single-polygon. Multi-hull collision is a genuine gap, and Kubriko's `ComplexCollisionMask` interface is the supported extension point for an actor carrying multiple collision surfaces.
 
 ## Requirements Trace
 
@@ -45,497 +52,606 @@ From `docs/brainstorms/2026-04-06-ship-builder-requirements.md`:
 - **R31.** Ship designs saved by the builder can be loaded into the game simulation, replacing the role of `DemoScenarioConfig` hardcoded ship definitions.
 - **R32.** Everything currently used to create ships in `GameStateManager.createShip()` must be suppliable from a ship design file. No simulation data should exist only in code constants.
 
-From `docs/brainstorms/2026-04-10-atmospheric-movement-requirements.md` (this plan is a prerequisite):
+Phase 3 satisfies both: after Unit 8, no simulation data — ship geometry, mass, thrust, subsystems, turrets, gun data — exists only in Kotlin code. Default ships live as bundled JSON resources; turret gun data lives in `turret_guns.json`; the runtime converter reads both.
 
-- **A.R26** (atmospheric): "Phase 3 is an unplanned prerequisite that must be scoped and at least partially planned before atmospheric Slice A planning begins." — this plan fulfils that prerequisite. Phase 3 ships against current frictionless physics; atmospheric replaces physics afterward without needing a second refactor of the conversion layer, because the conversion produces `ShipConfig` values the atmospheric plan will reinterpret rather than restructure.
+Downstream dependency note: `docs/brainstorms/2026-04-10-atmospheric-movement-requirements.md` Slice A depends on Phase 3 being at least partially in place so the atmospheric physics model has real ships to load. Phase 3 ships against current frictionless physics; the converter's `MovementConfig` output will need reinterpretation (and possibly partial rewrite) when atmospheric lands. This is an acknowledged coupling, not a free lunch.
 
 ## Scope Boundaries
 
-- **No physics changes.** MovementConfig is passed through unchanged (thrust values match what `ShipStatsCalculator` already computes). The frictionless model stays intact. Atmospheric is a separate plan.
-- **No new builder UI for gun specs.** Turret gun data is supplied by a server-side `TurretGunRegistry` keyed by `turretConfigId`. The builder does not gain fields for damage, reload, projectile stats, etc. A future follow-up can expose them.
-- **No new builder UI for combat stats.** `CombatStats.evasionModifier` is defaulted at conversion time. Future work if needed.
-- **No Keel support.** Keel is a Slice B atmospheric concept; this plan stays with the current hull/module/turret model.
-- **No damage-model changes.** The existing per-type subsystem damage routing (`REACTOR`, `MAIN_ENGINE`, `BRIDGE`) is preserved. No new subsystem enum values.
-- **No save-format migration.** `ShipDesign.formatVersion` stays at 2. Existing saved designs continue to load. No breaking change to the serialized format.
-- **No player-authored designs loaded at startup.** Startup loads only the bundled default designs. Loading user-saved designs into scenarios is a natural follow-up but out of scope here — the goal is unblocking the playable loop, not building a full campaign loader.
-- **`DemoScenarioConfig` is retired as runtime data** but may survive as a test fixture helper if useful. Its numeric values migrate into bundled JSON designs.
-- **Polygon rendering is minimal in this plan** — ships render as convex hull outlines with fill colour distinguishing team. Detailed ship aesthetics (shading, lighting, decals) are out of scope and can come later.
+- **No physics changes.** `ShipPhysics`, `ShipNavigator.computeBrakingStrategy`, and the frictionless model are untouched. Atmospheric is a separate plan.
+- **Multi-module-per-type designs are rejected in v1.** A design with two `REACTOR` modules is a hard conversion failure, not an aggregation opportunity. This removes the silent resilience drift that aggregation would introduce (a 3-reactor ship would otherwise become ~3× more resilient because `disableThreshold = maxHp * 2/3` is computed from the aggregate, not per-source). Multi-instance subsystems become a future feature.
+- **No builder UI for gun specs.** Turret gun data lives in `turret_guns.json` (produced by the migration script, read by the runtime). The builder does not gain damage/reload/projectile fields.
+- **No builder UI for combat stats.** `CombatStats.evasionModifier` is defaulted at conversion time.
+- **No Keel support.** Keel is a Slice B atmospheric concept; this plan retains the current hull/module/turret model.
+- **No damage-model changes.** Existing `InternalSystemType` enum stays at `REACTOR`, `MAIN_ENGINE`, `BRIDGE`. No new subsystem values.
+- **No save-format migration.** `ShipDesign.formatVersion` stays at 2. Existing saved designs continue to load.
+- **No player-authored designs loaded at startup.** Startup loads only the bundled defaults. Loading user-saved designs into scenarios is a natural follow-up but out of scope here.
+- **Multi-hull rendering is merged silhouette + faint sub-hull outlines.** Separate-per-hull rendering is rejected; per-hull alpha blending isn't considered.
+- **Forward-looking success criteria are omitted.** Plan-level success is regression-only ("existing behaviour preserved"). "The dev can author a novel ship and it loads" is trusted to be exercised by normal use rather than codified as a test.
+- **No back-out gate for the polygon rendering change.** Sprite assets may be deleted as part of Unit 2. If visual regression is discovered later, recovery is via git revert. Accepted risk.
 
 ## Context & Research
 
 ### Relevant Code and Patterns
 
 **Builder side**
-- `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ShipDesign.kt` — serialized design format, `formatVersion: Int = 2`, fields: `name`, `itemDefinitions`, `placedHulls`, `placedModules`, `placedTurrets`.
-- `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ItemDefinition.kt` — sealed `ItemAttributes` with `HullAttributes`/`ModuleAttributes`/`TurretAttributes`, per-module thrust values (`forwardThrust`, `lateralThrust`, `reverseThrust`, `angularThrust`), `systemType: String` (loose-typed).
-- `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/stats/ShipStatsCalculator.kt` — canonical source for summed ship stats (thrust, mass, accel). Reused by the converter to populate `MovementConfig`.
-- `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/data/FileShipDesignRepository.kt` — existing save/load via platform `saveFile`/`loadFile` abstractions. The game side can reuse `ShipDesignRepository` (declared in game-core/api).
+- `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ShipDesign.kt` — serialized design format, `formatVersion: Int = 2`.
+- `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ItemDefinition.kt` — sealed `ItemAttributes` with per-module thrust values (`forwardThrust`, `lateralThrust`, `reverseThrust`, `angularThrust`), `systemType: String`.
+- `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/stats/ShipStatsCalculator.kt` — canonical source for summed ship stats. A pure computational core is extracted to game-core/api in Unit 0 so the runtime converter can call it without depending on the builder feature module.
+- `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/data/FileShipDesignRepository.kt` — existing save/load via platform `saveFile`/`loadFile` abstractions.
 
 **Runtime side**
-- `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/data/ShipConfig.kt` — target type for conversion. Current `hull: HullDefinition` becomes `hulls: List<HullDefinition>` in Unit 1.
-- `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/data/InternalSystemSpec.kt` — contains `enum class InternalSystemType { REACTOR, MAIN_ENGINE, BRIDGE }` and the `InternalSystemSpec` record.
-- `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/managers/GameStateManager.kt` (around lines 51–155) — hosts `startDemoScene()` and `createShip(config, …)`. The integration surgical point is `startDemoScene`'s body.
-- `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/data/DemoScenarioConfig.kt` — the four hard-coded `ShipConfig` instances that Unit 7 retires.
-- `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/ShipSpec.kt` — bridge extractor `ShipSpec.fromConfig`. Updates alongside Unit 1 to read from `hulls: List<HullDefinition>`.
-- `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/physics/ShipPhysics.kt` — reads hull for collision. Updates alongside Unit 1 if collision is hull-aware.
-- `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Ship.kt` — consumer of `ShipSpec`; Unit 3 replaces its drawable-based renderer with polygon rendering.
+- `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/data/ShipConfig.kt` — target type for conversion. `hull: HullDefinition` becomes `hulls: List<HullDefinition>` (Unit 1).
+- `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/data/InternalSystemSpec.kt` — contains `enum class InternalSystemType { REACTOR, MAIN_ENGINE, BRIDGE }`. No changes to the enum for this plan.
+- `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/managers/GameStateManager.kt` (around lines 51–155) — hosts `startDemoScene()` and `createShip(config, …)`. Integration point for Unit 7.
+- `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/data/DemoScenarioConfig.kt` — the hard-coded `ShipConfig` instances migrated by Unit 5 and deleted by Unit 8.
+- `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/ShipSpec.kt` — bridge extractor `ShipSpec.fromConfig`. Updated to read `hulls: List<HullDefinition>` in Unit 1.
+- `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Ship.kt` — consumer of `ShipSpec`. Currently implements `Collidable` with a single `PolygonCollisionMask` built from `spec.hull.vertices`. Rendering is currently sprite-based. Unit 1 switches to `MultiPolygonCollisionMask`; Unit 2 replaces sprite rendering with polygon rendering.
+- `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Bullet.kt` — implements vector rendering via `drawCircle` (commits `e67d2ea`, `da0a983`). Serves as the conceptual precedent for moving away from sprites, but not a copy-paste pattern — polygons need `Path` or `drawLine` sequences rather than a primitive shape.
+- `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/physics/ShipPhysics.kt` — unchanged by Unit 1. `ShipNavigator.computeBrakingStrategy` touches only `MovementConfig` and `hullRadius`, not `ShipConfig.hull` directly, so the multi-hull refactor doesn't propagate into navigation.
 
-**Vector rendering precedent**
-- Recent commit `da0a983 feat: decided I liked the vector bullet rendering, removed bullet sprite` and `e67d2ea feat: refactored Bullet to draw as a vector circle, rather than sprite` — the project is already trending toward vector rendering and away from sprites. Unit 3's polygon ship rendering continues this direction.
+**Kubriko collision**
+- `com.pandulapeter.kubriko.collision.mask.ComplexCollisionMask` — Kubriko's supported interface for an actor whose collision surface is a composition of multiple primitive masks. Exposes `isSceneOffsetInside()` for point tests and `updateAxisAlignedBoundingBox()` for broadphase. Unit 1 introduces `MultiPolygonCollisionMask` implementing this interface, wrapping a `List<PolygonCollisionMask>` and delegating point tests per sub-mask, computing a union AABB over all sub-masks.
 
 **Shared infrastructure**
-- `components/game-core/api` is accessible to both `features/game/impl` and `features/ship-builder/impl`. The converter lives here, as does the shared `ShipDesignRepository` interface. This avoids cross-feature coupling.
-- kotlinx.serialization with polymorphic sealed-class support (already in use for `ItemAttributes`).
+- `components/game-core/api` is accessible to both `features/game/impl` and `features/ship-builder/impl`. The extracted stats-calculation core, the runtime converter, and `MultiPolygonCollisionMask` all live there.
+- `components/game-core/api` currently has **no Compose Resources plugin configured** — Unit 3 adds it so bundled JSON files can live there.
+- kotlinx.serialization polymorphic sealed-class support (already in use for `ItemAttributes`).
 - kotlin-inject DI with `@Provides` in `composeApp/src/commonMain/kotlin/.../di/AppComponent.kt`.
 
 ### Institutional Learnings
 
-`docs/solutions/` does not exist. No prior incident knowledge on this specific bridge. Forward-looking design docs worth checking:
-- `docs/ai_architecture.md` — module dependency rules; the api/impl boundary constraint is preserved by putting the converter in `components/game-core/api`.
-- `docs/ai_kubriko_constraints.md` — hot-path and allocation guidance; polygon rendering should avoid per-frame `SceneOffset` churn.
-- `docs/ship.md` — canonical ship model description.
+`docs/solutions/` does not exist. No prior incident knowledge on this specific bridge. Forward-looking design docs worth consulting:
+- `docs/ai_architecture.md` — module dependency rules; the api/impl boundary constraint is preserved by putting the converter and extracted stats core in `components/game-core/api`.
+- `docs/ai_kubriko_constraints.md` — hot-path guidance; polygon rendering should avoid per-frame `SceneOffset` churn where feasible, though rotation-transformed vertices fundamentally require per-frame recomputation.
+- `docs/ship.md` — canonical ship model description. Needs updating after Unit 1 to reflect the multi-hull data shape.
 
 ### External References
 
-None. This is a pure internal refactor; no new frameworks or external patterns.
+None. Pure internal refactor; no new frameworks.
 
 ## Key Technical Decisions
 
-1. **Extend `ShipConfig.hull: HullDefinition` to `hulls: List<HullDefinition>`**, and update all runtime consumers to iterate. Future-proofs multi-hull for atmospheric; avoids a second migration.
-2. **Polygon-based ship rendering replaces sprite rendering entirely**, matching the recent bullet vector refactor. Removes the `DrawableResource` registry problem. Ships render as hull outlines (fill colour by team).
-3. **Converter lives in `components/game-core/api`** as a pure function. Both builder and runtime modules depend on api, so neither has to reach across the feature boundary. The converter is `ShipDesign → ShipConfig`, not `ShipDesign → Ship` — keeping the existing `ShipConfig → Ship` path unchanged.
-4. **Multiple modules of the same type aggregate**: multiple `REACTOR` modules in a design sum their `maxHp`, `density`, and `mass` into a single `InternalSystemSpec(REACTOR, ...)`. Preserves the runtime's single-instance-per-type model without refactoring `ShipSystems`. Known limitation; documented.
-5. **Unknown `systemType` strings cause conversion to fail loudly** rather than silently dropping modules. Validation pass before construction; returns a `Result<ShipConfig>` or similar.
-6. **Turret gun specs live in a new `TurretGunRegistry`** (in `components/game-core/api`), keyed by `PlacedTurret.turretConfigId`. Initially hard-coded with the guns from `DemoScenarioConfig`. Builder-side gun specs are a future follow-up, not this plan.
-7. **`CombatStats.evasionModifier`** is defaulted at conversion time. No builder field in this plan; value matches the current `DemoScenarioConfig` defaults so playability is unchanged.
-8. **Default ship designs ship as JSON files** under `composeResources/files/default_ships/`. At startup the game loads them via a new `DefaultShipDesignLoader` that reads the bundled resources. User-saved designs reuse the existing `FileShipDesignRepository` path — they are not auto-loaded into scenarios in this plan.
-9. **`MovementConfig` is computed by `ShipStatsCalculator`** during conversion (the same code the builder uses for its stats panel). This means runtime movement numerically matches what the builder displays — no drift between what the player sees while designing and what they experience in combat.
-10. **`DemoScenarioConfig` is deleted as runtime data** after Unit 7 is working. Its numeric values migrate into the bundled JSON files (Unit 6) so playability continuity is preserved. The file may live on briefly as a test fixture during transition.
-11. **Frictionless physics is unchanged.** `ShipPhysics` and `ShipNavigator.computeBrakingStrategy` are untouched. Atmospheric is a separate plan that follows this one.
+1. **Multi-hull via `MultiPolygonCollisionMask` implementing `ComplexCollisionMask`.** Preserves multi-hull through the conversion without a custom collision engine. Each hull piece contributes one `PolygonCollisionMask`; the composite delegates `isSceneOffsetInside` per sub-mask and returns a union AABB.
+2. **Reject multi-module-per-type designs in v1.** Clear error at conversion time. Eliminates the silent gameplay drift that aggregation would introduce via `disableThreshold = maxHp * 2/3` on aggregated maxHp.
+3. **Polygon/vector rendering across all actor types.** Ships, modules, and turrets all render as polygon outlines. Turrets specifically render as a simple triangle vector (replacing `turret_simple_1.png`). All sprite assets for ships and turrets are removed.
+4. **Facing conveyed by a nose marker.** Each ship draws a small triangle or tick at the forward-most vertex, oriented along the ship's forward axis. Addresses directional ambiguity introduced by losing the sprite's implicit nose/tail graphic.
+5. **Multi-hull composition renders as a merged silhouette.** The ship draws a single bold outline around the polygon union of all hull pieces, filled with the team colour, then draws faint per-hull outlines on top to preserve composition detail. The polygon union computation is non-trivial; see Risks.
+6. **Two converters, not one.**
+   - A **one-off migration script** (temporary, in `commonTest` or a throwaway source set) reads `DemoScenarioConfig` directly and mechanically writes bundled `ShipDesign` JSON + `turret_guns.json`. Deleted from source control after migration runs.
+   - A **permanent runtime converter** (`ShipDesign → ShipConfig`) lives in `components/game-core/api`, runs at every game startup, and uses the extracted stats-calculator core from Unit 0.
+7. **Stats calculation shared via extraction.** Unit 0 extracts a pure computational core from `ShipStatsCalculator` into `components/game-core/api`. Both the builder's stats panel and the runtime converter call it. Single source of truth; no duplication risk.
+8. **Turret gun data lives in a bundled `turret_guns.json` resource.** Not a `TurretGunRegistry` code-constant map. Loader reads the file at startup, exposes a `Map<String, GunData>` lookup. Satisfies R32 cleanly.
+9. **Compose Resources plugin added to `components/game-core/api`.** The module currently has no compose resources configured. Unit 3 enables it so bundled JSON files can live under `components/game-core/api/src/commonMain/composeResources/files/`.
+10. **Converter failure is a fatal startup error.** If any bundled default ship design fails to load or convert, or if `turret_guns.json` is missing, the game throws a clear error at startup. These are shipped resources; failure is a dev bug, not a runtime condition. This unblocks Unit 8 cleanly.
+11. **Filename-indexed spawn slot mapping.** `startDemoScene` indexes loaded designs by filename (`player_ship`, `enemy_light`, `enemy_medium`, `enemy_heavy`) rather than by name-prefix matching. A missing or renamed file fails loudly at startup.
+12. **Sub-phase 3c/3d split.** Unit 7 (switchover) and Unit 8 (deletion of `DemoScenarioConfig`) land as separate sub-phases with a playtest gate between them. `DemoScenarioConfig` lingers harmlessly as a rollback reference until the dev confirms the migrated ships feel right.
+13. **Frictionless physics preserved.** The runtime converter produces `MovementConfig` values that match what the current `DemoScenarioConfig` declares. Atmospheric will reinterpret these later (and likely needs a sibling per-profile movement config — see Risks).
 
 ## Open Questions
 
 ### Resolved During Planning
 
-- **Hull representation at runtime?** → Extend to `List<HullDefinition>`. Preserves multi-hull for atmospheric.
-- **Ship visual rendering?** → Polygon vector rendering, removes drawable-resolution gap.
-- **Default ship designs source?** → Bundled JSON files under commonMain resources.
-- **Conversion layer location?** → `components/game-core/api`, pure function.
-- **Multiple modules of the same type?** → Aggregate at conversion time with a sum rule for `maxHp` and `mass`; the aggregation rule for `density` (average vs max) is deferred to implementation. Single-instance-per-type runtime model is preserved. (Caveat surfaced by review: aggregation collapses `disableThreshold = maxHp * 2/3` across modules, changing effective resilience — see P1 finding on disable-threshold semantics.)
-- **Turret gun specs location?** → `TurretGunRegistry` in game-core/api, hard-coded initially, keyed by `turretConfigId`.
-- **`CombatStats.evasionModifier` source?** → Default value at conversion; no builder UI field in this plan.
-- **Sequencing with atmospheric?** → Phase 3 ships first against current frictionless physics. Atmospheric is a separate plan.
+- **Hull representation at runtime?** → Extend to `List<HullDefinition>` with `MultiPolygonCollisionMask`.
+- **Ship visual rendering?** → Polygon vector rendering for ships, modules, and turrets. Nose marker for facing. Merged silhouette + faint sub-hulls for multi-hull.
+- **Default ship designs source?** → One-off migration script from `DemoScenarioConfig`; output committed as bundled JSON.
+- **Turret gun data?** → Bundled `turret_guns.json`, produced by the same migration script.
+- **Compose Resources in game-core/api?** → Enabled as part of Unit 3.
+- **ShipStatsCalculator location?** → Pure core extracted to game-core/api; builder delegates to it.
+- **Multiple modules of the same type?** → Rejected at conversion time. Multi-instance subsystems become a future feature.
+- **Converter failure mode?** → Fatal startup error.
+- **Spawn slot mapping?** → Filename-indexed.
+- **Unit 7/8 bundling?** → Split into 3c and 3d with a playtest gate.
+- **Sequencing with atmospheric?** → Phase 3 ships first; atmospheric follows and may require converter adjustments.
+- **Forward-looking success criteria?** → Omitted; regression-only.
 
 ### Deferred to Implementation
 
-- **Exact polygon rendering style.** Line width, team colours, fill vs stroke, transparency. Start with a plain convex outline matching the builder's canvas preview; tune after visual inspection.
-- **Polygon rendering under transform.** Placed hulls carry `position`, `rotation`, `mirrorX`, `mirrorY`. The transform composition is straightforward linear algebra but the exact helper placement (Ship actor? HullDefinition method? a shared utility?) should be decided while implementing.
-- **Exact `TurretConfig` offset/pivot derivation from `PlacedTurret`.** Builder stores `position` (world-space under ship) and `rotation`. Runtime wants `offsetX/Y` and `pivotX/Y`. Trivial conversion, but the precise pivot rule (centroid of turret polygon? stored in `TurretAttributes`? geometric centre?) needs to be picked during implementation.
-- **`DefaultShipDesignLoader` API.** Whether it uses the existing platform `loadFile` abstraction (reading from bundled resource path) or Compose Resources API (`Res.readBytes`). Decide during implementation based on which is cleaner for reading commonMain resource files.
-- **Handling of collision for multi-hull ships.** Current `ShipPhysics` treats the hull as a single polygon. For Phase 3, Unit 1 either (a) iterates collision against each hull separately or (b) computes a convex hull of all hull pieces as an approximation. Picking this live with the test scenarios.
-- **Whether to retain `DemoScenarioConfig` as a test-fixture helper** after Unit 7 wires in the bundled loader. If it becomes useful in tests, keep it under test sources; otherwise delete.
-- **Whether `ShipConfig` should carry a computed `totalMass` or `hulls.totalMass` aggregation helper** or the existing property just sums over the list. Minor refactor decision.
+- **Exact team colour values.** Probably player = cyan-family (matches builder hull palette), enemy = red-family (matches builder turret palette). Decide during implementation; document the chosen hex values in the PR.
+- **Line weights, stroke vs fill rules, transparency for polygon rendering.** Tune during visual inspection.
+- **Turret vector shape.** Simple isoceles triangle pointing along barrel direction is the intended default; refine if ugly.
+- **Damage/destroyed visual states under polygon rendering.** Sprites may have had destruction feedback; polygons inherit none automatically. Defer to implementation — can start with "ship polygon removed at destruction" and improve later.
+- **Polygon union algorithm for merged silhouette.** Several options exist (convex hull of union, sweep-line union algorithm, library dependency). Decide based on hull-piece count in the default designs — if all hulls are convex and non-overlapping, a cheap approach works. See Risks.
+- **Exact `TurretConfig` offset/pivot derivation from `PlacedTurret`.** Builder stores position and rotation; runtime wants offsetX/Y and pivotX/Y. Centroid-based pivot is the intended default.
+- **Migration script output location and execution harness.** A `commonTest` utility is one option; a standalone main function in a throwaway source folder is another. Pick whichever is simpler to run once and delete.
+- **Per-frame allocation strategy for polygon rendering.** Rotating a polygon each frame requires per-frame transformed vertices. Zero-allocation may be unachievable without raw-float buffers. Accept bounded allocations (N ships × M vertices per frame ≈ 30–50 allocations at current scale) and spot-check in a follow-up if it matters.
+- **`MultiPolygonCollisionMask` AABB computation.** Straightforward union of sub-mask AABBs, but the exact refresh cadence under transforms (recompute per frame? cache until transform changes?) is implementation detail.
+- **Whether the migration script preserves or regenerates `ItemDefinition.id`s.** Deterministic ids help round-trip tests; random ids are simpler. Pick the former.
 
 ## High-Level Technical Design
 
 > *This illustrates the intended approach and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce.*
 
 ```
-Builder-side                  Shared (game-core/api)                Runtime-side
-────────────                  ──────────────────────                ────────────
+One-off (runs during plan rollout, deleted after)
+─────────────────────────────────────────────────
+DemoScenarioConfig.kt ──► MigrationScript ──► writes to:
+                                                 ├─ composeResources/files/default_ships/player_ship.json
+                                                 ├─ composeResources/files/default_ships/enemy_light.json
+                                                 ├─ composeResources/files/default_ships/enemy_medium.json
+                                                 ├─ composeResources/files/default_ships/enemy_heavy.json
+                                                 └─ composeResources/files/turret_guns.json
+                          (migration script is then deleted from source control)
 
-ShipDesign (JSON)    ──load──►  DefaultShipDesignLoader    ──►  GameStateManager
-  ├─ itemDefinitions              (reads composeResources)       .startDemoScene()
-  ├─ placedHulls                                                     │
-  ├─ placedModules                                                   │ for each design:
-  └─ placedTurrets                                                   │
-                                ShipDesignConverter               convert(design)
-                                  (pure function)                      │
-                                   │                                   │
-                                   │ ┌─ resolve ItemDefinitions        ▼
-                                   │ ├─ transform hull pieces    ShipConfig (new: hulls=List)
-                                   │ ├─ aggregate modules → enum      │
-                                   │ ├─ lookup turret guns            │
-                                   │ │   via TurretGunRegistry        │
-                                   │ └─ compute MovementConfig        │
-                                   │     via ShipStatsCalculator      ▼
-                                   ▼                              createShip(config)
-                                 ShipConfig                           │
-                                                                      │
-                                                                      ▼
-                                                                  Ship actor
-                                                                  (polygon-rendered from hulls)
+
+Permanent (runs at every game startup)
+──────────────────────────────────────
+bundled JSON ──load──► DefaultShipDesignLoader ─┐
+bundled JSON ──load──► TurretGunLoader ─────────┤
+                                                │
+                                                ▼
+                                      GameStateManager.startDemoScene
+                                                │
+                                                │ for each slot in fixed key order:
+                                                ▼
+                                      ShipDesignConverter.convert(design, turretGuns)
+                                                │   │
+                                                │   └─► extractedStatsCore (also used by builder UI)
+                                                ▼
+                                      Result<ShipConfig>  (fatal-error on failure)
+                                                │
+                                                ▼
+                                      createShip(config, slotPosition, team, ...)
+                                                │
+                                                ▼
+                                      Ship actor
+                                      ├─ MultiPolygonCollisionMask (one sub-mask per hull)
+                                      └─ polygon/vector renderer
+                                         ├─ merged silhouette (union outline + team fill)
+                                         ├─ faint per-hull outlines on top
+                                         ├─ nose marker at forward vertex
+                                         └─ modules and turrets also polygon/vector
 ```
 
-Conceptual notes:
-- The converter is the single seam. It's pure (no I/O, no actor instantiation), so it's cheap to test exhaustively.
-- `ShipStatsCalculator` is shared via the api module. Builder uses it for live stats; converter uses it to produce `MovementConfig`. One formula, two consumers.
-- `TurretGunRegistry` and `DefaultShipDesignLoader` are both small singletons in the api module. The registry is hard-coded; the loader reads bundled files. DI-injected so tests can swap them.
-- Polygon rendering eliminates the `drawable` field entirely. `Ship` actor and `Ship` rendering both lose a dependency.
+Key design notes:
+- The runtime converter is the single seam. It's pure, cheap to test exhaustively, and its only external inputs are the loaded `ShipDesign` and the turret gun lookup.
+- The extracted stats core is the single source of truth for "how do you sum thrust across modules?". Both the builder's live stats panel and the runtime converter call it.
+- `MultiPolygonCollisionMask` is a thin adaptor: it holds a list of `PolygonCollisionMask`s, delegates `isSceneOffsetInside` to each, and computes a union AABB for broadphase. Kubriko's `ComplexCollisionMask` interface is the supported extension point.
+- Polygon rendering produces a merged silhouette per ship via a polygon-union computation, with faint individual hull outlines drawn on top. The polygon union is the one non-trivial geometric computation introduced by this plan.
 
 ## Implementation Units
 
-### Unit 1: Extend `ShipConfig.hull` to `hulls: List<HullDefinition>`
+### Sub-phase 3a — Foundation
 
-**Goal:** Change the runtime hull representation from a single `HullDefinition` to a list, and update all consumers to iterate. Preserves multi-hull designs through the conversion.
+- [ ] **Unit 0: Extract `ShipStatsCalculator` pure core to game-core/api**
 
-**Requirements:** R31, R32 (data fidelity); A.R26 prerequisite.
+  **Goal:** Pull the thrust/mass aggregation logic out of `features/ship-builder/impl` into `components/game-core/api` as a pure function that takes `ItemDefinition` + placed-item inputs and returns stats. The existing `ShipStatsCalculator` in the builder becomes a thin adapter that feeds `ShipBuilderState` into the pure core. The runtime converter (Unit 4) also calls the pure core.
 
-**Dependencies:** None. This is the foundation.
+  **Requirements:** R32 (single source of truth for simulation data aggregation).
 
-**Files:**
-- Modify: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/data/ShipConfig.kt`
-- Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/ShipSpec.kt` — `hull: HullDefinition` → `hulls: List<HullDefinition>`; update `fromConfig` accordingly.
-- Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Ship.kt` — any use of `spec.hull` → `spec.hulls`.
-- Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/physics/ShipPhysics.kt` — if hull is referenced for collision, iterate; otherwise note what changes.
-- Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/data/DemoScenarioConfig.kt` — wrap each existing `hull = HullDefinition(...)` in `hulls = listOf(HullDefinition(...))`. This is a temporary edit to keep `DemoScenarioConfig` compiling through Units 1–6; it's retired in Unit 7.
-- Modify: `features/game/impl/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/game/data/ShipConfigTest.kt` — update assertions to iterate over `hulls`.
-- Test: existing `ShipConfigTest` is the primary coverage.
+  **Dependencies:** None. Foundational.
 
-**Approach:**
-- `ShipConfig` field rename + type change. The computed `totalMass` property sums over `hulls` instead of reading one.
-- Collision and damage code that references "the hull" needs to iterate. Phase 3 uses the simplest working approach: treat each hull polygon as an independent collidable surface. If that proves excessive in practice, a follow-up can compute a simplified collision polygon.
-- `ShipSpec.fromConfig` passes the full list through.
-- Rendering references are untouched in this unit — polygon rendering comes in Unit 3. `Ship`'s current sprite-rendering path keeps working because it uses `drawable`, not the hull.
+  **Files:**
+  - Create: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/stats/ShipStatsCore.kt`
+  - Modify: `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/stats/ShipStatsCalculator.kt` — delegate to the core
+  - Test: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/stats/ShipStatsCoreTest.kt`
+  - Regression: existing `ShipStatsCalculatorTest` in the builder continues to pass after delegation
 
-**Patterns to follow:**
-- Existing `ShipConfig.totalMass` computed-property style for the new list-aware version.
-- Kubriko actor conventions — `Ship`'s current update/draw loop.
+  **Approach:**
+  - The pure core takes typed inputs: `List<PlacedHullPiece>`, `List<PlacedModule>`, `List<PlacedTurret>`, and a way to resolve `ItemDefinition`s by id. It returns a `ShipStatsSummary` record containing total mass, per-axis thrust totals, and any other summed quantities the builder currently exposes.
+  - The builder-side `ShipStatsCalculator` becomes a thin wrapper that unpacks `ShipBuilderState` and delegates.
+  - The legacy hardcoded fallback values (when a placed module lacks an `ItemDefinition`) move into the pure core behind a documented legacy path.
 
-**Test scenarios:**
-- Happy path: `ShipConfig` with a single-element `hulls` list round-trips through `ShipSpec.fromConfig` and produces a `ShipSpec` whose `hulls.size == 1`.
-- Happy path: `ShipConfig` with a two-element `hulls` list (multi-hull design) produces a `ShipSpec` whose `hulls.size == 2` and whose `totalMass` is the sum of both hulls' masses + their armour contributions.
-- Edge case: empty `hulls` list is either rejected at construction or produces a `ShipSpec` with `hulls.isEmpty()` and clear semantics — pick and test explicitly. (Empty hulls shouldn't happen in practice; the test documents the chosen invariant.)
-- Regression: all existing `DemoScenarioConfig` ships construct successfully after the single→list wrap and pass `ShipConfigTest`'s validation assertions (positive mass, positive thrust, vertex count ≥ 3 per hull, system health > 0).
-- Regression: `ShipPhysics` collision/integration continues to work for single-hull ships (covered by existing physics tests if any; otherwise a minimal integration sanity test).
+  **Patterns to follow:**
+  - Current `ShipStatsCalculator.calculateStats` signature and return shape.
+  - Existing pure-helper style in `components/game-core/api`.
 
-**Verification:**
-- All existing tests pass after the refactor.
-- The project compiles and the desktop app runs.
-- `DemoScenarioConfig` ships spawn and fight as before — no visible behaviour change yet.
+  **Test scenarios:**
+  - Happy path: single hull + one engine module + one reactor + one turret → stats match the current `ShipStatsCalculator` output for the same design.
+  - Happy path: multiple modules of different types → thrust sums correctly per axis.
+  - Edge case: empty modules list → zero thrust, mass from hulls only.
+  - Edge case: legacy placed module without an `ItemDefinition` → legacy fallback values are used, matching current behaviour.
+  - Regression: all existing `ShipStatsCalculatorTest` scenarios pass against the delegating wrapper.
+
+  **Verification:**
+  - Full test suite passes.
+  - The builder's live stats panel displays identical values before and after extraction (manual spot-check).
 
 ---
 
-### Unit 2: `TurretGunRegistry`
+- [ ] **Unit 1: `MultiPolygonCollisionMask` + extend `ShipConfig` to multi-hull**
 
-**Goal:** Introduce a lookup table that maps a `PlacedTurret.turretConfigId: String` to a runtime `GunData` record. Seed it with the guns currently defined in `DemoScenarioConfig`. This becomes the single source of truth for turret weapon specs, independent of the builder's UI.
+  **Goal:** Introduce a Kubriko `ComplexCollisionMask` implementation that wraps multiple `PolygonCollisionMask`s. Change `ShipConfig.hull: HullDefinition` to `hulls: List<HullDefinition>`. Update `Ship` actor to construct a `MultiPolygonCollisionMask` from the list. Update all runtime consumers to iterate.
 
-**Requirements:** R31 (turret data must come from somewhere during conversion).
+  **Requirements:** R31 (multi-hull designs must survive the conversion), R32 (runtime model matches builder model).
 
-**Dependencies:** None. Independent of Unit 1.
+  **Dependencies:** None (independent of Unit 0).
 
-**Files:**
-- Create: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/data/TurretGunRegistry.kt`
-- Modify: `composeApp/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/di/AppComponent.kt` — `@Provides` the registry as a singleton.
-- Test: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/data/TurretGunRegistryTest.kt`
+  **Files:**
+  - Create: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/collision/MultiPolygonCollisionMask.kt`
+  - Modify: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/data/ShipConfig.kt` — `hull: HullDefinition` → `hulls: List<HullDefinition>`, update `totalMass` computed property to sum over `hulls`
+  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/ShipSpec.kt` — carry `hulls: List<HullDefinition>`, update `fromConfig`
+  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Ship.kt` — replace the single `PolygonCollisionMask` with a `MultiPolygonCollisionMask` built from `spec.hulls`. Update any code that accesses `spec.hull`.
+  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/data/DemoScenarioConfig.kt` — wrap each existing `hull = HullDefinition(...)` in `hulls = listOf(HullDefinition(...))`. Temporary edit; deleted in Unit 8.
+  - Modify: `features/game/impl/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/game/data/ShipConfigTest.kt` — update assertions to iterate over `hulls`.
+  - Test: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/collision/MultiPolygonCollisionMaskTest.kt`
 
-**Approach:**
-- Simple `object TurretGunRegistry` or a DI-injected class exposing `fun lookup(turretConfigId: String): GunData?`.
-- Internally a `Map<String, GunData>`. Seeded at construction with entries for every turret id the current `DemoScenarioConfig` references (standard turret, light turret, heavy turret — extract the exact set while implementing).
-- Unknown ids return `null`; the converter treats `null` as a validation failure in Unit 4.
-- The registry keys match whatever string ids the builder's parts catalog already uses for turrets (`features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/data/PartsCatalog.kt` — inspect to find the actual ids).
+  **Approach:**
+  - `MultiPolygonCollisionMask` implements `com.pandulapeter.kubriko.collision.mask.ComplexCollisionMask`. It wraps a `List<PolygonCollisionMask>`. `isSceneOffsetInside(point)` returns true if any sub-mask contains the point. `updateAxisAlignedBoundingBox()` computes the union AABB over all sub-masks. Other `ComplexCollisionMask` members (inspect the interface when implementing) are delegated per sub-mask or aggregated as appropriate.
+  - Ship actor constructs one sub-mask per `HullDefinition` in `spec.hulls`. Sub-masks follow the ship's transform as a group — the composite mask applies the ship pose once rather than each sub-mask applying it independently.
+  - `ShipConfig.totalMass` sums over `hulls` instead of reading the single `hull`. Existing test assertions that check "positive mass" still pass.
+  - Bullet collision resolution (which currently tests against `Ship`'s `PolygonCollisionMask`) naturally works with the composite because Kubriko's collision pipeline consumes the `Collidable` interface, not the concrete mask type. Verify this assumption while implementing.
 
-**Patterns to follow:**
-- `PartsCatalog` structure as a parallel "data table" pattern on the builder side.
-- kotlin-inject `@Provides` convention in `AppComponent.kt` for DI wiring.
+  **Patterns to follow:**
+  - Kubriko's `ComplexCollisionMask` interface as documented or implemented by any existing plugin. If Kubriko has a built-in `ComplexCollisionMask` example, mirror its conventions.
+  - Existing `Ship.kt` collision setup for how the mask is wired into the actor.
 
-**Test scenarios:**
-- Happy path: looking up a known `turretConfigId` (e.g., the standard-turret id used by the player ship) returns a non-null `GunData` with positive damage, positive reload, non-empty projectile stats.
-- Happy path: every turret id present in `DemoScenarioConfig`'s current turret configs resolves to a valid `GunData` — no gaps.
-- Edge case: looking up an unknown id returns `null`.
-- Edge case: looking up an empty string returns `null`.
+  **Test scenarios:**
+  - Happy path: `MultiPolygonCollisionMask` with a single sub-mask behaves identically to the underlying `PolygonCollisionMask` for `isSceneOffsetInside` and AABB queries.
+  - Happy path: `MultiPolygonCollisionMask` with two disjoint square sub-masks returns true for points inside either, false for points outside both.
+  - Happy path: AABB over two offset sub-masks equals the union bounding box.
+  - Edge case: empty sub-mask list — document invariant (probably rejected at construction).
+  - Regression: a single-hull ship still takes bullet damage exactly as before after the refactor.
+  - Integration: a multi-hull ship (constructed by hand in a test fixture) takes a bullet hit against any of its hulls and the damage is routed correctly.
 
-**Verification:**
-- Unit tests pass.
-- Every turret id currently used by `DemoScenarioConfig` is in the registry. A helper test enumerates them and asserts registry coverage.
-
----
-
-### Unit 3: Polygon-based ship rendering
-
-**Goal:** Replace the `Ship` actor's sprite rendering with polygon rendering over the hull vertices. Remove `drawable: DrawableResource` from `ShipConfig` and `Ship`. Each hull in `hulls` is drawn as a convex outline with a team-colour fill.
-
-**Requirements:** R32 (no simulation data should exist only in code constants — drawable references were a code-constant leak).
-
-**Dependencies:** Unit 1 (needs `hulls: List<HullDefinition>` to iterate).
-
-**Files:**
-- Modify: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/data/ShipConfig.kt` — remove `drawable` field.
-- Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Ship.kt` — replace sprite-drawing path with polygon drawing; loop over `hulls`, apply ship pose, render each.
-- Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/managers/GameStateManager.kt` — `createShip` signature drops the drawable param.
-- Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/data/DemoScenarioConfig.kt` — remove `drawable = Res.drawable.ship_player_1` / `ship_enemy_1` lines.
-- Possibly delete: `Res.drawable.ship_player_1`, `ship_enemy_1` sprite assets under `components/design/src/commonMain/composeResources/drawable/` — only if no other caller uses them.
-- Test: no new unit test file (polygon rendering is inspected manually against the builder preview), but existing `ShipConfigTest` must still pass with the field removal.
-
-**Approach:**
-- Use the same drawing primitives the `Bullet` actor uses for its vector circle rendering (see recent `e67d2ea` and `da0a983` commits for the pattern — read `Bullet.kt` for the exact shape of the approach).
-- For each hull in `hulls`, compute the world-space vertex positions by applying the ship's pose (position + rotation + mirror) to the hull's stored vertices, then draw a closed polygon.
-- Team colour: player ships get one colour, enemy ships another. Hard-coded for Phase 3; a future rendering pass can introduce per-ship palettes.
-- No per-frame `SceneOffset` allocations in the hot path — precompute reusable vertex buffers per ship where possible. See `docs/ai_kubriko_constraints.md`.
-
-**Patterns to follow:**
-- Bullet's recent vector-rendering refactor: `features/game/impl/.../game/actors/Bullet.kt` (or wherever bullet rendering moved to after `da0a983`).
-- Ship builder canvas polygon rendering: `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/canvas/ItemRenderer.kt` — same style the player sees in the builder.
-
-**Test scenarios:**
-- Happy path (visual): run the desktop app, confirm ships appear as polygon outlines in combat and are distinguishable by team colour.
-- Happy path (compile-time): `ShipConfig` has no `drawable` field; the entire codebase compiles.
-- Regression: existing ships continue to appear in the correct positions — no drawing-offset regressions from the sprite→polygon switch.
-- Edge case: a ship with a multi-hull design draws all hulls at their correct transformed positions.
-
-**Verification:**
-- The desktop app renders ships as polygons and combat is playable.
-- No references to `Res.drawable.ship_player_1` or `Res.drawable.ship_enemy_1` remain in runtime code (grep for residuals).
-- Allocation-sensitive rendering: spot-check that the polygon draw path doesn't allocate `SceneOffset` per vertex per frame.
+  **Verification:**
+  - All existing tests pass.
+  - Desktop app runs; combat looks identical to pre-Unit-1 (only single-hull `DemoScenarioConfig` ships exist at this point, so visually nothing changes).
+  - A manual test with a hand-fabricated two-hull ship confirms bullets collide with either hull.
 
 ---
 
-### Unit 4: `ShipDesignConverter` — the conversion layer
+- [ ] **Unit 2: Polygon/vector rendering for ships, modules, and turrets**
 
-**Goal:** Pure function converting a `ShipDesign` to a `ShipConfig`. This is the core of Phase 3. Handles hull transformation, module aggregation, turret gun lookup, stats calculation, and validation of loose-typed strings.
+  **Goal:** Replace all sprite-based rendering with polygon/vector drawing. Ships render as a merged silhouette (team-coloured fill, bold outline) with faint per-hull outlines on top and a nose marker at the forward-most vertex. Modules render as polygon outlines. Turrets render as simple triangles pointing along their barrel direction. Remove `drawable: DrawableResource` from `ShipConfig` and all associated sprite plumbing.
 
-**Requirements:** R31, R32.
+  **Requirements:** R32 (eliminate remaining code-constant sprite data from `DemoScenarioConfig`).
 
-**Dependencies:** Unit 1 (needs `hulls: List<HullDefinition>`), Unit 2 (`TurretGunRegistry`).
+  **Dependencies:** Unit 1 (needs `hulls: List<HullDefinition>` to iterate).
 
-**Files:**
-- Create: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ShipDesignConverter.kt`
-- Create: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ShipDesignConverterTest.kt`
-- Possibly modify: `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/stats/ShipStatsCalculator.kt` — if the calculator needs lifting into `components/game-core/api` so the converter can use it (depends on current module boundary).
+  **Files:**
+  - Modify: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/data/ShipConfig.kt` — remove `drawable` field.
+  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Ship.kt` — replace sprite rendering with polygon rendering. Remove `SpriteManager.get(drawable)` call. Remove `SpriteManager` parameter if no other actor uses it.
+  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/managers/GameStateManager.kt` — `createShip` signature drops drawable param.
+  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/data/DemoScenarioConfig.kt` — remove `drawable = Res.drawable.ship_player_1 / ship_enemy_1` lines and `GunData.drawable = Res.drawable.turret_simple_1` references.
+  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Turret.kt` (or wherever turret rendering lives) — replace sprite with a triangle pointing along the barrel direction.
+  - Modify: module rendering (in `Ship.kt` or a related actor) — polygon outlines for placed modules if they're currently sprite-drawn.
+  - Possibly remove: `components/design/src/commonMain/composeResources/drawable/ship_player_1.xml`, `ship_enemy_1.xml`, `turret_simple_1.xml` (only if no other caller uses them — `grep` first).
+  - Create (new helper): `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/rendering/PolygonUnion.kt` for the merged-silhouette union computation.
 
-**Approach:**
-- Signature roughly: `fun convert(design: ShipDesign, gunRegistry: TurretGunRegistry): Result<ShipConfig>` or equivalent returning either a success with `ShipConfig` or a descriptive failure.
-- **Hull conversion** (`placedHulls` → `List<HullDefinition>`):
-  - For each `PlacedHullPiece`, resolve its `itemDefinitionId` to the `ItemDefinition` in `design.itemDefinitions`.
-  - Apply the placed transform (position, rotation, mirrorX, mirrorY) to the item's stored vertices to produce world-space (ship-space) vertices.
-  - Build a `HullDefinition` with those vertices plus the `HullAttributes.armour` (promoted from `SerializableArmourStats`) and `mass`.
-  - Each placed hull piece becomes one `HullDefinition` in the output list. Multi-hull is preserved.
-- **Module conversion** (`placedModules` → `List<InternalSystemSpec>`):
-  - Group by `systemType`.
-  - For each group, map the string to `InternalSystemType` enum. Unknown strings → return failure with a descriptive message.
-  - Aggregate within a group: sum `maxHp`, `mass`, use an averaging or max rule for `density` (decide during implementation; document the choice in the test).
-  - Emit one `InternalSystemSpec` per resolved type.
-  - If a design has no modules of a given type (e.g., no BRIDGE), that type is simply absent from the output. The runtime currently tolerates missing subsystems — `Ship` destruction only triggers on reactor destruction — so a ship without BRIDGE is valid.
-- **Turret conversion** (`placedTurrets` → `List<TurretConfig>`):
-  - For each `PlacedTurret`, look up `turretConfigId` in `TurretGunRegistry`. Unknown id → return failure.
-  - Derive `offsetX/Y` from the placed turret's `position`.
-  - Derive `pivotX/Y` from the item definition (centroid of turret polygon, or explicit pivot field if added; decide during implementation).
-  - Build a `TurretConfig` with the resolved `GunData`.
-- **MovementConfig** computed via the shared `ShipStatsCalculator` — call it on the design and copy thrust values into a new `MovementConfig`. This is the parity guarantee: what the builder shows and what combat uses are the same numbers.
-- **CombatStats**: default `evasionModifier = 1.0f` (or the current `DemoScenarioConfig` default — match it for playability).
-- **Validation outcomes**: the function returns `Result<ShipConfig>` (or a sealed `ConversionResult`). Failure cases include: unknown systemType string, unknown turret id, zero hull pieces, zero modules, malformed transforms.
+  **Approach:**
+  - **Per-ship rendering pipeline** (called from `Ship.draw` or equivalent):
+    1. Compute the polygon union of all hulls in `spec.hulls` (in ship-local coordinates). This is the merged silhouette. Do this once at ship construction; transforms are applied at draw time.
+    2. At draw time, apply the ship's pose (position, rotation, mirror) to the union outline vertices and draw it as a bold stroked closed path filled with the team colour (translucent fill, opaque stroke).
+    3. Draw each individual hull outline on top with faint alpha so the composition is visible.
+    4. Draw a nose marker: find the forward-most vertex of the merged silhouette (the vertex with the greatest dot-product against ship forward), draw a small triangle or tick at that point pointing forward.
+  - **Modules:** draw each placed module's polygon outline at its transformed position. Colour per module type (can reuse the builder's Yellow for modules).
+  - **Turrets:** draw an isoceles triangle with its apex at the barrel tip and base at the pivot. Colour per team.
+  - **Team colours:** Defer exact hex values to implementation; recommended defaults are cyan-family for player and red-family for enemy to mirror the builder palette without clashing.
+  - **Allocation note:** Per-frame rotation-transformed vertices cannot be fully precomputed. Accept bounded allocations at current combat scale (≤6 ships × ≤10 vertices each). If this becomes a hot-path issue later, introduce raw-float vertex buffers in a follow-up.
+  - **Polygon union** is the one non-trivial algorithm. See Risks — a cheap approach may be acceptable if default hulls are non-overlapping, but a general solution requires a proper union algorithm.
 
-**Patterns to follow:**
-- `ShipStatsCalculator` as the canonical stats source — do not reimplement thrust aggregation.
-- kotlinx.serialization polymorphic handling for resolving `ItemAttributes` subclasses.
-- Pure-function pattern: no side effects, no I/O, no logging except via the `Result` return.
+  **Patterns to follow:**
+  - `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Bullet.kt` for the general "vector draw in `DrawScope`" pattern — but note bullets use `drawCircle` (a primitive), and polygons need `drawPath` with a constructed `Path` or repeated `drawLine` calls.
+  - `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/canvas/ItemRenderer.kt` for the builder's polygon rendering style. Combat can reuse similar path construction but with different colours.
 
-**Test scenarios:**
-- Happy path: a minimal `ShipDesign` with one hull piece, one reactor module, one standard turret, and one default-engine module produces a `ShipConfig` with `hulls.size == 1`, `internalSystems` containing exactly a REACTOR and a MAIN_ENGINE entry, one `TurretConfig` with the correct `GunData`, and a non-zero `MovementConfig.forwardThrust`.
-- Happy path: a multi-hull design (two placed hull pieces) produces a `ShipConfig` with `hulls.size == 2`.
-- Happy path: two REACTOR modules in the design are aggregated into a single `InternalSystemSpec(REACTOR)` whose `maxHp` and `mass` are the sums of the two input modules.
-- Happy path: transforms are respected — a hull piece placed at `(10, 20)` with rotation 90° produces a `HullDefinition` whose vertices are translated and rotated correspondingly. Include a numeric assertion on at least one vertex.
-- Happy path: thrust values in the output `MovementConfig` match what `ShipStatsCalculator.calculateStats` produces for the same design. Identity assertion, not just "positive."
-- Edge case: a design with zero placed modules produces a `ShipConfig` whose `internalSystems` is empty. Runtime tolerates this (ship has no destroyable reactor until one is added).
-- Edge case: a design with a placed module whose `systemType` is "REACTOR " (trailing space) — decide whether the mapping trims whitespace or rejects. Document the choice.
-- Edge case: a design with a hull piece referencing a non-existent `itemDefinitionId` is rejected with a descriptive error.
-- Error path: a design with an unknown `systemType` string (e.g., "PLASMA_CORE") returns a failure with the unknown string in the error message.
-- Error path: a design with a turret whose `turretConfigId` is not in the registry returns a failure with the missing id.
-- Error path: a design with zero hull pieces is rejected (a ship must have at least one hull).
-- Integration: take one of the target bundled default designs (Unit 5's output) and run it through the converter; assert the resulting `ShipConfig` is close enough to the current hard-coded `DemoScenarioConfig` player ship that playability is preserved. "Close enough" means same type counts, same hull vertex counts, same total mass within a small tolerance.
+  **Test scenarios:**
+  - Happy path (manual visual): desktop app runs, ships appear as polygon silhouettes with visible nose markers and faint sub-hulls, team colours distinguish player from enemy.
+  - Happy path (compile-time): `ShipConfig` has no `drawable` field; the entire codebase compiles; no references to `Res.drawable.ship_player_1`, `ship_enemy_1`, `turret_simple_1` remain in runtime code (grep-verified).
+  - Happy path (unit): `PolygonUnion.union(listOf(squareAt(0,0), squareAt(5,0)))` returns a rectangle enclosing both squares.
+  - Happy path (unit): union of two non-overlapping convex polygons produces a correct bounding outline.
+  - Edge case: union of a single polygon returns that polygon unchanged.
+  - Regression: existing ships appear in correct positions and rotate correctly; combat behaviour (bullets hitting ships, explosions) is unchanged.
 
-**Verification:**
-- All converter unit tests pass.
-- The converter is pure — no I/O, no `println`, no DI container access.
-- Round-tripping a design through `ShipDesignConverter.convert` and back to a new `ShipDesign` (if a reverse converter is added later) would be lossless for the fields this plan cares about.
+  **Verification:**
+  - Desktop app renders ships, modules, and turrets as polygon/vector graphics.
+  - Nose markers are visible on all ships at all rotations during combat.
+  - Team distinction is legible during a normal combat scene (manual dev sign-off).
+  - No sprite drawable references remain in runtime code.
+  - Polygon union tests pass.
 
 ---
 
-### Unit 5: Bundled default ship design JSON resources
+- [ ] **Unit 3: Add Compose Resources plugin to `components/game-core/api`**
 
-**Goal:** Author the four replacement ship designs (player, light enemy, medium enemy, heavy enemy) as JSON files bundled into commonMain resources. These ship with the app and are loaded at game startup.
+  **Goal:** Enable `compose.resources` in the game-core/api module so bundled JSON data files can live there and be read via the generated `Res` object.
 
-**Requirements:** R31, R32 (replacing `DemoScenarioConfig`).
+  **Requirements:** R31, R32 (enables bundled-resource hosting of ship and turret gun data).
 
-**Dependencies:** Unit 4 (the converter needs to work so authored designs can be validated before committing).
+  **Dependencies:** None.
 
-**Files:**
-- Create: `components/game-core/api/src/commonMain/composeResources/files/default_ships/player_ship.json`
-- Create: `components/game-core/api/src/commonMain/composeResources/files/default_ships/enemy_light.json`
-- Create: `components/game-core/api/src/commonMain/composeResources/files/default_ships/enemy_medium.json`
-- Create: `components/game-core/api/src/commonMain/composeResources/files/default_ships/enemy_heavy.json`
-- Test: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/DefaultShipDesignsTest.kt`
+  **Files:**
+  - Modify: `components/game-core/api/build.gradle.kts` — add `compose.resources {}` block matching the configuration in `components/design/build.gradle.kts`.
+  - Create: `components/game-core/api/src/commonMain/composeResources/files/.gitkeep` (placeholder directory).
+  - Test: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/resources/ResourceLoadingTest.kt` — a trivial "can read bytes from a bundled file" test.
 
-**Approach:**
-- Author the designs in the ship builder (this is the actual process — the dev opens the builder, builds the four ships, saves them, exports the JSON, commits it).
-- Numeric values (hull vertices, mass, armour, thrust, HP, turret positions) should match the current `DemoScenarioConfig` values as closely as the builder allows — so that combat feel is preserved through the migration.
-- The JSON files use the existing `ShipDesign` serialization format — no new format, no version bump.
-- Each default design's `name` field matches a convention (e.g., `"Default Player"`, `"Default Enemy Light"`) so the loader can identify them.
-- **This unit is partially content work.** The code deliverable is only the directory structure and the test that validates the JSON files parse and convert successfully. The JSON content itself is produced by the dev sitting in the builder.
+  **Approach:**
+  - Mirror the Compose Resources configuration from `components/design/build.gradle.kts`. The generated `Res` object will be namespaced per module (e.g., `lastfleetprotocol.components.gamecore.api.generated.resources.Res` or similar — the exact package depends on the plugin's auto-generation rules).
+  - Commit a trivial text file (e.g., `components/game-core/api/src/commonMain/composeResources/files/smoke_test.txt`) and write a test that reads it via `Res.readBytes("files/smoke_test.txt")` on both Android and JVM. Delete the smoke file after the test passes.
+  - Verify on both platforms (`./gradlew :composeApp:assembleDebug` for Android, `./gradlew :composeApp:run` for JVM) before moving on.
 
-**Patterns to follow:**
-- Existing `ShipDesignSerializationTest.kt` for the JSON shape reference.
-- Existing commonMain composeResources folder conventions.
+  **Patterns to follow:**
+  - `components/design/build.gradle.kts` as the existing Compose Resources configuration.
 
-**Execution note:** This unit has a content-authoring component that cannot be fully automated. The test scenarios validate what's committed, but the designs themselves are hand-authored in the builder UI.
+  **Test scenarios:**
+  - Happy path: `Res.readBytes("files/smoke_test.txt")` on JVM returns non-empty bytes matching the committed file.
+  - Happy path: same on Android.
+  - Edge case: reading a non-existent path throws (or returns null per Compose Resources API) — document the behaviour.
 
-**Test scenarios:**
-- Happy path: each of the four JSON files parses as a valid `ShipDesign` without errors.
-- Happy path: each parsed `ShipDesign` passes through `ShipDesignConverter.convert` successfully and produces a valid `ShipConfig`.
-- Happy path: each converted `ShipConfig` has a `totalMass` within ±5% of the corresponding current `DemoScenarioConfig` ship's `totalMass`, and a `movementConfig.forwardThrust` within ±5% of the current value. This is the playability-preservation assertion.
-- Happy path: each converted `ShipConfig` has the same number of turrets as its `DemoScenarioConfig` counterpart.
-- Regression: `ShipDesignSerializationTest` continues to pass (the format is unchanged).
-
-**Verification:**
-- The four JSON files exist and are committed.
-- All test scenarios pass.
-- A manual check: loading each default design in the builder UI renders it correctly.
+  **Verification:**
+  - Both desktop and Android builds complete.
+  - Smoke test reads the committed resource on both platforms.
+  - The generated `Res` namespace is available for import in `commonMain` source.
 
 ---
 
-### Unit 6: `DefaultShipDesignLoader` — load bundled JSON resources
+### Sub-phase 3b — Conversion and content
 
-**Goal:** A loader that reads the bundled default-ship JSON files from commonMain resources and returns a `List<ShipDesign>` at startup. Exposes them to `GameStateManager` via DI.
+- [ ] **Unit 4: Runtime `ShipDesignConverter`**
 
-**Requirements:** R31, R32.
+  **Goal:** Pure function converting a `ShipDesign` to a `ShipConfig`. Runs at every game startup. Uses the extracted `ShipStatsCore` from Unit 0 and a `turretGuns: Map<String, GunData>` supplied by `TurretGunLoader` (Unit 6). Rejects multi-module-per-type designs and unknown `systemType` strings with clear errors.
 
-**Dependencies:** Unit 5 (the files must exist to load them).
+  **Requirements:** R31, R32.
 
-**Files:**
-- Create: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/DefaultShipDesignLoader.kt`
-- Modify: `composeApp/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/di/AppComponent.kt` — `@Provides` the loader.
-- Test: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/DefaultShipDesignLoaderTest.kt`
+  **Dependencies:** Unit 0 (stats core), Unit 1 (`hulls: List<HullDefinition>`).
 
-**Approach:**
-- Loader signature: `suspend fun loadAll(): List<ShipDesign>`.
-- Uses Compose Resources API (`Res.readBytes("files/default_ships/player_ship.json")`) or the existing platform `loadFile` abstraction — pick whichever is cleaner for reading bundled files. Decision deferred to implementation.
-- The list of filenames to load is either hardcoded (four filenames) or discovered (list directory contents). Hardcoded is simpler and safer — the list is short and stable. Use that.
-- Errors in parsing an individual file log a warning but do not crash startup. Missing files are a test failure (bundled resources should always be present).
+  **Files:**
+  - Create: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ShipDesignConverter.kt`
+  - Create: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ShipDesignConverterTest.kt`
 
-**Patterns to follow:**
-- `FileShipDesignRepository.loadAll()` for the parsing approach (kotlinx.serialization deserialize).
-- kotlin-inject provisioning pattern for singleton DI.
+  **Approach:**
+  - Signature: `fun convert(design: ShipDesign, turretGuns: Map<String, GunData>): Result<ShipConfig>` returning either a success or a descriptive failure.
+  - **Hull conversion** (`placedHulls` → `List<HullDefinition>`):
+    - For each `PlacedHullPiece`, resolve its `itemDefinitionId` to the corresponding `ItemDefinition`.
+    - Apply the placed transform (position, rotation, mirrorX, mirrorY) to the item's vertices, producing ship-space vertices.
+    - Build one `HullDefinition` per placed hull piece with its transformed vertices, armour (from `HullAttributes.armour`), and mass. Multi-hull is preserved.
+  - **Module conversion** (`placedModules` → `List<InternalSystemSpec>`):
+    - Group by `systemType` string.
+    - **If any group has more than one entry, return failure** with a clear error naming the duplicated type.
+    - Map each group's systemType string to `InternalSystemType` enum. Unknown strings → failure.
+    - Emit one `InternalSystemSpec` per resolved type with its mass, density, and `maxHp`.
+  - **Turret conversion** (`placedTurrets` → `List<TurretConfig>`):
+    - For each `PlacedTurret`, look up `turretConfigId` in `turretGuns`. Missing id → failure with a clear error.
+    - Derive `offsetX/Y` from the placed position and `pivotX/Y` from the turret item definition's centroid.
+    - Build a `TurretConfig` with the resolved `GunData`.
+  - **MovementConfig** computed via `ShipStatsCore.computeMovementConfig(design)` — same formula the builder displays.
+  - **CombatStats**: default `evasionModifier` matching the current `DemoScenarioConfig` value.
 
-**Test scenarios:**
-- Happy path: `loadAll()` returns a non-empty list containing all four default designs.
-- Happy path: each returned `ShipDesign` has a non-empty `name`, `placedHulls`, and `itemDefinitions`.
-- Edge case: the order of returned designs is stable across calls (for deterministic startup).
-- Integration: `loadAll()` returns designs that can be passed to `ShipDesignConverter.convert` without failure.
+  **Patterns to follow:**
+  - `ShipStatsCore` as the canonical movement-config source.
+  - kotlinx.serialization polymorphic handling for resolving `ItemAttributes` subclasses.
+  - Pure-function style: no I/O, no logging, failures surface via the `Result` return.
 
-**Verification:**
-- Unit tests pass.
-- Starting the desktop app produces no loader errors in stdout/logs.
+  **Test scenarios:**
+  - Happy path: minimal single-hull design with one reactor, one engine, one turret → `ShipConfig` with `hulls.size == 1`, two `InternalSystemSpec` entries, one `TurretConfig`, positive `MovementConfig.forwardThrust`.
+  - Happy path: multi-hull design (two placed hull pieces) → `hulls.size == 2`, vertices transformed correctly.
+  - Happy path: transform correctness — a hull piece placed at `(10, 20)` with rotation 90° produces vertices that match the expected rotated+translated positions. Numeric assertion on at least one vertex.
+  - Happy path: `MovementConfig.forwardThrust` equals `ShipStatsCore.computeMovementConfig(design).forwardThrust`. Identity assertion.
+  - Error path: design with two REACTOR modules returns failure with "multiple modules of type REACTOR" in the error.
+  - Error path: design with `systemType = "PLASMA_CORE"` returns failure with the unknown string in the error.
+  - Error path: design with a placed hull piece referencing a non-existent `itemDefinitionId` returns failure.
+  - Error path: design with a placed turret whose `turretConfigId` isn't in the turret guns map returns failure.
+  - Error path: design with zero placed hull pieces returns failure.
+  - Edge case: design with zero placed modules succeeds and produces an empty `internalSystems` list (runtime tolerates this).
+  - Integration: take a migrated bundled default ship design (from Unit 5) and run it through the converter — the resulting `ShipConfig` is deep-equal to the corresponding original `DemoScenarioConfig` entry. This is the migration-fidelity assertion.
 
----
-
-### Unit 7: Rewrite `GameStateManager.startDemoScene` to use the loaded designs
-
-**Goal:** Replace the hard-coded `createShip(config = DemoScenarioConfig.playerShipConfig, ...)` calls in `startDemoScene` with: load the default designs → convert each to `ShipConfig` → call `createShip` per converted config. Preserve the current 2-player-vs-4-enemy layout and positions.
-
-**Requirements:** R31, R32.
-
-**Dependencies:** Units 1–6.
-
-**Files:**
-- Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/managers/GameStateManager.kt` — rewrite `startDemoScene` body.
-- Modify: `composeApp/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/di/AppComponent.kt` — `GameStateManager` gains `DefaultShipDesignLoader`, `ShipDesignConverter`, and `TurretGunRegistry` dependencies. Wire them via kotlin-inject.
-- Test: `features/game/impl/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/game/managers/GameStateManagerTest.kt` (create if absent) — minimal integration test that `startDemoScene` can run to completion.
-
-**Approach:**
-- At the top of `startDemoScene`, call `defaultShipDesignLoader.loadAll()` (suspending; `startDemoScene` is already inside a coroutine context).
-- Partition the loaded designs by name or by a team marker embedded in the name convention — simpler: the player design is the one whose `name` starts with "Default Player", the rest are enemies.
-- For each design, convert to `ShipConfig`. On failure, log a loud error and fall back to the old hardcoded config (or just skip). The test must cover the happy path.
-- Call `createShip(config, position, teamId, targetProvider, aiModules, drawOrder)` once per converted config. Keep the existing position/team/AI arguments as they were — the layout is unchanged.
-- The 2-player arrangement may reuse the same player design twice (place at two positions). The 4 enemy positions use the three enemy designs, repeating medium if needed. Preserve the current spawn count and arrangement.
-
-**Patterns to follow:**
-- The existing `startDemoScene` structure — just replace the data source for `config` without changing the orchestration.
-
-**Test scenarios:**
-- Happy path (integration): `startDemoScene` runs to completion with the real `DefaultShipDesignLoader`, converter, and `TurretGunRegistry`. After it returns, `playerShips.size == 2` and `enemyShips.size == 4` (matching current behaviour).
-- Happy path: each spawned ship has a non-null position, a non-empty `hulls`, and a non-empty turret list (where applicable).
-- Error path: if `DefaultShipDesignLoader.loadAll()` throws, `startDemoScene` surfaces a clear error rather than silently spawning zero ships. Decide between "throw and crash" and "log and no-op" during implementation; the test documents the choice.
-- Regression: the desktop app starts, the combat scene spawns six ships, and combat is playable from the moment this unit lands.
-
-**Verification:**
-- Desktop app starts and combat is playable.
-- Six ships spawn (2 player, 4 enemy).
-- Ships visibly render as polygons (from Unit 3).
-- Behaviour parity: subjective "combat feels the same" check against the branch before this plan.
+  **Verification:**
+  - All converter tests pass.
+  - Converter is pure (no I/O, no `println`, no DI access).
+  - Unknown `systemType` and duplicate modules produce clear, debuggable errors.
 
 ---
 
-### Unit 8: Retire `DemoScenarioConfig` as runtime data
+- [ ] **Unit 5: One-off migration script (DemoScenarioConfig → bundled JSON)**
 
-**Goal:** Delete the hard-coded `ShipConfig` constants in `DemoScenarioConfig.kt`. Preserve any useful values as test fixtures under test sources if they're still referenced by tests. Enforces R32 ("no simulation data should exist only in code constants").
+  **Goal:** A disposable script that reads `DemoScenarioConfig` and writes the four bundled `ShipDesign` JSON files plus `turret_guns.json` under `components/game-core/api/src/commonMain/composeResources/files/`. The script runs once as part of the plan's execution; its output is committed; the script itself is deleted from source control afterwards.
 
-**Requirements:** R32.
+  **Requirements:** R31, R32.
 
-**Dependencies:** Unit 7 (the game must already be loading from bundled designs before the constants can be deleted).
+  **Dependencies:** Unit 3 (Compose Resources target directory), Unit 4 (round-trip fidelity test).
 
-**Files:**
-- Delete: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/data/DemoScenarioConfig.kt` (or reduce it to only constants that have surviving callers).
-- Modify: any test file that still imports `DemoScenarioConfig` — either inline the test fixture or move a slimmed-down version to test sources.
-- Create (if needed): `features/game/impl/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/game/testfixtures/TestShipConfigs.kt` — for tests that genuinely need hand-crafted `ShipConfig` values without going through the converter.
+  **Files:**
+  - Create (temporary): a migration source file, either as a `commonTest` utility or a throwaway `migration/` source folder. Name something obvious like `DemoScenarioConfigMigration.kt`. This file is **deleted** after the migration runs and its output is committed.
+  - Create (permanent): `components/game-core/api/src/commonMain/composeResources/files/default_ships/player_ship.json`
+  - Create (permanent): `components/game-core/api/src/commonMain/composeResources/files/default_ships/enemy_light.json`
+  - Create (permanent): `components/game-core/api/src/commonMain/composeResources/files/default_ships/enemy_medium.json`
+  - Create (permanent): `components/game-core/api/src/commonMain/composeResources/files/default_ships/enemy_heavy.json`
+  - Create (permanent): `components/game-core/api/src/commonMain/composeResources/files/turret_guns.json`
+  - Create: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/BundledDefaultsTest.kt` — validates the committed JSON round-trips through the converter to match `DemoScenarioConfig`.
 
-**Approach:**
-- `grep` for all references to `DemoScenarioConfig.playerShipConfig`, `enemyShipLightConfig`, `enemyShipMediumConfig`, `enemyShipHeavyConfig` and `DemoScenarioConfig` itself across the codebase. Production references must be zero after Unit 7. Test references move to the test-fixtures location.
-- If a grep finds production references outside `GameStateManager.startDemoScene`, surface them as a scope expansion and handle them before deleting.
-- After cleanup, delete the file.
+  **Approach:**
+  - The migration script:
+    1. For each `DemoScenarioConfig` `ShipConfig`, synthesize one `ItemDefinition` per hull, per module type, and per turret (with deterministic ids like `hull_player_1`, `module_reactor_player`, etc.).
+    2. Construct `PlacedHullPiece` / `PlacedModule` / `PlacedTurret` instances referencing those ids with appropriate positions and rotations.
+    3. Assemble a `ShipDesign` from the pieces and serialize to JSON using the existing kotlinx.serialization setup.
+    4. Write to the corresponding file under `composeResources/files/default_ships/`.
+    5. Separately, collect all unique `GunData` instances from `DemoScenarioConfig.turretConfigs` (keyed by the turret id the builder uses — inspect `PartsCatalog` for the id convention) and serialize them to `turret_guns.json`.
+  - The script can be invoked via a `./gradlew :components:game-core:api:test --tests "...DemoScenarioConfigMigration"` or as a `main()` function run locally. Pick whichever is simpler.
+  - **After the script runs and the JSON is committed, delete the script file.** Leave no temporary code in source control.
+  - Numerical preservation is guaranteed by construction because the migration reads `DemoScenarioConfig`'s fields directly and copies them into `ItemDefinition` fields with matching semantics. The `BundledDefaultsTest` round-trips each committed JSON through the Unit 4 converter and asserts deep-equality against the original `DemoScenarioConfig` entries. This replaces the rejected ±5% tolerance gate.
 
-**Patterns to follow:**
-- Test-fixtures-in-test-sources pattern — fixtures under `commonTest` never get bundled into production.
+  **Patterns to follow:**
+  - Existing `ShipDesign` serialization format.
+  - `ShipDesignSerializationTest.kt` for JSON shape reference.
 
-**Test scenarios:**
-- Regression: full test suite (`./gradlew allTests`) passes after `DemoScenarioConfig` is deleted.
-- Regression: full build (`./gradlew build`) passes.
-- Verification: `grep -r "DemoScenarioConfig" src/ features/ components/ composeApp/` returns no results in production sources (test sources may retain the name as a fixture file if useful, but the runtime path has no references).
+  **Test scenarios:**
+  - Happy path (post-run): each of the four ship JSON files parses as a valid `ShipDesign`.
+  - Happy path: each parsed `ShipDesign` passes through `ShipDesignConverter.convert` successfully.
+  - Happy path: each converted `ShipConfig` is **deep-equal** to its corresponding `DemoScenarioConfig` entry (mass, thrust, hull vertices, module specs, turret configs all identical — no tolerance).
+  - Happy path: `turret_guns.json` parses as `Map<String, GunData>` and contains every turret id referenced by the four ship designs.
+  - Regression: `ShipDesignSerializationTest` continues to pass.
 
-**Verification:**
-- The file is deleted (or reduced to only test-fixture code under test sources).
-- All tests pass.
-- The desktop app starts and combat runs, identical to Unit 7's state.
+  **Verification:**
+  - The migration script runs to completion and writes five JSON files.
+  - All `BundledDefaultsTest` scenarios pass.
+  - The migration script is deleted from source control.
+  - A manual check: loading each default design in the builder UI renders it correctly.
+
+---
+
+- [ ] **Unit 6: `DefaultShipDesignLoader` and `TurretGunLoader`**
+
+  **Goal:** Two loaders that read the bundled JSON resources at game startup and expose them to `GameStateManager` via DI.
+
+  **Requirements:** R31, R32.
+
+  **Dependencies:** Unit 3 (Compose Resources configured), Unit 5 (files exist).
+
+  **Files:**
+  - Create: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/DefaultShipDesignLoader.kt`
+  - Create: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/TurretGunLoader.kt`
+  - Modify: `composeApp/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/di/AppComponent.kt` — `@Provides` both loaders.
+  - Test: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/LoaderTest.kt`
+
+  **Approach:**
+  - `DefaultShipDesignLoader.loadAll()` returns a `Map<String, ShipDesign>` keyed by filename stem (`"player_ship"`, `"enemy_light"`, `"enemy_medium"`, `"enemy_heavy"`). Reads via `Res.readBytes("files/default_ships/<stem>.json")` and deserializes.
+  - `TurretGunLoader.load()` returns a `Map<String, GunData>` from `turret_guns.json`.
+  - The list of ship filenames is hard-coded (four stems). Missing files fail loudly.
+  - Any parse or missing-file error is a fatal exception; the loader does not silently fall back.
+
+  **Patterns to follow:**
+  - `FileShipDesignRepository.loadAll()` for the kotlinx.serialization deserialize pattern.
+  - kotlin-inject singleton provisioning in `AppComponent.kt`.
+
+  **Test scenarios:**
+  - Happy path: `DefaultShipDesignLoader.loadAll()` returns exactly four designs with the expected keys.
+  - Happy path: `TurretGunLoader.load()` returns a non-empty map containing every turret id referenced by the four ship designs.
+  - Happy path: each loaded ship design passes through `ShipDesignConverter.convert` without error.
+  - Edge case: results are stable across repeated calls (deterministic).
+  - Error path: if a file is missing (simulated by skipping in the test), the loader throws a clear exception naming the missing file.
+
+  **Verification:**
+  - Unit tests pass.
+  - Starting the desktop app produces no loader errors in stdout/logs.
+
+---
+
+### Sub-phase 3c — Switchover
+
+- [ ] **Unit 7: Rewrite `GameStateManager.startDemoScene` to load designs from resources**
+
+  **Goal:** Replace the hard-coded `createShip(config = DemoScenarioConfig.playerShipConfig, ...)` calls in `startDemoScene` with a loader + converter + createShip pipeline. Use filename-indexed lookup to map loaded designs to spawn slots. Preserve the existing 2-player-vs-4-enemy arrangement.
+
+  **Requirements:** R31, R32.
+
+  **Dependencies:** Units 0–6.
+
+  **Files:**
+  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/managers/GameStateManager.kt` — rewrite `startDemoScene` body.
+  - Modify: `composeApp/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/di/AppComponent.kt` — wire `DefaultShipDesignLoader`, `TurretGunLoader`, and `ShipDesignConverter` into `GameStateManager`.
+  - Test: `features/game/impl/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/game/managers/GameStateManagerTest.kt` (create if absent).
+
+  **Approach:**
+  - At the start of `startDemoScene`:
+    1. Load designs: `val designs = defaultShipDesignLoader.loadAll()` (a `Map<String, ShipDesign>`).
+    2. Load turret guns: `val turretGuns = turretGunLoader.load()`.
+    3. Convert each spawn slot's design via `shipDesignConverter.convert(designs[key]!!, turretGuns).getOrThrow()`. Fatal on failure.
+  - Spawn slot → filename key mapping (hard-coded):
+    - Player slot 1 → `"player_ship"`
+    - Player slot 2 → `"player_ship"` (same design, different position)
+    - Enemy slot 1 → `"enemy_light"`
+    - Enemy slot 2 → `"enemy_medium"`
+    - Enemy slot 3 → `"enemy_medium"` (reuse)
+    - Enemy slot 4 → `"enemy_heavy"`
+    - Exact mapping mirrors the current `DemoScenarioConfig` spawn order; adjust if needed once reading the existing code.
+  - Call `createShip(config, position, teamId, targetProvider, aiModules, drawOrder)` once per slot with the converted `ShipConfig`.
+  - **Failure mode: fatal.** If any load, conversion, or key-lookup fails, throw a descriptive exception. No fallback to hardcoded configs; no silent skipping of slots.
+
+  **Patterns to follow:**
+  - Existing `startDemoScene` structure — the orchestration (AI module assembly, position assignments, team ids) is unchanged; only the config source changes.
+
+  **Test scenarios:**
+  - Happy path (integration): `startDemoScene` runs with the real loaders and converter. After return, `playerShips.size == 2` and `enemyShips.size == 4`.
+  - Happy path: each spawned ship has non-empty `hulls` and a non-null position.
+  - Happy path: behaviour parity — combat is playable and subjectively feels the same as pre-Unit-7.
+  - Error path: if `DefaultShipDesignLoader` is stubbed to return an empty map, `startDemoScene` throws a clear exception naming the missing key.
+  - Regression: bullets hit ships, explosions render, AI pursues targets — all unchanged.
+
+  **Verification:**
+  - Desktop app starts; combat scene spawns six ships; combat is playable.
+  - Ships render with polygon/vector rendering from Unit 2.
+  - Manual dev sign-off: combat feels the same as before the switchover. This is the gate for Unit 8.
+
+---
+
+### Sub-phase 3d — Cleanup
+
+- [ ] **Unit 8: Delete `DemoScenarioConfig` as runtime data**
+
+  **Goal:** Remove the hardcoded `ShipConfig` constants in `DemoScenarioConfig.kt`. Enforces R32 ("no simulation data should exist only in code constants"). **Runs only after a playtest gate:** the dev has played at least a few combat sessions with the migrated designs and confirmed no regressions.
+
+  **Requirements:** R32.
+
+  **Dependencies:** Unit 7 lands and the dev signs off on behaviour parity after at least one playtest session.
+
+  **Files:**
+  - Delete: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/data/DemoScenarioConfig.kt` (or reduce to test fixtures under test sources if any test still needs hand-crafted `ShipConfig` values).
+  - Modify: any test file still importing `DemoScenarioConfig` — either inline the test fixture or move a slimmed-down version to test sources.
+  - Create (if needed): `features/game/impl/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/game/testfixtures/TestShipConfigs.kt` for tests that need hand-crafted `ShipConfig` values without going through the converter.
+
+  **Approach:**
+  - `grep` for `DemoScenarioConfig` across all source sets. Production references must be zero after Unit 7. If any remain, surface them as scope expansion and handle before deletion.
+  - Let the compiler be the primary verification signal: after deleting, `./gradlew build` must pass. The compiler catches callers `grep` might miss (qualified imports, aliased names, etc.).
+  - Delete the file. If test sources still want `DemoScenarioConfig`-like fixtures, move a slimmed version to `commonTest`.
+
+  **Test scenarios:**
+  - Regression: `./gradlew allTests` passes after deletion.
+  - Regression: `./gradlew build` passes on both JVM and Android.
+  - Regression: `./gradlew :composeApp:assembleDebug` passes.
+  - Verification: `grep -r "DemoScenarioConfig" src/ features/ components/ composeApp/` returns no results in production sources.
+
+  **Verification:**
+  - File is deleted from production sources.
+  - Full build passes on both platforms.
+  - Desktop app starts and combat runs identically to Unit 7 state.
 
 ---
 
 ## System-Wide Impact
 
-- **Interaction graph:** The conversion layer is a new pure-function seam. It's called once per ship at scenario startup. No hot-path changes; no per-frame impact. Polygon rendering (Unit 3) runs per frame but matches the existing bullet rendering pattern's allocation profile.
-- **Error propagation:** `ShipDesignConverter.convert` returns a `Result<ShipConfig>`. `DefaultShipDesignLoader` returns a plain `List<ShipDesign>`; parse failures log and surface at startup. `GameStateManager.startDemoScene` is the only consumer of both; it decides whether to crash, log, or fall back on failure. Document the choice in Unit 7.
-- **State lifecycle risks:** None introduced — the conversion is pure and runs once per scenario spawn. No mid-game reloading, no caching, no state to invalidate. The existing `ShipSystems`, destruction hooks, and actor lifecycle are unchanged.
-- **API surface parity:** `ShipConfig.hulls` changing from `hull: HullDefinition` is a breaking change to the runtime data model. Unit 1 updates every consumer in one pass. No external consumers (the runtime model lives entirely in the repo). `ShipDesign.formatVersion` does **not** change — the builder's JSON format is unchanged.
-- **Integration coverage:** Unit 4's converter tests exhaustively cover the conversion, Unit 7's integration test proves the end-to-end loader→converter→createShip path works in a real combat scene. Unit 8's regression pass proves nothing in production references the old hard-coded constants.
-- **Unchanged invariants:** Frictionless physics is preserved exactly. `ShipNavigator.computeBrakingStrategy`'s `v²/2a` formula is untouched. The combat damage model (enum-based `ShipSystems`, `ArcDamageRouter`) is unchanged. Turret instantiation (`Turret` child actor with offset/pivot) is unchanged — only its *source* of config data moves from `DemoScenarioConfig` to the converter. The atmospheric brainstorm's commitments are not prejudged here — this plan is physics-agnostic.
+- **Interaction graph:** The runtime converter is a new pure-function seam called once per ship at scenario startup. No hot-path changes; no per-frame impact. Polygon rendering (Unit 2) runs per frame and accepts bounded allocations at current combat scale. `MultiPolygonCollisionMask` delegates per sub-mask, so bullet collision cost scales with hull count per ship — typically 1–3.
+- **Error propagation:** Runtime converter returns `Result<ShipConfig>`. Loaders return plain maps and throw on missing/malformed files. `GameStateManager.startDemoScene` is the only consumer of both; failures at startup crash loudly by design. No silent fallbacks.
+- **State lifecycle risks:** None introduced — conversion is pure and runs once per scenario spawn. No mid-game reloading. Existing `ShipSystems`, destruction hooks, and actor lifecycle are unchanged.
+- **API surface parity:** `ShipConfig.hulls` (was `hull`) is a breaking change to the runtime data model. Unit 1 updates every consumer in one pass. `ShipConfig.drawable` removal in Unit 2 is another breaking change. No external consumers (runtime model lives entirely in the repo). `ShipDesign.formatVersion` does **not** change.
+- **Integration coverage:** Unit 4's converter tests exhaustively cover the conversion. Unit 7's integration test proves the end-to-end loader→converter→createShip path. Unit 8's regression pass proves nothing in production references the old hardcoded constants.
+- **Unchanged invariants:** Frictionless physics preserved exactly. `ShipNavigator.computeBrakingStrategy`'s `v²/2a` formula is untouched. The damage model (enum-based `ShipSystems`, `ArcDamageRouter`) is unchanged. Turret instantiation (`Turret` child actor with offset/pivot) is unchanged — only its source of config data moves from `DemoScenarioConfig` to the converter.
 
 ## Risks & Dependencies
 
 | Risk | Mitigation |
 |------|------------|
-| Multi-hull collision semantics are undecided in current `ShipPhysics` | Unit 1 explicitly picks a simple iterate-per-hull approach and tests it. If performance or correctness breaks, follow-up work can introduce a simplified collision polygon. |
-| Polygon rendering regresses visual clarity vs sprites | Unit 3 validates visually against the builder's canvas preview. If polygons are unreadable, fall back on team-colour fills + outlines; more advanced rendering is a future pass. |
-| `DefaultShipDesignLoader` cannot read commonMain resources via Compose Resources API on all platforms (Android + Desktop) | Implementation decision in Unit 6 picks whichever works on both; test on both before landing. The existing `loadFile` platform abstraction is a fallback if Compose Resources has gaps. |
-| `ShipStatsCalculator` currently lives in `features/ship-builder/impl`, not accessible to `components/game-core/api` where the converter lives | If the converter can't reach `ShipStatsCalculator` without violating module boundaries, Unit 4 includes lifting the calculator into `components/game-core/api`. Alternatively, duplicate the thrust-sum logic in the converter (small, stable). Decide during implementation; either path is valid. |
-| Default designs authored in the builder don't produce numerically identical ships to `DemoScenarioConfig` | Unit 5's test scenarios assert ±5% tolerance. If the dev can't hit that tolerance through the builder (e.g., polygon fidelity differences), adjust the tolerance or relax the test. Behaviour parity is the actual goal, not numerical identity. |
-| Hidden references to `DemoScenarioConfig` in places the grep misses | Unit 8's verification runs a full grep and a full test suite. Any hit gets addressed before deletion. |
-| `TurretGunRegistry` doesn't cover every turret id the builder can emit | Unit 2 enumerates every turret id currently used by `DemoScenarioConfig` and the builder's parts catalog. Unknown ids fail loudly at conversion time, not silently. |
+| `MultiPolygonCollisionMask` implementation may hit Kubriko contract details that only surface during integration — e.g., sub-mask pose composition, collision response routing | Unit 1 test scenarios include a multi-hull fixture that exercises both `isSceneOffsetInside` and the real bullet-collision pipeline. If Kubriko's `ComplexCollisionMask` interface has surprising requirements, treat it as scope discovered in Unit 1 and handle within that unit rather than bailing. |
+| Polygon union computation for the merged silhouette is non-trivial and has no existing utility in the codebase | Start with the simplest correct approach: if default hulls are non-overlapping, a convex hull of all vertex unions may be acceptable. If hulls overlap, a proper sweep-line or Weiler-Atherton union is needed. Pick during Unit 2 based on what the default designs actually look like. Document the approach and any known edge cases. |
+| Compose Resources plugin configuration in `game-core/api` may have platform-specific quirks (Android resource bundling, JVM classpath access) | Unit 3's smoke test explicitly verifies both platforms before Units 5/6 land. If one platform fails, resolve before proceeding. |
+| Polygon rendering regresses visual clarity vs sprites, especially at small screen sizes | Accepted risk. Unit 2's verification is an informal dev-sign-off, and the nose marker explicitly addresses the facing-ambiguity concern. If a regression is discovered after Unit 2, iterate on rendering before Unit 7's gate. |
+| The migration script may miss fields when synthesizing `ItemDefinition`s from `DemoScenarioConfig` (e.g., computing mass/density splits that weren't separated in the original data) | `BundledDefaultsTest` asserts round-trip deep-equality, not tolerance. Any missing field causes the test to fail loudly before the migration script is deleted. |
+| Multi-module-per-type rejection may surprise the dev if they accidentally place two reactors | Clear error message with the duplicated type name. Builder could surface a similar warning in a follow-up. |
+| Atmospheric's "reinterpretation" of `MovementConfig` turns out to require parallel per-profile movement configs rather than a pure reinterpretation | Acknowledged. Phase 3's converter may need a follow-up revision when atmospheric lands. This is not a blocker for Phase 3; atmospheric pays for the adjustment when it gets here. |
+| Dev forgets to delete the migration script, leaving temporary code in `main` | Unit 5's verification explicitly includes "the migration script is deleted from source control". Add a `grep` step to the PR checklist. |
 
 ## Phased Delivery
 
-Phase 3 of the ship builder is itself a single phase of work, but the implementation units naturally split into three sub-phases for review and landing:
+**Sub-phase 3a — Foundation (Units 0, 1, 2, 3):**
+- Unit 0: Extract stats core
+- Unit 1: `MultiPolygonCollisionMask` + multi-hull `ShipConfig`
+- Unit 2: Polygon/vector rendering (ships, modules, turrets)
+- Unit 3: Compose Resources plugin in game-core/api
 
-**Sub-phase 3a — Data model (Units 1, 2, 3):** Extend `ShipConfig` to multi-hull, add the turret registry, replace sprite rendering with polygons. After 3a, the game still runs off `DemoScenarioConfig` but the data shape is ready for the converter. Each unit is independently testable and lands as its own commit.
+After 3a, the game still runs off `DemoScenarioConfig` (temporarily wrapped in `hulls = listOf(...)`) but the data shape, collision, rendering, and resource-loading infrastructure are ready. Each unit lands as its own commit. The codebase at the end of 3a is stable and playable — polygon rendering is visible, but the actual loading pipeline hasn't been wired yet.
 
-**Sub-phase 3b — Conversion and content (Units 4, 5, 6):** Add the converter, author the bundled default designs, and implement the loader. After 3b, the converter is proven but nothing in the game has switched to it yet. This gives a natural validation gate — you can run the converter tests in isolation and confirm everything works before touching startup.
+**Sub-phase 3b — Conversion and content (Units 4, 5, 6):**
+- Unit 4: `ShipDesignConverter`
+- Unit 5: Migration script + bundled JSON output + delete the script
+- Unit 6: `DefaultShipDesignLoader` and `TurretGunLoader`
 
-**Sub-phase 3c — Integration and cleanup (Units 7, 8):** Wire the loader+converter into `startDemoScene` and delete `DemoScenarioConfig` as runtime data. The "switchover moment". After 3c, Phase 3 is complete.
+After 3b, the converter is proven via tests and the default designs exist as committed JSON. Nothing in the game has switched to the new path yet. Natural validation gate: run the converter tests in isolation, confirm everything works before touching startup.
 
-Each sub-phase ends with a working desktop app that can run combat. No mid-phase broken states.
+**Sub-phase 3c — Switchover (Unit 7):**
+- Unit 7: Rewrite `startDemoScene` to load and convert
+
+After 3c, the game runs off migrated designs. `DemoScenarioConfig` still exists in source but is no longer referenced by the runtime. Manual dev playtest gate — play at least one combat session, confirm behaviour parity, then proceed.
+
+**Sub-phase 3d — Cleanup (Unit 8):**
+- Unit 8: Delete `DemoScenarioConfig`
+
+Runs only after 3c's playtest gate. Harmless lingering of the old constants between 3c and 3d is the insurance policy.
+
+Each sub-phase ends with a working desktop app. No mid-phase broken states.
 
 ## Documentation / Operational Notes
 
-- **Update `docs/brainstorms/2026-04-06-ship-builder-requirements.md`** after Phase 3 ships: mark R31 and R32 as satisfied, strike through the "Game Integration (Phase 3)" section in Phased Delivery, or add a completion note.
-- **Update `docs/ship.md`** to reflect the multi-hull data model change if it currently describes a single hull.
-- **No operational monitoring needed** — this is a data-model refactor, not a runtime behaviour change. The success signal is "desktop app launches and combat is playable" and "all tests pass."
+- **Update `docs/brainstorms/2026-04-06-ship-builder-requirements.md`** after Phase 3 ships: mark R31 and R32 as satisfied.
+- **Update `docs/ship.md`** to reflect the multi-hull data model and polygon rendering.
 - **Post-Deploy Monitoring & Validation:** No additional operational monitoring required. This is a pre-release prototype change with no production impact.
 
 ## Sources & References
@@ -543,6 +659,7 @@ Each sub-phase ends with a working desktop app that can run combat. No mid-phase
 - **Origin document:** [docs/brainstorms/2026-04-06-ship-builder-requirements.md](../brainstorms/2026-04-06-ship-builder-requirements.md) — Phase 3 requirements R31, R32.
 - **Downstream dependency:** [docs/brainstorms/2026-04-10-atmospheric-movement-requirements.md](../brainstorms/2026-04-10-atmospheric-movement-requirements.md) — atmospheric movement brainstorm, which names this plan as its prerequisite.
 - **Prior phase plans:** [docs/plans/2026-04-06-001-feat-ship-builder-phase0-phase1-plan.md](2026-04-06-001-feat-ship-builder-phase0-phase1-plan.md), [docs/plans/2026-04-06-002-feat-ship-builder-phase2-item-creation-plan.md](2026-04-06-002-feat-ship-builder-phase2-item-creation-plan.md).
-- **Key runtime files:** `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/managers/GameStateManager.kt`, `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/data/DemoScenarioConfig.kt`, `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/ShipSpec.kt`, `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Ship.kt`.
+- **Key runtime files:** `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/managers/GameStateManager.kt`, `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/data/DemoScenarioConfig.kt`, `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/ShipSpec.kt`, `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Ship.kt`, `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Bullet.kt`.
 - **Key builder files:** `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ShipDesign.kt`, `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ItemDefinition.kt`, `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/stats/ShipStatsCalculator.kt`, `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/data/FileShipDesignRepository.kt`.
-- **Vector rendering precedent:** commits `e67d2ea` (bullet vector rendering refactor) and `da0a983` (bullet sprite removal) — the pattern Unit 3's polygon ship rendering follows.
+- **Kubriko collision:** `com.pandulapeter.kubriko.collision.mask.ComplexCollisionMask` — the extension point for multi-mask actors used by Unit 1's `MultiPolygonCollisionMask`.
+- **Vector rendering precedent:** commits `e67d2ea` (bullet vector rendering refactor) and `da0a983` (bullet sprite removal) — the direction Unit 2 extends to ships, modules, and turrets.
