@@ -73,6 +73,7 @@ class ShipDesignSerializationTest {
                     vertices = emptyList(),
                     attributes = ItemAttributes.TurretAttributes(
                         sizeCategory = "medium",
+                        mass = 5f,
                     ),
                 ),
             ),
@@ -289,6 +290,7 @@ class ShipDesignSerializationTest {
             vertices = emptyList(),
             attributes = ItemAttributes.TurretAttributes(
                 sizeCategory = "medium",
+                mass = 5f,
                 isFixed = true,
                 defaultFacing = 1.57f,
                 isLimitedRotation = true,
@@ -331,6 +333,7 @@ class ShipDesignSerializationTest {
                     )
                     ItemType.TURRET -> ItemAttributes.TurretAttributes(
                         sizeCategory = "light",
+                        mass = 3f,
                     )
                 },
             )
