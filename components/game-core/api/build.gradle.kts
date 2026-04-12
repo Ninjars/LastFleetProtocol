@@ -26,6 +26,12 @@ kotlin {
     }
 }
 
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "lastfleetprotocol.components.game_core.api.generated.resources"
+    generateResClass = always
+}
+
 android {
     namespace = "jez.lastfleetprotocol.components.gamecore"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
