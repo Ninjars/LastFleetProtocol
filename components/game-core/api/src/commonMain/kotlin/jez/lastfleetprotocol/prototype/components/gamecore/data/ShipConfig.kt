@@ -1,13 +1,10 @@
 package jez.lastfleetprotocol.prototype.components.gamecore.data
 
-import org.jetbrains.compose.resources.DrawableResource
-
 /**
  * Complete configuration template for a ship.
  * All game-affecting values are defined here, not in actor constructors.
  */
 data class ShipConfig(
-    val drawable: DrawableResource,
     val hulls: List<HullDefinition>,
     val combatStats: CombatStats,
     val movementConfig: MovementConfig,

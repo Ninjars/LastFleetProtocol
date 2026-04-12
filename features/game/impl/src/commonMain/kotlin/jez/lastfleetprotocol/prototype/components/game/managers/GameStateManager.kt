@@ -123,7 +123,6 @@ class GameStateManager(
 
         val ship = Ship(
             spec = spec,
-            drawable = config.drawable,
             initialPosition = position,
             teamId = teamId,
             targetProvider = targetProvider,

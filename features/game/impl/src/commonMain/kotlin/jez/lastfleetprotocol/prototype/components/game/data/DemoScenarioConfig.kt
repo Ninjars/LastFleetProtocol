@@ -13,10 +13,6 @@ import jez.lastfleetprotocol.prototype.components.gamecore.data.MovementConfig
 import jez.lastfleetprotocol.prototype.components.gamecore.data.ProjectileStats
 import jez.lastfleetprotocol.prototype.components.gamecore.data.ShipConfig
 import jez.lastfleetprotocol.prototype.components.gamecore.data.TurretConfig
-import lastfleetprotocol.components.design.generated.resources.Res
-import lastfleetprotocol.components.design.generated.resources.ship_enemy_1
-import lastfleetprotocol.components.design.generated.resources.ship_player_1
-import lastfleetprotocol.components.design.generated.resources.turret_simple_1
 
 /**
  * Pre-defined demo scenario configuration.
@@ -139,7 +135,6 @@ object DemoScenarioConfig {
         pivotX = TURRET_PIVOT_X,
         pivotY = TURRET_PIVOT_Y,
         gunData = GunData(
-            drawable = Res.drawable.turret_simple_1,
             projectileStats = standardProjectile,
             aimTolerance = AngleRadians.TwoPi / 1440f,
             magazineCapacity = Int.MAX_VALUE,
@@ -156,7 +151,6 @@ object DemoScenarioConfig {
         pivotX = TURRET_PIVOT_X,
         pivotY = TURRET_PIVOT_Y,
         gunData = GunData(
-            drawable = Res.drawable.turret_simple_1,
             projectileStats = lightProjectile,
             aimTolerance = AngleRadians.TwoPi / 1440f,
             magazineCapacity = Int.MAX_VALUE,
@@ -173,7 +167,6 @@ object DemoScenarioConfig {
         pivotX = TURRET_PIVOT_X,
         pivotY = TURRET_PIVOT_Y,
         gunData = GunData(
-            drawable = Res.drawable.turret_simple_1,
             projectileStats = heavyProjectile,
             aimTolerance = AngleRadians.TwoPi / 1440f,
             magazineCapacity = Int.MAX_VALUE,
@@ -187,7 +180,6 @@ object DemoScenarioConfig {
     // -- Ship configs --
 
     val playerShipConfig = ShipConfig(
-        drawable = Res.drawable.ship_player_1,
         hulls = listOf(playerHull),
         combatStats = CombatStats(evasionModifier = 0.1f),
         movementConfig = MovementConfig(
@@ -204,7 +196,6 @@ object DemoScenarioConfig {
     )
 
     val enemyShipLightConfig = ShipConfig(
-        drawable = Res.drawable.ship_enemy_1,
         hulls = listOf(enemyHullLight),
         combatStats = CombatStats(evasionModifier = 0.2f),
         movementConfig = MovementConfig(
@@ -221,7 +212,6 @@ object DemoScenarioConfig {
     )
 
     val enemyShipMediumConfig = ShipConfig(
-        drawable = Res.drawable.ship_enemy_1,
         hulls = listOf(enemyHullMedium),
         combatStats = CombatStats(evasionModifier = 0.1f),
         movementConfig = MovementConfig(
@@ -238,7 +228,6 @@ object DemoScenarioConfig {
     )
 
     val enemyShipHeavyConfig = ShipConfig(
-        drawable = Res.drawable.ship_enemy_1,
         hulls = listOf(enemyHullHeavy),
         combatStats = CombatStats(evasionModifier = 0.0f),
         movementConfig = MovementConfig(
