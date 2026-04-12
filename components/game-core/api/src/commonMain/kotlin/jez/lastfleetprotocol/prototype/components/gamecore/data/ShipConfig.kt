@@ -8,20 +8,22 @@ import org.jetbrains.compose.resources.DrawableResource
  */
 data class ShipConfig(
     val drawable: DrawableResource,
-    val hull: HullDefinition,
+    val hulls: List<HullDefinition>,
     val combatStats: CombatStats,
     val movementConfig: MovementConfig,
     val internalSystems: List<InternalSystemSpec>,
     val turretConfigs: List<TurretConfig>,
 ) {
     /**
-     * Total mass derived from hull, armour (via hull density * hull mass factor),
-     * and internal systems. Used for physics calculations.
+     * Total mass derived from all hulls, armour contributions, and internal systems.
      */
     val totalMass: Float
-        get() = hull.mass +
-                (hull.armour.density * hull.mass * 0.1f) +
-                internalSystems.sumOf { it.mass.toDouble() }.toFloat()
+        get() {
+            val hullMass = hulls.sumOf { hull ->
+                (hull.mass + hull.armour.density * hull.mass * 0.1f).toDouble()
+            }.toFloat()
+            return hullMass + internalSystems.sumOf { it.mass.toDouble() }.toFloat()
+        }
 }
 
 /**

@@ -188,7 +188,7 @@ object DemoScenarioConfig {
 
     val playerShipConfig = ShipConfig(
         drawable = Res.drawable.ship_player_1,
-        hull = playerHull,
+        hulls = listOf(playerHull),
         combatStats = CombatStats(evasionModifier = 0.1f),
         movementConfig = MovementConfig(
             forwardThrust = 1200f,
@@ -205,7 +205,7 @@ object DemoScenarioConfig {
 
     val enemyShipLightConfig = ShipConfig(
         drawable = Res.drawable.ship_enemy_1,
-        hull = enemyHullLight,
+        hulls = listOf(enemyHullLight),
         combatStats = CombatStats(evasionModifier = 0.2f),
         movementConfig = MovementConfig(
             forwardThrust = 1000f,
@@ -222,7 +222,7 @@ object DemoScenarioConfig {
 
     val enemyShipMediumConfig = ShipConfig(
         drawable = Res.drawable.ship_enemy_1,
-        hull = enemyHullMedium,
+        hulls = listOf(enemyHullMedium),
         combatStats = CombatStats(evasionModifier = 0.1f),
         movementConfig = MovementConfig(
             forwardThrust = 700f,
@@ -239,7 +239,7 @@ object DemoScenarioConfig {
 
     val enemyShipHeavyConfig = ShipConfig(
         drawable = Res.drawable.ship_enemy_1,
-        hull = enemyHullHeavy,
+        hulls = listOf(enemyHullHeavy),
         combatStats = CombatStats(evasionModifier = 0.0f),
         movementConfig = MovementConfig(
             forwardThrust = 500f,

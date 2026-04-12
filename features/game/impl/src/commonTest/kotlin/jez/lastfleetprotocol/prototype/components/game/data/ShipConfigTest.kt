@@ -10,16 +10,17 @@ import kotlin.test.assertTrue
 class ShipConfigTest {
 
     @Test
-    fun totalMass_sumsHullArmourAndSystems() {
+    fun totalMass_sumsAllHullsArmourAndSystems() {
         val config = DemoScenarioConfig.playerShipConfig
-        val hullMass = config.hull.mass
-        val armourMass = config.hull.armour.density * config.hull.mass * 0.1f
+        val hullMass = config.hulls.sumOf { hull ->
+            (hull.mass + hull.armour.density * hull.mass * 0.1f).toDouble()
+        }.toFloat()
         val systemsMass = config.internalSystems.sumOf { it.mass.toDouble() }.toFloat()
-        val expected = hullMass + armourMass + systemsMass
+        val expected = hullMass + systemsMass
 
         assertTrue(
             config.totalMass == expected,
-            "Total mass should be hull($hullMass) + armour($armourMass) + systems($systemsMass) = $expected, got ${config.totalMass}"
+            "Total mass should be hulls($hullMass) + systems($systemsMass) = $expected, got ${config.totalMass}"
         )
         assertTrue(config.totalMass > 0f, "Total mass should be positive")
     }
@@ -37,7 +38,10 @@ class ShipConfigTest {
             assertTrue(config.totalMass > 0f, "Ship should have positive mass")
             assertTrue(config.movementConfig.forwardThrust > 0f, "Ship should have positive forward thrust")
             assertTrue(config.movementConfig.angularThrust > 0f, "Ship should have positive angular thrust")
-            assertTrue(config.hull.vertices.size >= 3, "Hull should have at least 3 vertices")
+            assertTrue(config.hulls.isNotEmpty(), "Ship should have at least one hull")
+            for (hull in config.hulls) {
+                assertTrue(hull.vertices.size >= 3, "Hull should have at least 3 vertices")
+            }
 
             for (system in config.internalSystems) {
                 assertTrue(system.maxHp > 0f, "${system.type} should have positive HP")
@@ -74,7 +78,7 @@ class ShipConfigTest {
             armour = ArmourStats(hardness = 1f, density = 0f),
             mass = 20f,
         )
-        val config = DemoScenarioConfig.playerShipConfig.copy(hull = hull)
+        val config = DemoScenarioConfig.playerShipConfig.copy(hulls = listOf(hull))
 
         assertTrue(config.totalMass > 0f, "Should have positive mass even with zero armour density")
     }

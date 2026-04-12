@@ -6,9 +6,6 @@ import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.actor.Actor
 import com.pandulapeter.kubriko.actor.body.BoxBody
 import com.pandulapeter.kubriko.actor.traits.Dynamic
-import com.pandulapeter.kubriko.collision.Collidable
-import com.pandulapeter.kubriko.collision.CollisionDetector
-import com.pandulapeter.kubriko.collision.mask.PolygonCollisionMask
 import com.pandulapeter.kubriko.helpers.extensions.get
 import com.pandulapeter.kubriko.helpers.extensions.length
 import com.pandulapeter.kubriko.helpers.extensions.rad
@@ -23,17 +20,15 @@ import jez.lastfleetprotocol.prototype.components.game.navigation.ShipNavigator
 import jez.lastfleetprotocol.prototype.components.game.physics.ShipPhysics
 import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems
 import org.jetbrains.compose.resources.DrawableResource
-import kotlin.reflect.KClass
 
 /**
  * A ship in the game world. Can be player-controlled or AI-controlled depending
  * on the [aiModules] provided. Team membership is identified by [teamId], which
  * is propagated to projectiles to prevent friendly fire.
  *
- * @param teamId Identifier for the ship's team (e.g., "player", "enemy").
- * @param targetProvider Provides the list of ships this ship should consider as targets.
- * @param aiModules AI behaviours to run each frame. Empty = player-controlled.
- * @param drawOrder Drawing order for rendering. Lower = drawn on top.
+ * Collision detection is handled by [HullCollider] child actors — one per hull
+ * piece. Ship itself no longer implements [Collidable]; bullets hit hull colliders
+ * and route damage back through [shipSystems].
  */
 class Ship(
     internal val spec: ShipSpec,
@@ -46,7 +41,7 @@ class Ship(
     private val turrets: List<Turret> = emptyList(),
     val shipSystems: ShipSystems = ShipSystems(emptyList()),
     private val drawOrder: Float = 0f,
-) : Targetable, Dynamic, Collidable, CollisionDetector, Parent {
+) : Targetable, Dynamic, Parent {
 
     var isDestroyed: Boolean = false
         private set
@@ -56,7 +51,17 @@ class Ship(
     private lateinit var viewportManager: ViewportManager
     private lateinit var spriteManager: SpriteManager
     private lateinit var actorManager: ActorManager
-    override val actors: List<Actor> = turrets
+
+    /** Hull colliders — one per hull piece. Created at construction, added as child actors. */
+    internal val hullColliders: List<HullCollider> = spec.hulls.map { hull ->
+        HullCollider(
+            parentShip = this,
+            hullDefinition = hull,
+            initialPosition = initialPosition,
+        )
+    }
+
+    override val actors: List<Actor> = hullColliders + turrets
 
     override var velocity: SceneOffset
         get() = physics.velocity
@@ -74,11 +79,7 @@ class Ship(
     )
 
     private val navigator: ShipNavigator = ShipNavigator(
-        hullRadius = if (spec.hull.vertices.isNotEmpty()) {
-            spec.hull.vertices.map { it.length().raw }.average().toFloat()
-        } else {
-            5f // fallback matching ARRIVAL_THRESHOLD
-        },
+        hullRadius = computeHullRadius(),
     )
 
     private val sprite: ImageBitmap by lazy {
@@ -87,10 +88,6 @@ class Ship(
 
     override val body: BoxBody = BoxBody(
         initialPosition = initialPosition,
-    )
-
-    override val collisionMask: PolygonCollisionMask = PolygonCollisionMask(
-        vertices = spec.hull.vertices,
     )
 
     override val isAlwaysActive: Boolean = true
@@ -106,12 +103,6 @@ class Ship(
         actorManager = kubriko.get()
         body.size = SceneSize(sprite.width.sceneUnit, sprite.height.sceneUnit)
         body.pivot = body.size.center
-    }
-
-    override val collidableTypes: List<KClass<out Collidable>>
-        get() = emptyList()
-
-    override fun onCollisionDetected(collidables: List<Collidable>) {
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {
@@ -132,9 +123,6 @@ class Ship(
         val result = physics.integrate(deltaTimeInMilliseconds)
         body.position += result.positionDelta
         body.rotation += result.rotationDelta.rad
-
-        collisionMask.position = body.position
-        collisionMask.rotation = body.rotation
 
         checkDestruction()
     }
@@ -164,6 +152,23 @@ class Ship(
 
     fun moveTo(destination: SceneOffset) {
         this.destination = destination
+    }
+
+    /** Test whether a scene-space point is inside any of this ship's hull polygons. */
+    fun isPointInHull(point: SceneOffset): Boolean =
+        hullColliders.any { it.collisionMask.isSceneOffsetInside(point) }
+
+    /**
+     * Compute the average vertex distance across all hulls, used as a
+     * bounding radius for the navigator's arrival/braking calculations.
+     */
+    private fun computeHullRadius(): Float {
+        val allVertices = spec.hulls.flatMap { it.vertices }
+        return if (allVertices.isNotEmpty()) {
+            allVertices.map { it.length().raw }.average().toFloat()
+        } else {
+            5f // fallback matching ARRIVAL_THRESHOLD
+        }
     }
 
     companion object {

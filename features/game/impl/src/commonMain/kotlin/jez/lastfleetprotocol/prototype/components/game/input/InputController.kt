@@ -65,7 +65,7 @@ class InputController(
         val scenePos = screenOffset.toSceneOffset(viewportManager)
 
         val hitShip = selectableShips.firstOrNull { ship ->
-            !ship.isDestroyed && ship.collisionMask.isSceneOffsetInside(scenePos)
+            !ship.isDestroyed && ship.isPointInHull(scenePos)
         }
 
         if (hitShip != null) {
