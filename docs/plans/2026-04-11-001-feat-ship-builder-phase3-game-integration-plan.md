@@ -3,7 +3,7 @@ title: "feat: Ship Builder Phase 3 — game integration (bridge builder designs 
 type: feat
 status: active
 date: 2026-04-11
-updated: 2026-04-11
+updated: 2026-04-12
 origin: docs/brainstorms/2026-04-06-ship-builder-requirements.md
 ---
 
@@ -16,7 +16,7 @@ Replace the hard-coded `DemoScenarioConfig` ships with builder-authored ship des
 1. **A one-off migration script** (temporary, deleted after use) that reads `DemoScenarioConfig` and mechanically writes bundled `ShipDesign` JSON files plus a `turret_guns.json` file. This replaces hand-authoring default ships; values are preserved exactly.
 2. **A permanent runtime converter** (`ShipDesign → ShipConfig`) that loads bundled `ShipDesign` JSON at startup and produces the `ShipConfig` consumed by `GameStateManager.createShip`.
 
-Alongside the bridge, the plan extends `ShipConfig.hull` from a single `HullDefinition` to `hulls: List<HullDefinition>` and introduces a new `MultiPolygonCollisionMask` implementing Kubriko's `ComplexCollisionMask` so multi-hull designs can collide correctly. It also replaces all sprite-based rendering (ships, modules, turrets) with polygon/vector rendering in line with the recent bullet vector-rendering direction.
+Alongside the bridge, the plan extends `ShipConfig.hull` from a single `HullDefinition` to `hulls: List<HullDefinition>` and introduces a **per-hull child-actor collision pattern** where each hull piece becomes a child `Collidable` actor with its own `PolygonCollisionMask`, routing damage back to the parent `Ship`. This avoids Kubriko's sealed `ComplexCollisionMask` interface (which cannot be extended from outside the library). It also replaces all sprite-based rendering (ships, modules, turrets) with polygon/vector rendering in line with the recent bullet vector-rendering direction, and extends the runtime model to carry placed-module geometry through the converter so modules are renderable.
 
 This plan ships against the **current frictionless physics** — atmospheric is a separate plan that follows this one. It is a prerequisite for `docs/brainstorms/2026-04-10-atmospheric-movement-requirements.md`.
 
@@ -90,8 +90,9 @@ Downstream dependency note: `docs/brainstorms/2026-04-10-atmospheric-movement-re
 - `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Bullet.kt` — implements vector rendering via `drawCircle` (commits `e67d2ea`, `da0a983`). Serves as the conceptual precedent for moving away from sprites, but not a copy-paste pattern — polygons need `Path` or `drawLine` sequences rather than a primitive shape.
 - `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/physics/ShipPhysics.kt` — unchanged by Unit 1. `ShipNavigator.computeBrakingStrategy` touches only `MovementConfig` and `hullRadius`, not `ShipConfig.hull` directly, so the multi-hull refactor doesn't propagate into navigation.
 
-**Kubriko collision**
-- `com.pandulapeter.kubriko.collision.mask.ComplexCollisionMask` — Kubriko's supported interface for an actor whose collision surface is a composition of multiple primitive masks. Exposes `isSceneOffsetInside()` for point tests and `updateAxisAlignedBoundingBox()` for broadphase. Unit 1 introduces `MultiPolygonCollisionMask` implementing this interface, wrapping a `List<PolygonCollisionMask>` and delegating point tests per sub-mask, computing a union AABB over all sub-masks.
+**Kubriko collision constraints**
+- `com.pandulapeter.kubriko.collision.mask.ComplexCollisionMask` is a **sealed interface** — cannot be implemented from outside Kubriko's module. `CollisionMask` is also sealed. `PolygonCollisionMask` has an internal constructor and runs `generateConvexHull()` on input vertices. `CollisionMaskExtensions.collisionResultWith` hardcodes four Circle/Polygon combinations — a custom mask type would silently never collide.
+- **Consequence for multi-hull:** The only viable approach using public Kubriko APIs is per-hull child `Collidable` actors. Each hull piece becomes a child actor with its own `PolygonCollisionMask`. The parent `Ship` coordinates their position/rotation to track its own body pose. Bullet collision hits a child hull actor; damage routes back to the parent `Ship` via a delegate/callback. This preserves per-hull collision fidelity and per-hull armour resolution.
 
 **Shared infrastructure**
 - `components/game-core/api` is accessible to both `features/game/impl` and `features/ship-builder/impl`. The extracted stats-calculation core, the runtime converter, and `MultiPolygonCollisionMask` all live there.
@@ -112,7 +113,7 @@ None. Pure internal refactor; no new frameworks.
 
 ## Key Technical Decisions
 
-1. **Multi-hull via `MultiPolygonCollisionMask` implementing `ComplexCollisionMask`.** Preserves multi-hull through the conversion without a custom collision engine. Each hull piece contributes one `PolygonCollisionMask`; the composite delegates `isSceneOffsetInside` per sub-mask and returns a union AABB.
+1. **Multi-hull via per-hull child `Collidable` actors.** Kubriko's `ComplexCollisionMask` is a sealed interface (cannot be implemented externally) and `CollisionMaskExtensions.collisionResultWith` hardcodes Circle/Polygon combinations. Instead, each `PlacedHullPiece` becomes a child actor with its own `PolygonCollisionMask`, attached to the parent `Ship`. Bullet collision hits the child; damage routes back to the parent via a child→parent delegate. This preserves multi-hull fidelity using only public Kubriko APIs. Each child hull actor tracks its own `HullDefinition.armour` for the `KineticImpactResolver`, resolving the "which hull's armour?" question the earlier design left open.
 2. **Reject multi-module-per-type designs in v1.** Clear error at conversion time. Eliminates the silent gameplay drift that aggregation would introduce via `disableThreshold = maxHp * 2/3` on aggregated maxHp.
 3. **Polygon/vector rendering across all actor types.** Ships, modules, and turrets all render as polygon outlines. Turrets specifically render as a simple triangle vector (replacing `turret_simple_1.png`). All sprite assets for ships and turrets are removed.
 4. **Facing conveyed by a nose marker.** Each ship draws a small triangle or tick at the forward-most vertex, oriented along the ship's forward axis. Addresses directional ambiguity introduced by losing the sprite's implicit nose/tail graphic.
@@ -122,7 +123,12 @@ None. Pure internal refactor; no new frameworks.
    - A **permanent runtime converter** (`ShipDesign → ShipConfig`) lives in `components/game-core/api`, runs at every game startup, and uses the extracted stats-calculator core from Unit 0.
 7. **Stats calculation shared via extraction.** Unit 0 extracts a pure computational core from `ShipStatsCalculator` into `components/game-core/api`. Both the builder's stats panel and the runtime converter call it. Single source of truth; no duplication risk.
 8. **Turret gun data lives in a bundled `turret_guns.json` resource.** Not a `TurretGunRegistry` code-constant map. Loader reads the file at startup, exposes a `Map<String, GunData>` lookup. Satisfies R32 cleanly.
-9. **Compose Resources plugin added to `components/game-core/api`.** The module currently has no compose resources configured. Unit 3 enables it so bundled JSON files can live under `components/game-core/api/src/commonMain/composeResources/files/`.
+9. **Compose Resources visibility in `components/game-core/api`.** The module already has compose resources configured but the generated `Res` class is `internal`. Unit 3 adds `compose.resources { publicResClass = true }` so bundled JSON files are readable from outside the module. This is a build.gradle.kts tweak, not a plugin addition.
+14. **Runtime model extended with placed-module geometry.** `InternalSystemSpec` currently has no vertices or position. Phase 3 either extends `ShipConfig` with a parallel `List<PlacedModuleSpec>` carrying vertices/offset/rotation, or adds geometry fields to `InternalSystemSpec` directly. The converter populates these from the builder's `PlacedModule` + `ItemDefinition`. This enables module polygon rendering at runtime.
+15. **`GunData` must be made `@Serializable` and lose its `drawable` field.** `GunData` currently holds a `DrawableResource` (not serializable) and `AngleRadians` (needs a custom serializer). Unit 2 removes the `drawable` field from the type definition itself (not just from call sites in `DemoScenarioConfig`) and adds `@Serializable` to `GunData` and `ProjectileStats`. This is prerequisite for `turret_guns.json` in Unit 5.
+16. **Ship and Turret `body.size` derived from polygon AABB, not sprite dimensions.** Current code does `body.size = SceneSize(sprite.width.sceneUnit, sprite.height.sceneUnit)`. After sprites are removed, `body.size` is computed from the hull polygon's axis-aligned bounding box (Ship) or the turret triangle's bounds (Turret), and `body.pivot` is the AABB centre. Turret muzzle offset is re-derived accordingly.
+17. **`CombatStats.evasionModifier` uses a uniform default for Phase 3.** Per-ship evasion modifiers (0.1/0.2/0.1/0.0 in `DemoScenarioConfig`) are deferred to Keel-class metadata in the atmospheric Slice B. The deep-equal migration test (Unit 5) excludes `evasionModifier` from the assertion. Accept that combat evasion behaviour changes slightly from `DemoScenarioConfig` baseline.
+18. **Designs loaded eagerly at `AppComponent` init, cached in singleton fields.** `DefaultShipDesignLoader` and `TurretGunLoader` run once during DI construction (where `suspend` is available). `startDemoScene` reads from the cache synchronously. No suspend propagation through `restartScene` or `GameVM`. Fatal-startup-error semantics apply at AppComponent init, not per-scene.
 10. **Converter failure is a fatal startup error.** If any bundled default ship design fails to load or convert, or if `turret_guns.json` is missing, the game throws a clear error at startup. These are shipped resources; failure is a dev bug, not a runtime condition. This unblocks Unit 8 cleanly.
 11. **Filename-indexed spawn slot mapping.** `startDemoScene` indexes loaded designs by filename (`player_ship`, `enemy_light`, `enemy_medium`, `enemy_heavy`) rather than by name-prefix matching. A missing or renamed file fails loudly at startup.
 12. **Sub-phase 3c/3d split.** Unit 7 (switchover) and Unit 8 (deletion of `DemoScenarioConfig`) land as separate sub-phases with a playtest gate between them. `DemoScenarioConfig` lingers harmlessly as a rollback reference until the dev confirms the migrated ships feel right.
@@ -258,36 +264,40 @@ Key design notes:
   **Dependencies:** None (independent of Unit 0).
 
   **Files:**
-  - Create: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/collision/MultiPolygonCollisionMask.kt`
+  - Create: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/HullCollider.kt` — per-hull child `Collidable` actor
   - Modify: `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/data/ShipConfig.kt` — `hull: HullDefinition` → `hulls: List<HullDefinition>`, update `totalMass` computed property to sum over `hulls`
   - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/ShipSpec.kt` — carry `hulls: List<HullDefinition>`, update `fromConfig`
-  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Ship.kt` — replace the single `PolygonCollisionMask` with a `MultiPolygonCollisionMask` built from `spec.hulls`. Update any code that accesses `spec.hull`.
+  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Ship.kt` — remove the single `PolygonCollisionMask`; spawn `HullCollider` children from `spec.hulls`; update `hullRadius` computation for multi-hull. Update any code that accesses `spec.hull`.
+  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/Bullet.kt` — adapt bullet collision resolution to hit `HullCollider` (not `Ship` directly). Pass `hullCollider.armour` to `KineticImpactResolver`. Route damage to `hullCollider.parentShip`.
+  - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/managers/GameStateManager.kt` — `createShip` spawns `HullCollider` children alongside the parent `Ship` in `actorManager`. Destruction callback removes children.
   - Modify: `features/game/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/game/data/DemoScenarioConfig.kt` — wrap each existing `hull = HullDefinition(...)` in `hulls = listOf(HullDefinition(...))`. Temporary edit; deleted in Unit 8.
   - Modify: `features/game/impl/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/game/data/ShipConfigTest.kt` — update assertions to iterate over `hulls`.
-  - Test: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/collision/MultiPolygonCollisionMaskTest.kt`
+  - Test: `features/game/impl/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/game/actors/HullColliderTest.kt`
 
   **Approach:**
-  - `MultiPolygonCollisionMask` implements `com.pandulapeter.kubriko.collision.mask.ComplexCollisionMask`. It wraps a `List<PolygonCollisionMask>`. `isSceneOffsetInside(point)` returns true if any sub-mask contains the point. `updateAxisAlignedBoundingBox()` computes the union AABB over all sub-masks. Other `ComplexCollisionMask` members (inspect the interface when implementing) are delegated per sub-mask or aggregated as appropriate.
-  - Ship actor constructs one sub-mask per `HullDefinition` in `spec.hulls`. Sub-masks follow the ship's transform as a group — the composite mask applies the ship pose once rather than each sub-mask applying it independently.
+  - **Per-hull child `Collidable` actors.** Each `HullDefinition` in `spec.hulls` spawns a child actor (`HullCollider` or similar) with its own `PolygonCollisionMask` built from that hull's vertices. Child actors follow the parent `Ship`'s position and rotation (updated in `Ship.update` or via Kubriko's actor-parent mechanism). Each `HullCollider` carries a reference to its parent `Ship` and its own `HullDefinition` (including `armour`). When a `Bullet` hits a `HullCollider`, damage routes back to the parent `Ship` via a delegate/callback, using **that specific hull's `armour`** for the `KineticImpactResolver`. This resolves the per-hull armour question naturally.
+  - The parent `Ship` actor may no longer implement `Collidable` itself (or implements it with a degenerate/no-op mask for broadphase purposes). Bullets only collide with `HullCollider` children. This is a structural change to how `Ship` participates in the Kubriko actor/collision system.
   - `ShipConfig.totalMass` sums over `hulls` instead of reading the single `hull`. Existing test assertions that check "positive mass" still pass.
-  - Bullet collision resolution (which currently tests against `Ship`'s `PolygonCollisionMask`) naturally works with the composite because Kubriko's collision pipeline consumes the `Collidable` interface, not the concrete mask type. Verify this assumption while implementing.
+  - `ShipNavigator` receives `hullRadius` — for multi-hull, compute this from the union of all hull-piece vertex distances (or max across hulls). For single-hull ships (all current defaults), the formula collapses to the existing computation on `hulls[0]`.
+  - Actor lifecycle: `HullCollider` children are created alongside the parent `Ship` in `createShip`, added to `actorManager`, and removed when the parent `Ship` is destroyed.
 
   **Patterns to follow:**
   - Kubriko's `ComplexCollisionMask` interface as documented or implemented by any existing plugin. If Kubriko has a built-in `ComplexCollisionMask` example, mirror its conventions.
   - Existing `Ship.kt` collision setup for how the mask is wired into the actor.
 
   **Test scenarios:**
-  - Happy path: `MultiPolygonCollisionMask` with a single sub-mask behaves identically to the underlying `PolygonCollisionMask` for `isSceneOffsetInside` and AABB queries.
-  - Happy path: `MultiPolygonCollisionMask` with two disjoint square sub-masks returns true for points inside either, false for points outside both.
-  - Happy path: AABB over two offset sub-masks equals the union bounding box.
-  - Edge case: empty sub-mask list — document invariant (probably rejected at construction).
-  - Regression: a single-hull ship still takes bullet damage exactly as before after the refactor.
-  - Integration: a multi-hull ship (constructed by hand in a test fixture) takes a bullet hit against any of its hulls and the damage is routed correctly.
+  - Happy path: a single-hull `Ship` spawns one `HullCollider` child. `HullCollider` has a `PolygonCollisionMask` with the hull's vertices.
+  - Happy path: a two-hull `Ship` (hand-fabricated test fixture) spawns two `HullCollider` children at the correct offset positions.
+  - Happy path: when a `Bullet` hits a `HullCollider`, `KineticImpactResolver` receives **that hull's `armour`** (not a generic ship-level armour).
+  - Happy path: damage from a `HullCollider` collision routes to the parent `Ship` and reduces the ship's HP.
+  - Regression: a single-hull ship still takes bullet damage exactly as before after the refactor. Combat is playable with current `DemoScenarioConfig` ships.
+  - Integration: `HullCollider` children follow the parent `Ship`'s position and rotation each frame. After 10 frames of ship movement, child positions still match the parent's pose.
+  - Edge case: when a `Ship` is destroyed, all its `HullCollider` children are removed from the actor manager.
 
   **Verification:**
   - All existing tests pass.
-  - Desktop app runs; combat looks identical to pre-Unit-1 (only single-hull `DemoScenarioConfig` ships exist at this point, so visually nothing changes).
-  - A manual test with a hand-fabricated two-hull ship confirms bullets collide with either hull.
+  - Desktop app runs; combat looks identical to pre-Unit-1.
+  - A manual test with a hand-fabricated two-hull ship confirms bullets collide with either hull and damage routes to the parent correctly.
 
 ---
 
@@ -342,36 +352,37 @@ Key design notes:
 
 ---
 
-- [ ] **Unit 3: Add Compose Resources plugin to `components/game-core/api`**
+- [ ] **Unit 3: Make `Res` public in `components/game-core/api` for bundled JSON access**
 
-  **Goal:** Enable `compose.resources` in the game-core/api module so bundled JSON data files can live there and be read via the generated `Res` object.
+  **Goal:** The game-core/api module already has Compose Resources configured (a generated `Res.kt` exists at `build/generated/.../Res.kt`) but the `Res` class is `internal`. Add `publicResClass = true` to the `compose.resources {}` block so bundled JSON files can be read from outside the module. Also verify no `Res`-import ambiguity is introduced for callers that already import `components/design`'s `Res`.
 
   **Requirements:** R31, R32 (enables bundled-resource hosting of ship and turret gun data).
 
   **Dependencies:** None.
 
   **Files:**
-  - Modify: `components/game-core/api/build.gradle.kts` — add `compose.resources {}` block matching the configuration in `components/design/build.gradle.kts`.
+  - Modify: `components/game-core/api/build.gradle.kts` — add `publicResClass = true` (and `generateResClass = always` if not already set) to the existing `compose.resources {}` block.
   - Create: `components/game-core/api/src/commonMain/composeResources/files/.gitkeep` (placeholder directory).
-  - Test: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/resources/ResourceLoadingTest.kt` — a trivial "can read bytes from a bundled file" test.
+  - Test: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/resources/ResourceLoadingTest.kt` — smoke test for reading a bundled file via the now-public `Res`.
 
   **Approach:**
-  - Mirror the Compose Resources configuration from `components/design/build.gradle.kts`. The generated `Res` object will be namespaced per module (e.g., `lastfleetprotocol.components.gamecore.api.generated.resources.Res` or similar — the exact package depends on the plugin's auto-generation rules).
-  - Commit a trivial text file (e.g., `components/game-core/api/src/commonMain/composeResources/files/smoke_test.txt`) and write a test that reads it via `Res.readBytes("files/smoke_test.txt")` on both Android and JVM. Delete the smoke file after the test passes.
-  - Verify on both platforms (`./gradlew :composeApp:assembleDebug` for Android, `./gradlew :composeApp:run` for JVM) before moving on.
+  - The module already has compose resources and a generated `Res.kt`; this unit just flips visibility. The generated package is `lastfleetprotocol.components.game_core.api.generated.resources.Res` — distinct from `lastfleetprotocol.components.design.generated.resources.Res`, so no ambiguity in callers that import both. Verify this claim during implementation.
+  - `Res.readBytes(path: String)` is **suspending**. Callers must be in a coroutine context. This informs Unit 6's eager-loading-at-AppComponent-init design.
+  - Commit a trivial text file as a smoke test resource; read it via `Res.readBytes` on both platforms; delete the smoke file after the test passes.
 
   **Patterns to follow:**
-  - `components/design/build.gradle.kts` as the existing Compose Resources configuration.
+  - `components/design/build.gradle.kts` for the `compose.resources` block shape.
 
   **Test scenarios:**
-  - Happy path: `Res.readBytes("files/smoke_test.txt")` on JVM returns non-empty bytes matching the committed file.
+  - Happy path: `Res.readBytes("files/smoke_test.txt")` on JVM returns non-empty bytes.
   - Happy path: same on Android.
-  - Edge case: reading a non-existent path throws (or returns null per Compose Resources API) — document the behaviour.
+  - Happy path: `features/game/impl` source can import both `design`'s `Res` and `game-core/api`'s `Res` without ambiguity (qualified imports).
+  - Edge case: reading a non-existent path throws — document behaviour.
 
   **Verification:**
   - Both desktop and Android builds complete.
-  - Smoke test reads the committed resource on both platforms.
-  - The generated `Res` namespace is available for import in `commonMain` source.
+  - Smoke test passes on both platforms.
+  - No `Res`-import ambiguity in any module that depends on game-core/api.
 
 ---
 
@@ -494,10 +505,12 @@ Key design notes:
   - Test: `components/game-core/api/src/commonTest/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/LoaderTest.kt`
 
   **Approach:**
+  - **Both loaders run eagerly at `AppComponent` init (DI construction time), not at `startDemoScene` time.** This avoids the `suspend` propagation problem — `Res.readBytes` is suspending but DI construction can run in a coroutine scope (e.g., `runBlocking` at app startup or a `CoroutineScope` from the DI graph). Results are cached in the loader singletons.
   - `DefaultShipDesignLoader.loadAll()` returns a `Map<String, ShipDesign>` keyed by filename stem (`"player_ship"`, `"enemy_light"`, `"enemy_medium"`, `"enemy_heavy"`). Reads via `Res.readBytes("files/default_ships/<stem>.json")` and deserializes.
   - `TurretGunLoader.load()` returns a `Map<String, GunData>` from `turret_guns.json`.
-  - The list of ship filenames is hard-coded (four stems). Missing files fail loudly.
-  - Any parse or missing-file error is a fatal exception; the loader does not silently fall back.
+  - The list of ship filenames is hard-coded (four stems). Missing files fail loudly **at app startup**, not per-scene.
+  - `startDemoScene` reads from the cached maps synchronously. No `suspend` keyword needed on `startDemoScene` or `restartScene`.
+  - Any parse or missing-file error is a fatal exception at AppComponent init. This means the app crashes on launch if bundled resources are broken — which is the intended "these are shipped resources; failure is a dev bug" semantics.
 
   **Patterns to follow:**
   - `FileShipDesignRepository.loadAll()` for the kotlinx.serialization deserialize pattern.
@@ -663,3 +676,29 @@ Each sub-phase ends with a working desktop app. No mid-phase broken states.
 - **Key builder files:** `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ShipDesign.kt`, `components/game-core/api/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/gamecore/shipdesign/ItemDefinition.kt`, `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/stats/ShipStatsCalculator.kt`, `features/ship-builder/impl/src/commonMain/kotlin/jez/lastfleetprotocol/prototype/components/shipbuilder/data/FileShipDesignRepository.kt`.
 - **Kubriko collision:** `com.pandulapeter.kubriko.collision.mask.ComplexCollisionMask` — the extension point for multi-mask actors used by Unit 1's `MultiPolygonCollisionMask`.
 - **Vector rendering precedent:** commits `e67d2ea` (bullet vector rendering refactor) and `da0a983` (bullet sprite removal) — the direction Unit 2 extends to ships, modules, and turrets.
+
+## Second-Pass Review Changes (2026-04-12)
+
+Applied after a 6-reviewer document review (2 passes, ~50 findings):
+
+**Critical fixes (applied above):**
+- **Unit 1 collision model replaced.** `MultiPolygonCollisionMask implementing ComplexCollisionMask` is impossible (sealed interface, hardcoded collision dispatch). Replaced with per-hull child `Collidable` actors — `HullCollider` children with per-hull `PolygonCollisionMask`, damage routing back to parent `Ship`. Bullet.kt adapted to hit `HullCollider` rather than `Ship` directly. Per-hull armour resolution resolves naturally.
+- **Unit 3 reframed.** Compose Resources is already configured in game-core/api; the generated `Res` class just needs to be made public (`publicResClass = true`). Not a plugin addition.
+- **Loading model specified.** Loaders run eagerly at `AppComponent` init, cached in singleton fields. `startDemoScene` reads synchronously. `Res.readBytes` is suspending, but DI construction runs in a coroutine scope. No suspend propagation through `restartScene` or `GameVM`.
+- **`GunData` serialization prerequisite added.** `GunData` must have `@Serializable`, `drawable` field removed from type definition, `AngleRadians` serializer added/reused.
+- **Body.size derivation rule.** `Ship` and `Turret` body.size computed from polygon AABB, replacing sprite pixel dimensions. Turret muzzle offset re-derived.
+- **`evasionModifier` deferred to Keel.** Uniform default in Phase 3. Deep-equal test excludes this field.
+- **Runtime model extended for module geometry.** Module polygons passed through the converter so Unit 2's module rendering has data to work with.
+
+**Smaller fixes (applied above):**
+- Revised per-frame allocation estimate from "~30-50" to "~200" (more honest across the full rendering pipeline).
+- Migration script should live in a build-excluded location (e.g., `scripts/migration/` outside Gradle source sets) rather than `commonTest`.
+- Unit 7 renames `DemoScenarioConfig.kt` → `DemoScenarioConfig_DEPRECATED.kt` as a forcing function for the 3c→3d playtest gate.
+- Team colour palette noted: builder uses Red for turrets; if enemy team is red-family, turret triangles become indistinguishable on enemy ships. Resolve palette as one coherent decision during implementation (not five deferred items).
+
+**Findings accepted without change:**
+- Bundle size (9 units, including the scope expansion to per-hull child actors and runtime module geometry).
+- Polygon union for merged silhouette is dead code for v1's single-hull default ships. Accepted — it ships for the future multi-hull case.
+- Informal verification (dev plays and signs off). No screenshot artifact required.
+- Regression-only success criteria.
+- Migration script deletion enforcement via build-excluded location (no mechanical CI gate).
