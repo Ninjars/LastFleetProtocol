@@ -1,6 +1,5 @@
 package jez.lastfleetprotocol.prototype.components.game.managers
 
-import androidx.compose.ui.geometry.Offset
 import com.pandulapeter.kubriko.actor.traits.Unique
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
@@ -10,7 +9,6 @@ import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.actors.ShipSpec
-import jez.lastfleetprotocol.prototype.components.game.actors.Turret
 import jez.lastfleetprotocol.prototype.components.game.ai.AIModule
 import jez.lastfleetprotocol.prototype.components.game.ai.BasicAI
 import jez.lastfleetprotocol.prototype.components.game.data.DemoScenarioConfig
@@ -119,7 +117,6 @@ class GameStateManager(
     ): Ship {
         val spec = ShipSpec.fromConfig(config)
         val systems = ShipSystems(config.internalSystems)
-        val turretList = mutableListOf<Turret>()
 
         val ship = Ship(
             spec = spec,
@@ -127,20 +124,11 @@ class GameStateManager(
             teamId = teamId,
             targetProvider = targetProvider,
             aiModules = aiModules,
-            turrets = turretList,
+            turretsConfig = config.turretConfigs,
             shipSystems = systems,
             drawingOrder = drawOrder,
         )
 
-        for (tc in config.turretConfigs) {
-            Turret(
-                parent = ship,
-                offsetFromParentPivot = SceneOffset(Offset(tc.offsetX, tc.offsetY)),
-                pivot = SceneOffset(Offset(tc.pivotX, tc.pivotY)),
-                gunData = tc.gunData,
-                teamId = teamId,
-            ).also { turretList.add(it) }
-        }
 
         ship.onDestroyedCallback = ::onShipDestroyed
 
@@ -150,7 +138,6 @@ class GameStateManager(
         }
 
         actorManager.add(ship)
-        actorManager.add(turretList)
         return ship
     }
 

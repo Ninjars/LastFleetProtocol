@@ -22,6 +22,7 @@ import jez.lastfleetprotocol.prototype.components.game.ai.AIModule
 import jez.lastfleetprotocol.prototype.components.game.navigation.ShipNavigator
 import jez.lastfleetprotocol.prototype.components.game.physics.ShipPhysics
 import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems
+import jez.lastfleetprotocol.prototype.components.gamecore.data.TurretConfig
 import kotlin.math.max
 import kotlin.math.min
 
@@ -43,7 +44,7 @@ class Ship(
     val targetProvider: () -> List<Ship> = { emptyList() },
     private val aiModules: List<AIModule> = emptyList(),
     initialVelocity: SceneOffset = SceneOffset.Zero,
-    private val turrets: List<Turret> = emptyList(),
+    private val turretsConfig: List<TurretConfig> = emptyList(),
     val shipSystems: ShipSystems = ShipSystems(emptyList()),
     override val drawingOrder: Float = 0f,
 ) : Targetable, Dynamic, Parent {
@@ -70,6 +71,16 @@ class Ship(
         parent = this,
         offsetFromParentPivot = computeNoseOffset(),
     )
+
+    private val turrets = turretsConfig.map { tc ->
+        Turret(
+            parent = this,
+            offsetFromParentPivot = SceneOffset(Offset(tc.offsetX, tc.offsetY)),
+            pivot = SceneOffset(Offset(tc.pivotX, tc.pivotY)),
+            gunData = tc.gunData,
+            teamId = teamId,
+        )
+    }
 
     override val actors: List<Actor> = hullColliders + turrets + headingIndicator
 
