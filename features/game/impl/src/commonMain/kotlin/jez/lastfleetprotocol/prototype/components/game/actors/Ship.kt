@@ -22,10 +22,8 @@ import jez.lastfleetprotocol.prototype.components.game.ai.AIModule
 import jez.lastfleetprotocol.prototype.components.game.navigation.ShipNavigator
 import jez.lastfleetprotocol.prototype.components.game.physics.ShipPhysics
 import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems
-import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sin
 
 /**
  * A ship in the game world. Can be player-controlled or AI-controlled depending
@@ -115,13 +113,19 @@ class Ship(
      * Each hull is a list of (x, y) pairs for drawing.
      * For single-hull ships (all current defaults) this is one entry.
      */
-    private val hullLocalVertices: List<List<Offset>> = spec.hulls.map { hull ->
-        hull.vertices.map { Offset(it.x.raw, it.y.raw) }
+    private val hullLocalVertices: List<List<Offset>> by lazy {
+        val centreOffset = hullBoundsSize.center.raw
+
+        spec.hulls.map { hull ->
+            hull.vertices.map { Offset(it.x.raw + centreOffset.x, it.y.raw + centreOffset.y) }
+        }
     }
 
     /** Pre-computed AABB size from all hull vertices, used for body.size */
     private val hullBoundsSize: SceneSize by lazy {
-        val allVerts = hullLocalVertices.flatten()
+        val allVerts = spec.hulls.flatMap { hull ->
+            hull.vertices.map { Offset(it.x.raw, it.y.raw) }
+        }
         if (allVerts.isEmpty()) return@lazy SceneSize(10.sceneUnit, 10.sceneUnit)
         var minX = Float.MAX_VALUE
         var maxX = Float.MIN_VALUE
@@ -144,16 +148,14 @@ class Ship(
     }
 
     override fun DrawScope.draw() {
-        val rotation = body.rotation.normalized
-
         // Draw each hull polygon
         for (verts in hullLocalVertices) {
             if (verts.size < 3) continue
 
             val path = Path()
             for (i in verts.indices) {
-                val rx = verts[i].x * cos(rotation) - verts[i].y * sin(rotation)
-                val ry = verts[i].x * sin(rotation) + verts[i].y * cos(rotation)
+                val rx = verts[i].x
+                val ry = verts[i].y
                 if (i == 0) path.moveTo(rx, ry) else path.lineTo(rx, ry)
             }
             path.close()
@@ -178,14 +180,12 @@ class Ship(
             val baseRightY = nose.y + markerSize * 0.6f
 
             val nosePath = Path()
-            val cos = cos(rotation)
-            val sin = sin(rotation)
-            nosePath.moveTo(tipX * cos - tipY * sin, tipX * sin + tipY * cos)
-            nosePath.lineTo(baseLeftX * cos - baseLeftY * sin, baseLeftX * sin + baseLeftY * cos)
-            nosePath.lineTo(baseRightX * cos - baseRightY * sin, baseRightX * sin + baseRightY * cos)
+            nosePath.moveTo(tipX, tipY)
+            nosePath.lineTo(baseLeftX, baseLeftY)
+            nosePath.lineTo(baseRightX, baseRightY)
             nosePath.close()
 
-            drawPath(nosePath, Color.White, style = Fill)
+            drawPath(nosePath, Color.White, style = Stroke(width = 2f))
         }
     }
 
