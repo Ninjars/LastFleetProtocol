@@ -129,7 +129,7 @@ class GameStateManager(
             aiModules = aiModules,
             turrets = turretList,
             shipSystems = systems,
-            drawOrder = drawOrder,
+            drawingOrder = drawOrder,
         )
 
         for (tc in config.turretConfigs) {

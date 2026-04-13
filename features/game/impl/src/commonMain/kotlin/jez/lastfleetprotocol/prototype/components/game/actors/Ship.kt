@@ -45,7 +45,7 @@ class Ship(
     initialVelocity: SceneOffset = SceneOffset.Zero,
     private val turrets: List<Turret> = emptyList(),
     val shipSystems: ShipSystems = ShipSystems(emptyList()),
-    private val drawOrder: Float = 0f,
+    override val drawingOrder: Float = 0f,
 ) : Targetable, Dynamic, Parent {
 
     var isDestroyed: Boolean = false
@@ -97,7 +97,6 @@ class Ship(
     )
 
     override val isAlwaysActive: Boolean = true
-    override val drawingOrder: Float = drawOrder
 
     /** Team colour for hull fill — cyan-family for player, red-family for enemy. */
     private val teamFillColor: Color
@@ -129,6 +128,7 @@ class Ship(
 
     /** Pre-computed AABB size from all hull vertices, used for body.size */
     private val hullBoundsSize: SceneSize by lazy {
+        println("hullBoundsSize")
         val allVerts = spec.hulls.flatMap { hull ->
             hull.vertices.map { Offset(it.x.raw, it.y.raw) }
         }
