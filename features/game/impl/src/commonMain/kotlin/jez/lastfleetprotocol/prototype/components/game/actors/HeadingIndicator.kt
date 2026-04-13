@@ -28,6 +28,15 @@ class HeadingIndicator(
 ) {
     override val body = BoxBody()
 
+    // Isoceles triangle pointing right (+X = forward in ship convention).
+    // Body-local coordinates: (0,0) is top-left, +X right, +Y down.
+    private val path = Path().apply {
+        moveTo(LENGTH, WIDTH / 2f)   // tip: right-centre (forward)
+        lineTo(0f, 0f)               // base top-left
+        lineTo(0f, WIDTH)            // base bottom-left
+        close()
+    }
+
     override fun onAdded(kubriko: Kubriko) {
         super.onAdded(kubriko)
         body.size = SceneSize(LENGTH.sceneUnit, WIDTH.sceneUnit)
@@ -38,14 +47,6 @@ class HeadingIndicator(
     }
 
     override fun DrawScope.draw() {
-        // Isoceles triangle pointing right (+X = forward in ship convention).
-        // Body-local coordinates: (0,0) is top-left, +X right, +Y down.
-        val path = Path()
-        path.moveTo(LENGTH, WIDTH / 2f)   // tip: right-centre (forward)
-        path.lineTo(0f, 0f)               // base top-left
-        path.lineTo(0f, WIDTH)            // base bottom-left
-        path.close()
-
         drawPath(path, Color.White, style = Stroke(width = 2f))
     }
 
