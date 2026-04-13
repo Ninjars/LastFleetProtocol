@@ -65,7 +65,13 @@ class Ship(
         )
     }
 
-    override val actors: List<Actor> = hullColliders + turrets
+    /** Heading indicator — small triangle at the forward-most hull vertex. */
+    private val headingIndicator: HeadingIndicator = HeadingIndicator(
+        parent = this,
+        offsetFromParentPivot = computeNoseOffset(),
+    )
+
+    override val actors: List<Actor> = hullColliders + turrets + headingIndicator
 
     override var velocity: SceneOffset
         get() = physics.velocity
@@ -140,13 +146,6 @@ class Ship(
         SceneSize((maxX - minX).sceneUnit, (maxY - minY).sceneUnit)
     }
 
-    /** Index of the forward-most vertex (+X in ship-local space) for the nose marker. */
-    private val noseVertexIndex: Int by lazy {
-        val allVerts = hullLocalVertices.flatten()
-        if (allVerts.isEmpty()) 0
-        else allVerts.indices.maxByOrNull { allVerts[it].x } ?: 0
-    }
-
     override fun DrawScope.draw() {
         // Draw each hull polygon
         for (verts in hullLocalVertices) {
@@ -154,9 +153,8 @@ class Ship(
 
             val path = Path()
             for (i in verts.indices) {
-                val rx = verts[i].x
-                val ry = verts[i].y
-                if (i == 0) path.moveTo(rx, ry) else path.lineTo(rx, ry)
+                if (i == 0) path.moveTo(verts[i].x, verts[i].y)
+                else path.lineTo(verts[i].x, verts[i].y)
             }
             path.close()
 
@@ -165,28 +163,7 @@ class Ship(
             // Stroke with opaque team colour
             drawPath(path, teamStrokeColor, style = Stroke(width = 2f))
         }
-
-        // Nose marker: small triangle at the forward-most vertex, pointing forward
-        val allVerts = hullLocalVertices.flatten()
-        if (allVerts.isNotEmpty() && noseVertexIndex < allVerts.size) {
-            val nose = allVerts[noseVertexIndex]
-            val markerSize = 6f
-            // Triangle pointing in the +X direction (forward) from the nose vertex
-            val tipX = nose.x + markerSize
-            val tipY = nose.y
-            val baseLeftX = nose.x - markerSize * 0.3f
-            val baseLeftY = nose.y - markerSize * 0.6f
-            val baseRightX = nose.x - markerSize * 0.3f
-            val baseRightY = nose.y + markerSize * 0.6f
-
-            val nosePath = Path()
-            nosePath.moveTo(tipX, tipY)
-            nosePath.lineTo(baseLeftX, baseLeftY)
-            nosePath.lineTo(baseRightX, baseRightY)
-            nosePath.close()
-
-            drawPath(nosePath, Color.White, style = Stroke(width = 2f))
-        }
+        // Heading indicator (nose marker) is a separate child actor — see HeadingIndicator
     }
 
     override fun onAdded(kubriko: Kubriko) {
@@ -248,6 +225,19 @@ class Ship(
     /** Test whether a scene-space point is inside any of this ship's hull polygons. */
     fun isPointInHull(point: SceneOffset): Boolean =
         hullColliders.any { it.collisionMask.isSceneOffsetInside(point) }
+
+    /**
+     * Find the forward-most hull vertex (+X in ship-local space) and return it
+     * as a SceneOffset from the ship's pivot. Used to position the [HeadingIndicator].
+     */
+    private fun computeNoseOffset(): SceneOffset {
+        val allVertices = spec.hulls.flatMap { it.vertices }
+        return if (allVertices.isNotEmpty()) {
+            allVertices.maxBy { it.x.raw }
+        } else {
+            SceneOffset.Zero
+        }
+    }
 
     /**
      * Compute the average vertex distance across all hulls, used as a
