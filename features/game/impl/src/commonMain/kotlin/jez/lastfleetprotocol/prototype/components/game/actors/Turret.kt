@@ -20,8 +20,6 @@ import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.game.data.Gun
 import jez.lastfleetprotocol.prototype.components.gamecore.data.GunData
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * Turret size in scene units (isoceles triangle half-dimensions).
@@ -33,7 +31,6 @@ private const val TURRET_HALF_WIDTH = 8f
 class Turret(
     parent: Parent,
     offsetFromParentPivot: SceneOffset,
-    private val pivot: SceneOffset,
     private val gunData: GunData,
     val teamId: String,
     private val rotationSpeed: AngleRadians = 10f.deg.rad,
@@ -58,6 +55,20 @@ class Turret(
         )
     }
 
+    private val turretPath by lazy {
+        Path().apply {
+            lineTo(
+                body.size.width.raw,
+                body.size.height.raw / 2f,
+            )
+            lineTo(
+                0f,
+                body.size.height.raw,
+            )
+            close()
+        }
+    }
+
     /** Turret outline colour — light grey, distinct from both team colours. */
     private val turretColor = Color(0.8f, 0.8f, 0.8f, 0.9f)
     private val turretFillColor = Color(0.5f, 0.5f, 0.5f, 0.4f)
@@ -69,31 +80,12 @@ class Turret(
             (TURRET_HALF_LENGTH * 2).sceneUnit,
             (TURRET_HALF_WIDTH * 2).sceneUnit,
         )
-        body.pivot = pivot
+        body.pivot = SceneOffset(0f.sceneUnit, body.size.height / 2f)
     }
 
     override fun DrawScope.draw() {
-        // Draw an isoceles triangle pointing along the barrel direction (+X local)
-        val rotation = currentRotation.normalized
-        val cos = cos(rotation)
-        val sin = sin(rotation)
-
-        // Triangle vertices in local space relative to body centre
-        val tipX = TURRET_HALF_LENGTH
-        val tipY = 0f
-        val baseLeftX = -TURRET_HALF_LENGTH * 0.5f
-        val baseLeftY = -TURRET_HALF_WIDTH
-        val baseRightX = -TURRET_HALF_LENGTH * 0.5f
-        val baseRightY = TURRET_HALF_WIDTH
-
-        val path = Path()
-        path.moveTo(tipX * cos - tipY * sin, tipX * sin + tipY * cos)
-        path.lineTo(baseLeftX * cos - baseLeftY * sin, baseLeftX * sin + baseLeftY * cos)
-        path.lineTo(baseRightX * cos - baseRightY * sin, baseRightX * sin + baseRightY * cos)
-        path.close()
-
-        drawPath(path, turretFillColor, style = Fill)
-        drawPath(path, turretColor, style = Stroke(width = 1.5f))
+        drawPath(turretPath, turretColor, style = Stroke(width = 1.5f))
+        drawPath(turretPath, turretFillColor, style = Fill)
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {
@@ -101,7 +93,7 @@ class Turret(
         target?.let {
             if (!it.isValidTarget()) {
                 target = null
-                return
+                return@let
             }
 
             // TODO: create aim point based on target velocity, projectile velocity, and distance

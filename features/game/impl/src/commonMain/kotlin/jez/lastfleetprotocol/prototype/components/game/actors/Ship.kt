@@ -76,7 +76,6 @@ class Ship(
         Turret(
             parent = this,
             offsetFromParentPivot = SceneOffset(Offset(tc.offsetX, tc.offsetY)),
-            pivot = SceneOffset(Offset(tc.pivotX, tc.pivotY)),
             gunData = tc.gunData,
             teamId = teamId,
         )
