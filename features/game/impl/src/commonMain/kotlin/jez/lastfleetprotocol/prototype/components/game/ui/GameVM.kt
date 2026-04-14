@@ -65,11 +65,13 @@ class GameVM(
                     pause()
                 }
             }
+
             GameIntent.ResumeClicked -> resume()
             GameIntent.RestartClicked -> {
                 _isPaused.value = false
                 viewModelScope.launch { gameStateManager.restartScene() }
             }
+
             GameIntent.ExitClicked -> exit()
         }
     }
@@ -87,6 +89,7 @@ class GameVM(
     private fun exit() {
         _isPaused.value = false
         viewModelScope.launch {
+            gameStateManager.clearScene()
             sendSideEffect(GameSideEffect.NavigateBack)
         }
     }
