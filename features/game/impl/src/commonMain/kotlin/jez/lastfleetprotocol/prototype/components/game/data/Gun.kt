@@ -9,7 +9,7 @@ import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.actors.Bullet
 import jez.lastfleetprotocol.prototype.components.game.actors.BulletData
-import jez.lastfleetprotocol.prototype.components.game.actors.Ship
+import jez.lastfleetprotocol.prototype.components.game.actors.HullCollider
 import jez.lastfleetprotocol.prototype.components.game.utils.getRelativePoint
 import jez.lastfleetprotocol.prototype.components.game.utils.rotate
 import jez.lastfleetprotocol.prototype.components.gamecore.data.GunData
@@ -54,7 +54,7 @@ class Gun(
             ),
             projectileStats = gunData.projectileStats,
             teamId = teamId,
-            collidableTypes = listOf(Ship::class),
+            collidableTypes = listOf(HullCollider::class),
         )
         actorManager.add(bullet)
     }

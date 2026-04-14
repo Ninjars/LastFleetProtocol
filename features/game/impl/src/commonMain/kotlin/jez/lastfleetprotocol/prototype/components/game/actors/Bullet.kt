@@ -81,7 +81,8 @@ internal class Bullet(
 
     override fun onCollisionDetected(collidables: List<Collidable>) {
         for (collidable in collidables) {
-            val ship = collidable as? Ship ?: continue
+            val hullCollider = collidable as? HullCollider ?: continue
+            val ship = hullCollider.parentShip
             if (ship.teamId == teamId) continue // Skip friendly ships
             if (!ship.isValidTarget()) continue
 
@@ -98,11 +99,12 @@ internal class Bullet(
 
             val contactPoint = body.position
 
+            // Use the struck hull's armour for impact resolution
             val outcome = KineticImpactResolver.resolve(
                 projectile = projectileStats,
                 velocity = velocity,
                 contactNormal = contactNormal,
-                armour = ship.spec.hull.armour,
+                armour = hullCollider.hullDefinition.armour,
                 combatStats = ship.spec.combatStats,
             )
 

@@ -13,14 +13,14 @@ data class ShipSpec(
     val totalMass: Float,
     val movementConfig: MovementConfig,
     val combatStats: CombatStats,
-    val hull: HullDefinition,
+    val hulls: List<HullDefinition>,
 ) {
     companion object {
         fun fromConfig(config: ShipConfig): ShipSpec = ShipSpec(
             totalMass = config.totalMass,
             movementConfig = config.movementConfig,
             combatStats = config.combatStats,
-            hull = config.hull,
+            hulls = config.hulls,
         )
     }
 }

@@ -9,7 +9,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedItem
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurret
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.PartsCatalog
-import jez.lastfleetprotocol.prototype.components.shipbuilder.stats.ShipStats
+import jez.lastfleetprotocol.prototype.components.gamecore.stats.ShipStats
 
 
 sealed interface EditorMode {

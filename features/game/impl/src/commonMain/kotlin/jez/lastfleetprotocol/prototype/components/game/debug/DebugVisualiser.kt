@@ -67,28 +67,30 @@ class DebugVisualiser : Visible, Dynamic {
         val shipX = shipPos.x.raw
         val shipY = shipPos.y.raw
 
-        // White outline: hull collision polygon edges (armour segments)
-        val mask = ship.collisionMask
-        val hullVertices = mask.vertices
-        if (hullVertices.size >= 2) {
-            val rotation = mask.rotation
-            val maskPos = mask.position
-            for (i in hullVertices.indices) {
-                val v0 = hullVertices[i].rotate(rotation)
-                val v1 = hullVertices[(i + 1) % hullVertices.size].rotate(rotation)
-                drawLine(
-                    color = Color.White,
-                    start = Offset(
-                        maskPos.x.raw + v0.x.raw,
-                        maskPos.y.raw + v0.y.raw,
-                    ),
-                    end = Offset(
-                        maskPos.x.raw + v1.x.raw,
-                        maskPos.y.raw + v1.y.raw,
-                    ),
-                    strokeWidth = 1.5f,
-                    alpha = 0.6f,
-                )
+        // White outline: hull collision polygon edges (armour segments) — one per hull collider
+        for (hullCollider in ship.hullColliders) {
+            val mask = hullCollider.collisionMask
+            val hullVertices = mask.vertices
+            if (hullVertices.size >= 2) {
+                val rotation = mask.rotation
+                val maskPos = mask.position
+                for (i in hullVertices.indices) {
+                    val v0 = hullVertices[i].rotate(rotation)
+                    val v1 = hullVertices[(i + 1) % hullVertices.size].rotate(rotation)
+                    drawLine(
+                        color = Color.White,
+                        start = Offset(
+                            maskPos.x.raw + v0.x.raw,
+                            maskPos.y.raw + v0.y.raw,
+                        ),
+                        end = Offset(
+                            maskPos.x.raw + v1.x.raw,
+                            maskPos.y.raw + v1.y.raw,
+                        ),
+                        strokeWidth = 1.5f,
+                        alpha = 0.6f,
+                    )
+                }
             }
         }
 

@@ -1,8 +1,11 @@
 package jez.lastfleetprotocol.prototype.components.gamecore.data
 
+import kotlinx.serialization.Serializable
+
 /**
  * Stats for a kinetic projectile, used for impact resolution.
  */
+@Serializable
 data class ProjectileStats(
     val damage: Float,
     val armourPiercing: Float,

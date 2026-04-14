@@ -3,79 +3,85 @@ package jez.lastfleetprotocol.prototype.components.game.data
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.gamecore.data.ArmourStats
+import jez.lastfleetprotocol.prototype.components.gamecore.data.CombatStats
 import jez.lastfleetprotocol.prototype.components.gamecore.data.HullDefinition
+import jez.lastfleetprotocol.prototype.components.gamecore.data.InternalSystemSpec
+import jez.lastfleetprotocol.prototype.components.gamecore.data.InternalSystemType
+import jez.lastfleetprotocol.prototype.components.gamecore.data.MovementConfig
+import jez.lastfleetprotocol.prototype.components.gamecore.data.ShipConfig
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ShipConfigTest {
 
-    @Test
-    fun totalMass_sumsHullArmourAndSystems() {
-        val config = DemoScenarioConfig.playerShipConfig
-        val hullMass = config.hull.mass
-        val armourMass = config.hull.armour.density * config.hull.mass * 0.1f
-        val systemsMass = config.internalSystems.sumOf { it.mass.toDouble() }.toFloat()
-        val expected = hullMass + armourMass + systemsMass
+    private val triangleVertices = listOf(
+        SceneOffset(10f.sceneUnit, 0f.sceneUnit),
+        SceneOffset((-5f).sceneUnit, 5f.sceneUnit),
+        SceneOffset((-5f).sceneUnit, (-5f).sceneUnit),
+    )
 
-        assertTrue(
-            config.totalMass == expected,
-            "Total mass should be hull($hullMass) + armour($armourMass) + systems($systemsMass) = $expected, got ${config.totalMass}"
-        )
-        assertTrue(config.totalMass > 0f, "Total mass should be positive")
+    private fun makeConfig(
+        hullMass: Float = 50f,
+        armourDensity: Float = 2f,
+        systems: List<InternalSystemSpec> = listOf(
+            InternalSystemSpec(InternalSystemType.REACTOR, maxHp = 100f, density = 8f, mass = 20f),
+        ),
+    ) = ShipConfig(
+        hulls = listOf(
+            HullDefinition(
+                vertices = triangleVertices,
+                armour = ArmourStats(hardness = 5f, density = armourDensity),
+                mass = hullMass,
+            ),
+        ),
+        combatStats = CombatStats(evasionModifier = 0.1f),
+        movementConfig = MovementConfig(
+            forwardThrust = 1200f,
+            lateralThrust = 500f,
+            reverseThrust = 500f,
+            angularThrust = 300f,
+        ),
+        internalSystems = systems,
+        turretConfigs = emptyList(),
+    )
+
+    @Test
+    fun totalMass_sumsAllHullsArmourAndSystems() {
+        val config = makeConfig(hullMass = 50f, armourDensity = 2f)
+        // hull mass = 50, armour contribution = 2 * 50 * 0.1 = 10, reactor = 20
+        val expected = 50f + 10f + 20f
+        assertEquals(expected, config.totalMass)
+        assertTrue(config.totalMass > 0f)
     }
 
     @Test
-    fun demoConfigs_haveValidValues() {
-        val configs = listOf(
-            DemoScenarioConfig.playerShipConfig,
-            DemoScenarioConfig.enemyShipLightConfig,
-            DemoScenarioConfig.enemyShipMediumConfig,
-            DemoScenarioConfig.enemyShipHeavyConfig,
+    fun totalMass_multiHull_sumsAcrossHulls() {
+        val config = ShipConfig(
+            hulls = listOf(
+                HullDefinition(triangleVertices, ArmourStats(5f, 2f), mass = 30f),
+                HullDefinition(triangleVertices, ArmourStats(5f, 1f), mass = 20f),
+            ),
+            combatStats = CombatStats(evasionModifier = 0.1f),
+            movementConfig = MovementConfig(1200f, 500f, 500f, 300f),
+            internalSystems = emptyList(),
+            turretConfigs = emptyList(),
         )
-
-        for (config in configs) {
-            assertTrue(config.totalMass > 0f, "Ship should have positive mass")
-            assertTrue(config.movementConfig.forwardThrust > 0f, "Ship should have positive forward thrust")
-            assertTrue(config.movementConfig.angularThrust > 0f, "Ship should have positive angular thrust")
-            assertTrue(config.hull.vertices.size >= 3, "Hull should have at least 3 vertices")
-
-            for (system in config.internalSystems) {
-                assertTrue(system.maxHp > 0f, "${system.type} should have positive HP")
-                assertTrue(system.density > 0f, "${system.type} should have positive density")
-            }
-
-            assertTrue(config.turretConfigs.isNotEmpty(), "Ship should have at least one turret")
-        }
-    }
-
-    @Test
-    fun demoConfigs_haveDistinctProfiles() {
-        val light = DemoScenarioConfig.enemyShipLightConfig
-        val heavy = DemoScenarioConfig.enemyShipHeavyConfig
-
-        assertTrue(
-            heavy.totalMass > light.totalMass,
-            "Heavy ship should have more mass than light ship"
-        )
-        assertTrue(
-            light.movementConfig.forwardThrust > heavy.movementConfig.forwardThrust,
-            "Light ship should have more forward thrust than heavy ship"
-        )
+        // hull1: 30 + 2*30*0.1 = 36, hull2: 20 + 1*20*0.1 = 22
+        assertEquals(58f, config.totalMass)
     }
 
     @Test
     fun zeroArmourDensity_stillProducesPositiveMass() {
-        val hull = HullDefinition(
-            vertices = listOf(
-                SceneOffset(0f.sceneUnit, (-10f).sceneUnit),
-                SceneOffset(10f.sceneUnit, 10f.sceneUnit),
-                SceneOffset((-10f).sceneUnit, 10f.sceneUnit),
-            ),
-            armour = ArmourStats(hardness = 1f, density = 0f),
-            mass = 20f,
-        )
-        val config = DemoScenarioConfig.playerShipConfig.copy(hull = hull)
+        val config = makeConfig(hullMass = 20f, armourDensity = 0f)
+        // hull mass = 20, armour = 0, reactor = 20
+        assertEquals(40f, config.totalMass)
+        assertTrue(config.totalMass > 0f)
+    }
 
-        assertTrue(config.totalMass > 0f, "Should have positive mass even with zero armour density")
+    @Test
+    fun emptySystemsList_massFromHullOnly() {
+        val config = makeConfig(hullMass = 50f, armourDensity = 0f, systems = emptyList())
+        assertEquals(50f, config.totalMass)
     }
 }

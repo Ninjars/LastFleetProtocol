@@ -20,6 +20,13 @@ Kubriko gives strong capabilities (rendering, plugins, runtime tooling), but rea
 - Prefer explicit state transitions over hidden mutable coupling.
 - If changing ordering of update/render operations, flag as high-impact in summary.
 
+## Actor Drawing Coordinate System
+
+- An actor's `DrawScope.draw()` operates in **body-local coordinates**, already translated and rotated to match the actor's `body.position` and `body.rotation`. Do not apply the body's transform again inside `draw()`.
+- The canvas bounds match the actor's `body.size` (the unrotated bounding box). The origin `(0, 0)` is the **top-left corner** of the bounding box — all drawing coordinates should be relative to that corner.
+- **Drawing is clipped to `body.size`.** Anything drawn outside the bounding box is not visible. If an element needs to render beyond the actor's bounds (e.g., a heading indicator extending past the hull nose), it must be a **separate child actor** with its own body and draw scope.
+- `body.pivot` determines the rotation centre. Set it to `body.size.center` for rotation around the geometric centre.
+
 ## Loading Behavior
 
 - Loading flow should be explicit and observable.

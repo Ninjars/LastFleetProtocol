@@ -20,8 +20,10 @@ import jez.lastfleetprotocol.prototype.components.game.ui.GameScreen
 import jez.lastfleetprotocol.prototype.components.gamecore.GameLoadingStatus
 import jez.lastfleetprotocol.prototype.components.gamecore.GameSessionState
 import jez.lastfleetprotocol.prototype.components.landingscreen.LandingScreenEntry
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.DefaultShipDesignLoader
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemLibraryRepository
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesignRepository
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.TurretGunLoader
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ShipBuilderScreenEntry
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.FileItemLibraryRepository
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.FileShipDesignRepository
@@ -68,6 +70,14 @@ abstract class AppComponent(
 
     @Provides
     protected fun itemLibraryRepository(fileRepo: FileItemLibraryRepository): ItemLibraryRepository = fileRepo
+
+    @Singleton
+    @Provides
+    protected fun defaultShipDesignLoader(): DefaultShipDesignLoader = DefaultShipDesignLoader()
+
+    @Singleton
+    @Provides
+    protected fun turretGunLoader(): TurretGunLoader = TurretGunLoader()
 
     @Provides
     protected fun gameSessionState(gameStateHolder: GameStateHolder): GameSessionState = gameStateHolder

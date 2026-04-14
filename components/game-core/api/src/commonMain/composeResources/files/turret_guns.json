@@ -1,0 +1,47 @@
+{
+    "turret_standard": {
+        "projectileStats": {
+            "damage": 15.0,
+            "armourPiercing": 6.0,
+            "toHitModifier": 0.15,
+            "speed": 200.0,
+            "lifetimeMs": 4000
+        },
+        "aimTolerance": 0.004363537,
+        "magazineCapacity": 2147483647,
+        "reloadMilliseconds": 2000,
+        "shotsPerBurst": 3,
+        "burstCycleMilliseconds": 100,
+        "cycleMilliseconds": 700
+    },
+    "turret_light": {
+        "projectileStats": {
+            "damage": 8.0,
+            "armourPiercing": 3.0,
+            "toHitModifier": 0.2,
+            "speed": 250.0,
+            "lifetimeMs": 3000
+        },
+        "aimTolerance": 0.004363537,
+        "magazineCapacity": 2147483647,
+        "reloadMilliseconds": 1500,
+        "shotsPerBurst": 5,
+        "burstCycleMilliseconds": 80,
+        "cycleMilliseconds": 400
+    },
+    "turret_heavy": {
+        "projectileStats": {
+            "damage": 30.0,
+            "armourPiercing": 12.0,
+            "toHitModifier": 0.05,
+            "speed": 150.0,
+            "lifetimeMs": 5000
+        },
+        "aimTolerance": 0.004363537,
+        "magazineCapacity": 2147483647,
+        "reloadMilliseconds": 3000,
+        "shotsPerBurst": 1,
+        "burstCycleMilliseconds": 0,
+        "cycleMilliseconds": 1500
+    }
+}
