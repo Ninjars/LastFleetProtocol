@@ -11,6 +11,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurr
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ShipStatsCoreTest {
 
@@ -178,5 +179,107 @@ class ShipStatsCoreTest {
 
         assertEquals(20f, stats.totalMass)
         assertEquals(1000f, stats.forwardThrust) // 600 + 400
+    }
+
+    @Test
+    fun singleHull_producesDragCoefficients() {
+        val hullDef = makeHullDef(id = "hull1", mass = 50f, armourDensity = 0f)
+        val stats = calculateShipStats(
+            placedHulls = listOf(
+                PlacedHullPiece("ph1", "hull1", SceneOffset(0f.sceneUnit, 0f.sceneUnit), 0f.rad)
+            ),
+            placedModules = emptyList(),
+            placedTurrets = emptyList(),
+            resolveItem = { if (it == "hull1") hullDef else null },
+        )
+        // Hull has default drag modifiers (1.0). Bounding box from triangle vertices (10,0),(-5,5),(-5,-5):
+        // width = 15, height = 10. Forward drag uses Y extent (10), lateral uses X extent (15).
+        assertTrue(stats.forwardDragCoeff > 0f, "Forward drag should be non-zero for hull with vertices")
+        assertTrue(stats.lateralDragCoeff > 0f, "Lateral drag should be non-zero")
+        assertTrue(stats.reverseDragCoeff > 0f, "Reverse drag should be non-zero")
+    }
+
+    @Test
+    fun hullWithCustomDragModifiers_weightsCorrectly() {
+        val hullDef = ItemDefinition(
+            id = "hull1",
+            name = "Test Hull",
+            vertices = triangleVertices,
+            attributes = ItemAttributes.HullAttributes(
+                armour = SerializableArmourStats(hardness = 5f, density = 0f),
+                sizeCategory = "medium",
+                mass = 50f,
+                forwardDragModifier = 0.5f,
+                lateralDragModifier = 2.0f,
+                reverseDragModifier = 1.5f,
+            ),
+        )
+        val stats = calculateShipStats(
+            placedHulls = listOf(
+                PlacedHullPiece("ph1", "hull1", SceneOffset(0f.sceneUnit, 0f.sceneUnit), 0f.rad)
+            ),
+            placedModules = emptyList(),
+            placedTurrets = emptyList(),
+            resolveItem = { if (it == "hull1") hullDef else null },
+        )
+        // Forward drag (lower modifier) should be less than lateral drag (higher modifier)
+        assertTrue(stats.lateralDragCoeff > stats.forwardDragCoeff, "Higher modifier should produce higher drag")
+    }
+
+    @Test
+    fun terminalVelocity_computedFromThrustAndDrag() {
+        val hullDef = makeHullDef(id = "hull1", mass = 50f, armourDensity = 0f)
+        val engineDef = makeEngineDef(id = "engine1", mass = 10f, forwardThrust = 1200f)
+        val defs = mapOf("hull1" to hullDef, "engine1" to engineDef)
+
+        val stats = calculateShipStats(
+            placedHulls = listOf(
+                PlacedHullPiece("ph1", "hull1", SceneOffset(0f.sceneUnit, 0f.sceneUnit), 0f.rad)
+            ),
+            placedModules = listOf(
+                PlacedModule("pm1", "engine1", "MAIN_ENGINE", SceneOffset(0f.sceneUnit, 0f.sceneUnit), 0f.rad, parentHullId = "ph1")
+            ),
+            placedTurrets = emptyList(),
+            resolveItem = { defs[it] },
+        )
+
+        assertTrue(stats.terminalVelForward < Float.MAX_VALUE, "Forward terminal velocity should be finite with drag")
+        assertTrue(stats.terminalVelForward > 0f, "Forward terminal velocity should be positive with thrust")
+        // v_t = sqrt(thrust / dragCoeff)
+        val expectedVt = kotlin.math.sqrt(stats.forwardThrust / stats.forwardDragCoeff)
+        assertEquals(expectedVt, stats.terminalVelForward, 0.01f)
+    }
+
+    @Test
+    fun zeroDragCoeff_producesUnlimitedTerminalVelocity() {
+        val stats = calculateShipStats(
+            placedHulls = emptyList(), // no hulls → no drag
+            placedModules = listOf(
+                PlacedModule("pm1", "", "MAIN_ENGINE", SceneOffset(0f.sceneUnit, 0f.sceneUnit), 0f.rad, parentHullId = "")
+            ),
+            placedTurrets = emptyList(),
+            resolveItem = { null },
+        )
+        assertEquals(Float.MAX_VALUE, stats.terminalVelForward)
+    }
+
+    @Test
+    fun turnRate_computedFromAngularThrustAndMass() {
+        val hullDef = makeHullDef(id = "hull1", mass = 50f, armourDensity = 0f)
+        val engineDef = makeEngineDef(id = "engine1", mass = 10f, forwardThrust = 1200f)
+        val defs = mapOf("hull1" to hullDef, "engine1" to engineDef)
+
+        val stats = calculateShipStats(
+            placedHulls = listOf(
+                PlacedHullPiece("ph1", "hull1", SceneOffset(0f.sceneUnit, 0f.sceneUnit), 0f.rad)
+            ),
+            placedModules = listOf(
+                PlacedModule("pm1", "engine1", "MAIN_ENGINE", SceneOffset(0f.sceneUnit, 0f.sceneUnit), 0f.rad, parentHullId = "ph1")
+            ),
+            placedTurrets = emptyList(),
+            resolveItem = { defs[it] },
+        )
+
+        assertTrue(stats.turnRate > 0f, "Turn rate should be positive with angular thrust")
     }
 }

@@ -1,10 +1,13 @@
 package jez.lastfleetprotocol.prototype.components.gamecore.stats
 
+import jez.lastfleetprotocol.prototype.components.gamecore.geometry.calculatePolygonArea
+import jez.lastfleetprotocol.prototype.components.gamecore.geometry.computeBoundingBoxExtents
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurret
+import kotlin.math.sqrt
 
 /**
  * Calculated stats for a ship design.
@@ -97,6 +100,58 @@ fun calculateShipStats(
     val reverseAccel = if (totalMass > 0f) reverseThrust / totalMass else 0f
     val angularAccel = if (totalMass > 0f) angularThrust / totalMass else 0f
 
+    // --- Drag coefficient computation (atmospheric model) ---
+    // Area-weighted average of per-hull-piece drag modifiers × bounding box extent × RHO
+    var totalHullArea = 0f
+    var weightedForwardMod = 0f
+    var weightedLateralMod = 0f
+    var weightedReverseMod = 0f
+    val allHullVertices = mutableListOf<com.pandulapeter.kubriko.types.SceneOffset>()
+
+    for (placedHull in placedHulls) {
+        val def = resolveItem(placedHull.itemDefinitionId) ?: continue
+        val attrs = def.attributes as? ItemAttributes.HullAttributes ?: continue
+        val area = calculatePolygonArea(def.vertices)
+        if (area > 0f) {
+            totalHullArea += area
+            weightedForwardMod += attrs.forwardDragModifier * area
+            weightedLateralMod += attrs.lateralDragModifier * area
+            weightedReverseMod += attrs.reverseDragModifier * area
+        }
+        allHullVertices.addAll(def.vertices)
+    }
+
+    val (bbWidth, bbHeight) = computeBoundingBoxExtents(allHullVertices)
+    // Width (X extent) = forward/reverse cross-section; Height (Y extent) = lateral cross-section
+    val forwardExtent = bbHeight // ships moving forward present their Y-axis cross-section
+    val lateralExtent = bbWidth  // ships moving laterally present their X-axis cross-section
+    val reverseExtent = bbHeight // same as forward
+
+    val forwardDragCoeff: Float
+    val lateralDragCoeff: Float
+    val reverseDragCoeff: Float
+
+    if (totalHullArea > 0f) {
+        val avgForwardMod = weightedForwardMod / totalHullArea
+        val avgLateralMod = weightedLateralMod / totalHullArea
+        val avgReverseMod = weightedReverseMod / totalHullArea
+        forwardDragCoeff = forwardExtent * avgForwardMod * RHO
+        lateralDragCoeff = lateralExtent * avgLateralMod * RHO
+        reverseDragCoeff = reverseExtent * avgReverseMod * RHO
+    } else {
+        forwardDragCoeff = 0f
+        lateralDragCoeff = 0f
+        reverseDragCoeff = 0f
+    }
+
+    // Terminal velocity: v_t = sqrt(thrust / dragCoeff) per axis
+    val terminalVelForward = terminalVelocity(forwardThrust, forwardDragCoeff)
+    val terminalVelLateral = terminalVelocity(lateralThrust, lateralDragCoeff)
+    val terminalVelReverse = terminalVelocity(reverseThrust, reverseDragCoeff)
+
+    // Turn rate: degrees per second, derived from angular thrust and mass
+    val turnRate = if (totalMass > 0f) angularThrust / totalMass * TURN_RATE_SCALE else 0f
+
     return ShipStats(
         totalMass = totalMass,
         forwardThrust = forwardThrust,
@@ -107,8 +162,34 @@ fun calculateShipStats(
         lateralAccel = lateralAccel,
         reverseAccel = reverseAccel,
         angularAccel = angularAccel,
+        forwardDragCoeff = forwardDragCoeff,
+        lateralDragCoeff = lateralDragCoeff,
+        reverseDragCoeff = reverseDragCoeff,
+        terminalVelForward = terminalVelForward,
+        terminalVelLateral = terminalVelLateral,
+        terminalVelReverse = terminalVelReverse,
+        turnRate = turnRate,
     )
 }
+
+private fun terminalVelocity(thrust: Float, dragCoeff: Float): Float {
+    if (dragCoeff <= 0f) return Float.MAX_VALUE
+    if (thrust <= 0f) return 0f
+    return sqrt(thrust / dragCoeff)
+}
+
+/**
+ * Air density constant — dimensionless tuning parameter that scales all drag coefficients
+ * uniformly. Increase for stronger drag (slower ships), decrease for weaker drag (faster ships).
+ * Tuned alongside per-ship drag modifiers in the content-retuning pass.
+ */
+const val RHO = 1.0f
+
+/**
+ * Scaling factor from (angularThrust / mass) to degrees-per-second turn rate.
+ * Tuned for gameplay feel.
+ */
+private const val TURN_RATE_SCALE = 50f
 
 // Legacy fallback values for modules without ItemDefinition
 private val LEGACY_SYSTEM_MASS = mapOf(
