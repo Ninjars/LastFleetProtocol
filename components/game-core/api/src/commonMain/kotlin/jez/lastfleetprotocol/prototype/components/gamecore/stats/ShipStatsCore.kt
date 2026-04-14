@@ -19,6 +19,14 @@ data class ShipStats(
     val lateralAccel: Float = 0f,
     val reverseAccel: Float = 0f,
     val angularAccel: Float = 0f,
+    // Atmospheric drag model fields
+    val forwardDragCoeff: Float = 0f,
+    val lateralDragCoeff: Float = 0f,
+    val reverseDragCoeff: Float = 0f,
+    val terminalVelForward: Float = Float.MAX_VALUE,
+    val terminalVelLateral: Float = Float.MAX_VALUE,
+    val terminalVelReverse: Float = Float.MAX_VALUE,
+    val turnRate: Float = 0f, // degrees per second
 )
 
 /**
