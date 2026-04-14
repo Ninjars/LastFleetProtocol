@@ -1,0 +1,196 @@
+{
+    "name": "enemy_light",
+    "itemDefinitions": [
+        {
+            "id": "hull_enemy_light_0",
+            "name": "Hull",
+            "vertices": [
+                {
+                    "x": 42.0,
+                    "y": 0.0
+                },
+                {
+                    "x": -20.0,
+                    "y": 30.0
+                },
+                {
+                    "x": -42.0,
+                    "y": 15.0
+                },
+                {
+                    "x": -42.0,
+                    "y": -15.0
+                },
+                {
+                    "x": -20.0,
+                    "y": -30.0
+                }
+            ],
+            "attributes": {
+                "type": "hull",
+                "armour": {
+                    "hardness": 3.0,
+                    "density": 1.0
+                },
+                "sizeCategory": "medium",
+                "mass": 30.0
+            }
+        },
+        {
+            "id": "module_enemy_light_reactor",
+            "name": "REACTOR",
+            "vertices": [],
+            "attributes": {
+                "type": "module",
+                "systemType": "REACTOR",
+                "maxHp": 60.0,
+                "density": 5.0,
+                "mass": 10.0
+            }
+        },
+        {
+            "id": "module_enemy_light_main_engine",
+            "name": "MAIN_ENGINE",
+            "vertices": [],
+            "attributes": {
+                "type": "module",
+                "systemType": "MAIN_ENGINE",
+                "maxHp": 50.0,
+                "density": 3.0,
+                "mass": 8.0,
+                "forwardThrust": 1000.0,
+                "lateralThrust": 300.0,
+                "reverseThrust": 400.0,
+                "angularThrust": 200.0
+            }
+        },
+        {
+            "id": "module_enemy_light_bridge",
+            "name": "BRIDGE",
+            "vertices": [],
+            "attributes": {
+                "type": "module",
+                "systemType": "BRIDGE",
+                "maxHp": 40.0,
+                "density": 2.0,
+                "mass": 5.0
+            }
+        },
+        {
+            "id": "turret_enemy_light_0",
+            "name": "Turret",
+            "vertices": [
+                {
+                    "x": 16.0,
+                    "y": 0.0
+                },
+                {
+                    "x": -8.0,
+                    "y": -8.0
+                },
+                {
+                    "x": -8.0,
+                    "y": 8.0
+                }
+            ],
+            "attributes": {
+                "type": "turret",
+                "mass": 5.0,
+                "sizeCategory": "Medium"
+            }
+        },
+        {
+            "id": "turret_enemy_light_1",
+            "name": "Turret",
+            "vertices": [
+                {
+                    "x": 16.0,
+                    "y": 0.0
+                },
+                {
+                    "x": -8.0,
+                    "y": -8.0
+                },
+                {
+                    "x": -8.0,
+                    "y": 8.0
+                }
+            ],
+            "attributes": {
+                "type": "turret",
+                "mass": 5.0,
+                "sizeCategory": "Medium"
+            }
+        }
+    ],
+    "placedHulls": [
+        {
+            "id": "placed_hull_0",
+            "itemDefinitionId": "hull_enemy_light_0",
+            "position": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "rotation": 0.0
+        }
+    ],
+    "placedModules": [
+        {
+            "id": "placed_module_0",
+            "itemDefinitionId": "module_enemy_light_reactor",
+            "systemType": "REACTOR",
+            "position": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "rotation": 0.0,
+            "parentHullId": "placed_hull_0"
+        },
+        {
+            "id": "placed_module_1",
+            "itemDefinitionId": "module_enemy_light_main_engine",
+            "systemType": "MAIN_ENGINE",
+            "position": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "rotation": 0.0,
+            "parentHullId": "placed_hull_0"
+        },
+        {
+            "id": "placed_module_2",
+            "itemDefinitionId": "module_enemy_light_bridge",
+            "systemType": "BRIDGE",
+            "position": {
+                "x": 0.0,
+                "y": 0.0
+            },
+            "rotation": 0.0,
+            "parentHullId": "placed_hull_0"
+        }
+    ],
+    "placedTurrets": [
+        {
+            "id": "placed_turret_0",
+            "itemDefinitionId": "turret_enemy_light_0",
+            "turretConfigId": "turret_light",
+            "position": {
+                "x": 0.0,
+                "y": -30.0
+            },
+            "rotation": 0.0,
+            "parentHullId": "placed_hull_0"
+        },
+        {
+            "id": "placed_turret_1",
+            "itemDefinitionId": "turret_enemy_light_1",
+            "turretConfigId": "turret_light",
+            "position": {
+                "x": 0.0,
+                "y": 30.0
+            },
+            "rotation": 0.0,
+            "parentHullId": "placed_hull_0"
+        }
+    ]
+}
