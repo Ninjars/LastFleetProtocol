@@ -68,7 +68,7 @@ class GameVM(
             GameIntent.ResumeClicked -> resume()
             GameIntent.RestartClicked -> {
                 _isPaused.value = false
-                gameStateManager.restartScene()
+                viewModelScope.launch { gameStateManager.restartScene() }
             }
             GameIntent.ExitClicked -> exit()
         }
@@ -99,6 +99,6 @@ class GameVM(
     }
 
     init {
-        gameStateManager.startDemoScene()
+        viewModelScope.launch { gameStateManager.startDemoScene() }
     }
 }

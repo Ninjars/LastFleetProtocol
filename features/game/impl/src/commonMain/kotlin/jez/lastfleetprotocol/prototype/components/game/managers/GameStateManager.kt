@@ -11,12 +11,14 @@ import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.actors.ShipSpec
 import jez.lastfleetprotocol.prototype.components.game.ai.AIModule
 import jez.lastfleetprotocol.prototype.components.game.ai.BasicAI
-import jez.lastfleetprotocol.prototype.components.game.data.DemoScenarioConfig
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.game.debug.DebugVisualiser
 import jez.lastfleetprotocol.prototype.components.game.input.InputController
 import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems
 import jez.lastfleetprotocol.prototype.components.gamecore.data.ShipConfig
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.DefaultShipDesignLoader
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.TurretGunLoader
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.convertShipDesign
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import me.tatarka.inject.annotations.Inject
@@ -26,6 +28,8 @@ class GameStateManager(
     private val stateManager: StateManager,
     private val actorManager: ActorManager,
     private val viewportManager: ViewportManager,
+    private val shipDesignLoader: DefaultShipDesignLoader,
+    private val turretGunLoader: TurretGunLoader,
 ) : Manager(), Unique {
 
     enum class GameResult { VICTORY, DEFEAT }
@@ -46,24 +50,56 @@ class GameStateManager(
         stateManager.updateIsRunning(!paused)
     }
 
-    fun startDemoScene() {
+    /**
+     * Load default ship designs from bundled resources, convert them to ShipConfig,
+     * and spawn all ships for the demo combat scenario.
+     *
+     * Spawn-slot mapping is filename-indexed:
+     * - player_ship → 2 player ships (no AI)
+     * - enemy_light → 1 enemy
+     * - enemy_medium → 1 enemy
+     * - enemy_heavy → 1 enemy
+     */
+    suspend fun startDemoScene() {
         stateManager.updateIsRunning(true)
+
+        // Load designs and turret guns (cached after first load)
+        val designs = shipDesignLoader.loadAll()
+        val turretGuns = turretGunLoader.load()
+
+        // Convert designs to runtime configs — fatal on failure
+        val playerConfig = convertShipDesign(
+            designs["player_ship"] ?: error("Missing bundled design: player_ship"),
+            turretGuns,
+        ).getOrThrow()
+        val enemyLightConfig = convertShipDesign(
+            designs["enemy_light"] ?: error("Missing bundled design: enemy_light"),
+            turretGuns,
+        ).getOrThrow()
+        val enemyMediumConfig = convertShipDesign(
+            designs["enemy_medium"] ?: error("Missing bundled design: enemy_medium"),
+            turretGuns,
+        ).getOrThrow()
+        val enemyHeavyConfig = convertShipDesign(
+            designs["enemy_heavy"] ?: error("Missing bundled design: enemy_heavy"),
+            turretGuns,
+        ).getOrThrow()
 
         // Create input controller for player ships
         val inputController = InputController(selectableTeamId = Ship.TEAM_PLAYER)
         actorManager.add(inputController)
 
         // Create 2 player ships (no AI modules — player-controlled)
-        val player1 = createShip(
-            config = DemoScenarioConfig.playerShipConfig,
+        createShip(
+            config = playerConfig,
             position = SceneOffset((-300f).sceneUnit, (-50f).sceneUnit),
             teamId = Ship.TEAM_PLAYER,
             targetProvider = { enemyShips },
             aiModules = emptyList(),
             drawOrder = DrawOrder.PLAYER_SHIP,
         )
-        val player2 = createShip(
-            config = DemoScenarioConfig.playerShipConfig,
+        createShip(
+            config = playerConfig,
             position = SceneOffset((-300f).sceneUnit, 50f.sceneUnit),
             teamId = Ship.TEAM_PLAYER,
             targetProvider = { enemyShips },
@@ -73,7 +109,7 @@ class GameStateManager(
 
         // Create 3 enemy ships with BasicAI
         createShip(
-            config = DemoScenarioConfig.enemyShipLightConfig,
+            config = enemyLightConfig,
             position = SceneOffset(300f.sceneUnit, (-120f).sceneUnit),
             teamId = Ship.TEAM_ENEMY,
             targetProvider = { playerShips },
@@ -81,7 +117,7 @@ class GameStateManager(
             drawOrder = DrawOrder.ENEMY_SHIP,
         )
         createShip(
-            config = DemoScenarioConfig.enemyShipMediumConfig,
+            config = enemyMediumConfig,
             position = SceneOffset(350f.sceneUnit, 0f.sceneUnit),
             teamId = Ship.TEAM_ENEMY,
             targetProvider = { playerShips },
@@ -89,7 +125,7 @@ class GameStateManager(
             drawOrder = DrawOrder.ENEMY_SHIP,
         )
         createShip(
-            config = DemoScenarioConfig.enemyShipHeavyConfig,
+            config = enemyHeavyConfig,
             position = SceneOffset(300f.sceneUnit, 120f.sceneUnit),
             teamId = Ship.TEAM_ENEMY,
             targetProvider = { playerShips },
@@ -129,7 +165,6 @@ class GameStateManager(
             drawingOrder = drawOrder,
         )
 
-
         ship.onDestroyedCallback = ::onShipDestroyed
 
         when (teamId) {
@@ -158,7 +193,7 @@ class GameStateManager(
         }
     }
 
-    fun restartScene() {
+    suspend fun restartScene() {
         _gameResult.value = null
         clearScene()
         startDemoScene()
