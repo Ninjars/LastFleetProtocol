@@ -1,9 +1,9 @@
 ---
 title: "feat: Ship Builder Phase 3 — game integration (bridge builder designs to runtime)"
 type: feat
-status: active
+status: completed
 date: 2026-04-11
-updated: 2026-04-12
+updated: 2026-04-14
 origin: docs/brainstorms/2026-04-06-ship-builder-requirements.md
 ---
 
