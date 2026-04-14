@@ -183,7 +183,7 @@ private fun terminalVelocity(thrust: Float, dragCoeff: Float): Float {
  * uniformly. Increase for stronger drag (slower ships), decrease for weaker drag (faster ships).
  * Tuned alongside per-ship drag modifiers in the content-retuning pass.
  */
-const val RHO = 1.0f
+const val RHO = 0.005f
 
 /**
  * Scaling factor from (angularThrust / mass) to degrees-per-second turn rate.
