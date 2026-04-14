@@ -12,7 +12,6 @@ import com.pandulapeter.kubriko.actor.body.BoxBody
 import com.pandulapeter.kubriko.actor.traits.Dynamic
 import com.pandulapeter.kubriko.helpers.extensions.get
 import com.pandulapeter.kubriko.helpers.extensions.length
-import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.ViewportManager
@@ -200,7 +199,7 @@ class Ship(
 
         val result = physics.integrate(deltaTimeInMilliseconds)
         body.position += result.positionDelta
-        body.rotation += result.rotationDelta.rad
+        // Rotation is handled by the navigator via turn-rate model (not physics-integrated)
 
         checkDestruction()
     }

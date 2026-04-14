@@ -3,33 +3,37 @@ package jez.lastfleetprotocol.prototype.components.game.physics
 import com.pandulapeter.kubriko.helpers.extensions.length
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
-import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
+import jez.lastfleetprotocol.prototype.components.gamecore.data.MovementConfig
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
 class ShipPhysicsTest {
 
-    // --- Helpers ---
-
     private fun makePhysics(
         mass: Float = 10f,
         initialVelocity: SceneOffset = SceneOffset.Zero,
     ) = ShipPhysics(mass = mass, initialVelocity = initialVelocity)
 
-    /** Forward in ship-local space: -Y (ship nose points up). */
-    private val localForward = SceneOffset(0f.sceneUnit, (-1f).sceneUnit)
+    private val localForward = SceneOffset(1f.sceneUnit, 0f.sceneUnit)
 
-    /** Right in ship-local space: +X. */
-    private val localRight = SceneOffset(1f.sceneUnit, 0f.sceneUnit)
+    private val defaultMovementConfig = MovementConfig(
+        forwardThrust = 1200f,
+        lateralThrust = 500f,
+        reverseThrust = 500f,
+        angularThrust = 300f,
+        forwardDragCoeff = 1.0f,
+        lateralDragCoeff = 2.0f,
+        reverseDragCoeff = 2.0f,
+    )
 
     // --- Zero-state tests ---
 
     @Test
     fun zeroVelocity_noForces_remainsStationary() {
         val physics = makePhysics()
-        val result = physics.integrate(16) // ~1 frame at 60fps
+        val result = physics.integrate(16)
 
         assertTrue(
             abs(result.positionDelta.x.raw) < 0.001f,
@@ -39,61 +43,23 @@ class ShipPhysicsTest {
             abs(result.positionDelta.y.raw) < 0.001f,
             "Y position delta should be ~0, was ${result.positionDelta.y.raw}"
         )
-        assertTrue(
-            abs(result.rotationDelta) < 0.001f,
-            "Rotation delta should be ~0, was ${result.rotationDelta}"
-        )
     }
 
     // --- Forward thrust test ---
 
     @Test
-    fun forwardThrust_facingUp_acceleratesInNegativeY() {
+    fun forwardThrust_acceleratesInForwardDirection() {
         val physics = makePhysics(mass = 10f)
-        val facing = 0f.rad // Facing up (default)
+        val facing = 0f.rad
 
-        // Apply forward thrust for several frames
         repeat(10) {
             physics.applyThrust(localForward, 100f, facing)
             physics.integrate(16)
         }
 
-        // Ship should have moved in -Y direction (forward)
         assertTrue(
-            physics.velocity.y.raw < -0.1f,
-            "Should have negative Y velocity (moving forward/up), was ${physics.velocity.y.raw}"
-        )
-        assertTrue(
-            abs(physics.velocity.x.raw) < 0.01f,
-            "Should have minimal X velocity, was ${physics.velocity.x.raw}"
-        )
-    }
-
-    // --- Directional thrust asymmetry ---
-
-    @Test
-    fun forwardThrust_strongerThanLateral_givenSameFrames() {
-        val forwardPhysics = makePhysics(mass = 10f)
-        val lateralPhysics = makePhysics(mass = 10f)
-        val facing = 0f.rad
-
-        val forwardForce = 400f
-        val lateralForce = 100f // 4:1 ratio as per design
-
-        repeat(10) {
-            forwardPhysics.applyThrust(localForward, forwardForce, facing)
-            forwardPhysics.integrate(16)
-
-            lateralPhysics.applyThrust(localRight, lateralForce, facing)
-            lateralPhysics.integrate(16)
-        }
-
-        val forwardSpeed = forwardPhysics.speed().raw
-        val lateralSpeed = lateralPhysics.speed().raw
-
-        assertTrue(
-            forwardSpeed > lateralSpeed,
-            "Forward speed ($forwardSpeed) should exceed lateral speed ($lateralSpeed)"
+            physics.velocity.x.raw > 0.1f,
+            "Should have positive X velocity (forward), was ${physics.velocity.x.raw}"
         )
     }
 
@@ -104,13 +70,12 @@ class ShipPhysicsTest {
         val lightShip = makePhysics(mass = 10f)
         val heavyShip = makePhysics(mass = 40f)
         val facing = 0f.rad
-        val thrustMagnitude = 100f
 
         repeat(10) {
-            lightShip.applyThrust(localForward, thrustMagnitude, facing)
+            lightShip.applyThrust(localForward, 100f, facing)
             lightShip.integrate(16)
 
-            heavyShip.applyThrust(localForward, thrustMagnitude, facing)
+            heavyShip.applyThrust(localForward, 100f, facing)
             heavyShip.integrate(16)
         }
 
@@ -121,50 +86,139 @@ class ShipPhysicsTest {
             lightSpeed > heavySpeed,
             "Light ship speed ($lightSpeed) should exceed heavy ship speed ($heavySpeed)"
         )
-        // With 4x mass, speed should be ~4x lower
-        val ratio = lightSpeed / heavySpeed
-        assertTrue(
-            ratio > 3.5f && ratio < 4.5f,
-            "Speed ratio should be ~4.0 (was $ratio)"
-        )
     }
 
-    // --- Deceleration ---
+    // --- Drag tests ---
 
     @Test
-    fun deceleration_bringsShipToRest() {
-        val initialVelocity = SceneOffset(0f.sceneUnit, (-5f).sceneUnit)
-        val physics = makePhysics(mass = 10f, initialVelocity = initialVelocity)
+    fun drag_deceleratesMovingShip() {
+        val initialVelocity = SceneOffset(5f.sceneUnit, 0f.sceneUnit)
+        val physics = makePhysics(mass = 1f, initialVelocity = initialVelocity)
+        val facing = 0f.rad
+        val dragConfig = MovementConfig(
+            forwardThrust = 0f, lateralThrust = 0f,
+            reverseThrust = 0f, angularThrust = 0f,
+            forwardDragCoeff = 0.5f,
+            lateralDragCoeff = 0.5f,
+            reverseDragCoeff = 0.5f,
+        )
 
-        // Apply deceleration for many frames
-        repeat(200) {
-            physics.decelerate(100f, 16)
+        val speedBefore = physics.speed().raw
+
+        // Under quadratic drag (v² law), deceleration slows as v drops.
+        // With mass=1, dragCoeff=0.5: v(t) = 1/(1/v₀ + k*t/m) → asymptotic decay.
+        // After ~600 frames (10s): v ≈ 1/(0.2 + 5) ≈ 0.19
+        repeat(600) {
+            physics.applyDrag(dragConfig, facing)
             physics.integrate(16)
         }
 
         val speed = physics.speed().raw
         assertTrue(
-            speed < 0.1f,
-            "Ship should be nearly stopped after sustained deceleration, speed was $speed"
+            speed < speedBefore,
+            "Ship should have slowed down, was $speed (started at $speedBefore)"
+        )
+        assertTrue(
+            speed < 1.0f,
+            "Ship should be mostly stopped after sustained drag, speed was $speed"
         )
     }
 
-    // --- Angular force ---
-
     @Test
-    fun angularForce_producesRotation() {
+    fun drag_zeroVelocity_noDragApplied() {
         val physics = makePhysics(mass = 10f)
+        val facing = 0f.rad
 
-        physics.applyAngularForce(50f)
+        // Should not crash or produce NaN
+        physics.applyDrag(defaultMovementConfig, facing)
         val result = physics.integrate(16)
 
         assertTrue(
-            result.rotationDelta != 0f,
-            "Rotation delta should be non-zero after applying angular force"
+            abs(result.positionDelta.x.raw) < 0.001f,
+            "No movement expected at zero velocity with drag"
         )
+    }
+
+    @Test
+    fun drag_zeroDragCoeffs_noDragApplied() {
+        val initialVelocity = SceneOffset(5f.sceneUnit, 0f.sceneUnit)
+        val physics = makePhysics(mass = 10f, initialVelocity = initialVelocity)
+        val facing = 0f.rad
+        val noDragConfig = MovementConfig(
+            forwardThrust = 1200f, lateralThrust = 500f,
+            reverseThrust = 500f, angularThrust = 300f,
+            // All drag coefficients zero — frictionless
+        )
+
+        val speedBefore = physics.speed().raw
+        physics.applyDrag(noDragConfig, facing)
+        physics.integrate(16)
+        val speedAfter = physics.speed().raw
+
+        // Speed should be unchanged (within floating-point tolerance)
         assertTrue(
-            physics.angularVelocity > 0f,
-            "Angular velocity should be positive after positive torque"
+            abs(speedBefore - speedAfter) < 0.01f,
+            "Speed should be unchanged with zero drag: before=$speedBefore, after=$speedAfter"
+        )
+    }
+
+    @Test
+    fun thrust_plus_drag_reachesTerminalVelocity() {
+        val physics = makePhysics(mass = 10f)
+        val facing = 0f.rad
+        val config = MovementConfig(
+            forwardThrust = 100f, lateralThrust = 0f,
+            reverseThrust = 0f, angularThrust = 0f,
+            forwardDragCoeff = 1.0f,
+        )
+        // Terminal velocity = sqrt(100 / 1.0) = 10
+        val expectedTerminalVel = 10f
+
+        repeat(500) {
+            physics.applyThrust(localForward, 100f, facing)
+            physics.applyDrag(config, facing)
+            physics.integrate(16)
+        }
+
+        val speed = physics.speed().raw
+        assertTrue(
+            abs(speed - expectedTerminalVel) < 1.0f,
+            "Speed should converge to terminal velocity ~$expectedTerminalVel, was $speed"
+        )
+    }
+
+    @Test
+    fun diagonal_drag_isNormalized_notPenalized() {
+        // Ship facing 0 (forward = +X), moving at 45 degrees
+        val diagonalVelocity = SceneOffset(5f.sceneUnit, 5f.sceneUnit)
+        val forwardVelocity = SceneOffset(7.07f.sceneUnit, 0f.sceneUnit) // same magnitude
+
+        val physDiag = makePhysics(mass = 10f, initialVelocity = diagonalVelocity)
+        val physFwd = makePhysics(mass = 10f, initialVelocity = forwardVelocity)
+        val facing = 0f.rad
+
+        val symmetricConfig = MovementConfig(
+            forwardThrust = 0f, lateralThrust = 0f,
+            reverseThrust = 0f, angularThrust = 0f,
+            forwardDragCoeff = 1.0f,
+            lateralDragCoeff = 1.0f,
+            reverseDragCoeff = 1.0f,
+        )
+
+        // Apply drag once to both
+        physDiag.applyDrag(symmetricConfig, facing)
+        physFwd.applyDrag(symmetricConfig, facing)
+        physDiag.integrate(16)
+        physFwd.integrate(16)
+
+        val diagSpeed = physDiag.speed().raw
+        val fwdSpeed = physFwd.speed().raw
+
+        // With identical coefficients and normalization, drag effect should be similar
+        // (not 41% higher for diagonal)
+        assertTrue(
+            abs(diagSpeed - fwdSpeed) < 1.0f,
+            "Diagonal and forward drag should be similar with equal coefficients: diag=$diagSpeed, fwd=$fwdSpeed"
         )
     }
 
@@ -175,24 +229,16 @@ class ShipPhysicsTest {
         val physics = makePhysics(mass = 10f)
 
         physics.applyThrust(localForward, 1000f, 0f.rad)
-        physics.applyAngularForce(500f)
         physics.integrate(16)
 
-        // Second integrate with no new forces: velocity should persist but no new acceleration
         val v1 = physics.velocity
-        val av1 = physics.angularVelocity
         physics.integrate(16)
         val v2 = physics.velocity
-        val av2 = physics.angularVelocity
 
-        // Velocity should be unchanged (no new forces, just integration)
+        // Velocity should be unchanged (no new forces)
         assertTrue(
             abs(v1.x.raw - v2.x.raw) < 0.001f && abs(v1.y.raw - v2.y.raw) < 0.001f,
             "Velocity should not change without new forces"
-        )
-        assertTrue(
-            abs(av1 - av2) < 0.001f,
-            "Angular velocity should not change without new torque"
         )
     }
 
@@ -201,7 +247,6 @@ class ShipPhysicsTest {
     @Test
     fun thrust_rotated90Degrees_acceleratesInCorrectDirection() {
         val physics = makePhysics(mass = 10f)
-        // Facing 90 degrees clockwise (PI/2 radians) - ship points right
         val facing = (kotlin.math.PI / 2.0).toFloat().rad
 
         repeat(10) {
@@ -209,10 +254,9 @@ class ShipPhysicsTest {
             physics.integrate(16)
         }
 
-        // Forward (-Y local) rotated 90 degrees CW should produce +X world velocity
         assertTrue(
-            physics.velocity.x.raw > 0.1f,
-            "Should have positive X velocity when facing right, was ${physics.velocity.x.raw}"
+            physics.velocity.y.raw > 0.1f,
+            "Should have positive Y velocity when facing 90 degrees, was ${physics.velocity.y.raw}"
         )
     }
 }

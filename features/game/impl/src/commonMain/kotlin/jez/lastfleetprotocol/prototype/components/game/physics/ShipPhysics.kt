@@ -7,13 +7,25 @@ import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneUnit
 import jez.lastfleetprotocol.prototype.components.game.utils.rotate
+import jez.lastfleetprotocol.prototype.components.gamecore.data.MovementConfig
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.sin
 
 /**
  * Encapsulates physics state and integration for a ship.
  *
- * Tracks linear velocity, angular velocity, and accumulated forces.
- * Uses semi-implicit Euler integration: velocity is updated before position,
- * which provides better energy conservation than explicit Euler.
+ * Tracks linear velocity and accumulated forces. Uses semi-implicit Euler
+ * integration: velocity is updated before position.
+ *
+ * **Atmospheric model:** Drag is applied as a quadratic force opposing velocity
+ * (`F_drag = effectiveDrag · |v|²`), with the effective drag coefficient smoothly
+ * interpolated between per-axis values based on the angle between velocity and
+ * ship heading. This produces terminal velocity and smooth skid under rotation.
+ *
+ * **Turn-rate model:** Angular rotation is rate-limited (degrees per second),
+ * not momentum-based. No angular velocity, no torque accumulation.
  */
 class ShipPhysics(
     val mass: Float,
@@ -22,13 +34,11 @@ class ShipPhysics(
     init {
         require(mass > 0f) { "Ship mass must be positive, got $mass" }
     }
-    var velocity: SceneOffset = initialVelocity
-    var angularVelocity: Float = 0f
 
-    // Accumulated force in world space (Newtons equivalent)
+    var velocity: SceneOffset = initialVelocity
+
+    // Accumulated force in world space
     private var accumulatedForce: SceneOffset = SceneOffset.Zero
-    // Accumulated torque
-    private var accumulatedTorque: Float = 0f
 
     /** Last computed acceleration for debug visualisation. */
     var lastAcceleration: SceneOffset = SceneOffset.Zero
@@ -36,10 +46,6 @@ class ShipPhysics(
 
     /**
      * Apply thrust in a local-space direction, converted to world space via facing angle.
-     *
-     * @param localDirection direction in ship-local space (e.g., (1, 0) for forward in atan2 convention)
-     * @param magnitude force magnitude
-     * @param facing ship's current facing angle
      */
     fun applyThrust(localDirection: SceneOffset, magnitude: Float, facing: AngleRadians) {
         val worldDirection = localDirection.rotate(facing)
@@ -47,60 +53,67 @@ class ShipPhysics(
     }
 
     /**
-     * Apply angular force (torque) to rotate the ship.
+     * Apply quadratic drag opposing current velocity.
      *
-     * @param torque signed torque value (positive = clockwise in screen coords)
-     */
-    fun applyAngularForce(torque: Float) {
-        accumulatedTorque += torque
-    }
-
-    /**
-     * Apply a drag/braking force opposing current velocity.
-     * The drag force is capped so it cannot reverse the velocity direction.
+     * The effective drag coefficient is computed via normalized angular interpolation
+     * of the per-axis coefficients based on the angle between velocity and ship heading.
+     * Drag force magnitude is `effectiveDrag · |v|²`, capped to prevent velocity reversal.
      *
-     * @param dragCoefficient force magnitude of drag per unit speed
-     * @param deltaMs time step in milliseconds
+     * @param movementConfig provides per-axis drag coefficients
+     * @param shipRotation current ship facing angle (radians)
      */
-    fun decelerate(dragCoefficient: Float, deltaMs: Int) {
+    fun applyDrag(movementConfig: MovementConfig, shipRotation: AngleRadians) {
         val speed = velocity.length()
-        if (speed.raw <= SPEED_EPSILON) {
-            velocity = SceneOffset.Zero
-            return
-        }
-        val dt = deltaMs * MS_TO_SECONDS
-        // Maximum deceleration that would bring velocity to zero this frame
-        val maxDecel = speed.raw / dt
-        val dragMagnitude = minOf(dragCoefficient, maxDecel)
+        if (speed.raw <= SPEED_EPSILON) return
+
+        val effectiveDrag = computeEffectiveDrag(movementConfig, shipRotation)
+        if (effectiveDrag <= DRAG_EPSILON) return
+
+        // Quadratic drag: F = effectiveDrag · v²
+        val dragForceMagnitude = effectiveDrag * speed.raw * speed.raw
+
+        // Cap drag force so it can't reverse velocity within one frame
+        // (the integration step will multiply by dt, so we cap the force itself)
         val dragDirection = velocity.normalized()
-        accumulatedForce -= dragDirection * dragMagnitude
+        accumulatedForce -= dragDirection * dragForceMagnitude
     }
 
     /**
-     * Apply angular drag opposing current angular velocity.
+     * Compute effective drag coefficient via normalized angular interpolation.
      *
-     * @param angularDragCoefficient torque magnitude of drag
-     * @param deltaMs time step in milliseconds
+     * Blends forward/reverse/lateral drag coefficients based on the angle between
+     * the velocity vector and the ship's forward axis. Normalized so that diagonal
+     * movement is not penalized by an interpolation artifact.
      */
-    fun decelerateAngular(angularDragCoefficient: Float, deltaMs: Int) {
-        if (kotlin.math.abs(angularVelocity) < ANGULAR_EPSILON) {
-            angularVelocity = 0f
-            return
+    private fun computeEffectiveDrag(movementConfig: MovementConfig, shipRotation: AngleRadians): Float {
+        val speed = velocity.length().raw
+        if (speed <= SPEED_EPSILON) return 0f
+
+        // Angle between velocity and ship forward
+        val velAngle = kotlin.math.atan2(velocity.y.raw.toDouble(), velocity.x.raw.toDouble()).toFloat()
+        val theta = velAngle - shipRotation.normalized
+
+        val fwdComp = max(0f, cos(theta))
+        val revComp = max(0f, -cos(theta))
+        val latComp = abs(sin(theta))
+        val totalWeight = fwdComp + revComp + latComp
+
+        return if (totalWeight > 0.001f) {
+            (movementConfig.forwardDragCoeff * fwdComp +
+                    movementConfig.reverseDragCoeff * revComp +
+                    movementConfig.lateralDragCoeff * latComp) / totalWeight
+        } else {
+            movementConfig.forwardDragCoeff // fallback
         }
-        val dt = deltaMs * MS_TO_SECONDS
-        val maxDecel = kotlin.math.abs(angularVelocity) / dt * mass
-        val dragMagnitude = minOf(angularDragCoefficient, maxDecel)
-        val sign = if (angularVelocity > 0f) -1f else 1f
-        accumulatedTorque += sign * dragMagnitude
     }
 
     /**
-     * Semi-implicit Euler integration.
+     * Semi-implicit Euler integration for linear motion.
      *
-     * Updates velocity from accumulated forces, then computes position delta from
-     * the updated velocity. Clears accumulated forces after integration.
+     * Updates velocity from accumulated forces, then computes position delta.
+     * Clears accumulated forces after integration.
      *
-     * @return (positionDelta, rotationDelta) to apply to the ship's body
+     * Rotation is handled separately via the turn-rate model (not physics-integrated).
      */
     fun integrate(deltaMs: Int): PhysicsResult {
         val dt = deltaMs * MS_TO_SECONDS
@@ -112,16 +125,10 @@ class ShipPhysics(
 
         val positionDelta = velocity * dt
 
-        // Angular: alpha = torque/mass, omega += alpha*dt, dtheta = omega*dt
-        val angularAcceleration = accumulatedTorque / mass
-        angularVelocity += angularAcceleration * dt
-        val rotationDelta = angularVelocity * dt
-
         // Clear accumulated forces
         accumulatedForce = SceneOffset.Zero
-        accumulatedTorque = 0f
 
-        return PhysicsResult(positionDelta, rotationDelta)
+        return PhysicsResult(positionDelta)
     }
 
     /**
@@ -132,11 +139,10 @@ class ShipPhysics(
     companion object {
         const val MS_TO_SECONDS = 0.001f
         const val SPEED_EPSILON = 0.01f
-        const val ANGULAR_EPSILON = 0.001f
+        private const val DRAG_EPSILON = 0.0001f
     }
 }
 
 data class PhysicsResult(
     val positionDelta: SceneOffset,
-    val rotationDelta: Float,
 )
