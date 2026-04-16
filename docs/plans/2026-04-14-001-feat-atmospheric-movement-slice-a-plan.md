@@ -152,7 +152,7 @@ Terminal velocity (builder stats):
 
 ### Phase A1: Data Model and Computation
 
-- [ ] **Unit 1: Add drag fields to data model**
+- [x] **Unit 1: Add drag fields to data model**
 
   **Goal:** Extend `HullAttributes`, `MovementConfig`, and `ShipStats` with drag-related fields so downstream units have the data structures they need.
 
@@ -188,7 +188,7 @@ Terminal velocity (builder stats):
 
 ---
 
-- [ ] **Unit 2: Drag coefficient computation in ShipStatsCore + ShipDesignConverter**
+- [x] **Unit 2: Drag coefficient computation in ShipStatsCore + ShipDesignConverter**
 
   **Goal:** Compute per-axis drag coefficients from hull geometry and modifiers. Populate `MovementConfig.dragCoeff*` in the converter. Compute terminal velocities in `ShipStats`.
 
@@ -235,7 +235,7 @@ Terminal velocity (builder stats):
 
 ### Phase A2: Physics and Wiring
 
-- [ ] **Unit 3: Quadratic drag in ShipPhysics**
+- [x] **Unit 3: Quadratic drag in ShipPhysics**
 
   **Goal:** Add quadratic drag force integration to `ShipPhysics`. Drag is applied per frame as a force opposing velocity, with magnitude proportional to `v²` and the effective drag coefficient (smoothly interpolated and normalized from per-axis values). Replace angular momentum model with turn-rate rotation.
 
