@@ -14,6 +14,9 @@ import lastfleetprotocol.components.design.generated.resources.builder_custom_it
 import lastfleetprotocol.components.design.generated.resources.builder_default_facing
 import lastfleetprotocol.components.design.generated.resources.builder_density
 import lastfleetprotocol.components.design.generated.resources.builder_design_name
+import lastfleetprotocol.components.design.generated.resources.builder_drag_forward
+import lastfleetprotocol.components.design.generated.resources.builder_drag_lateral
+import lastfleetprotocol.components.design.generated.resources.builder_drag_reverse
 import lastfleetprotocol.components.design.generated.resources.builder_finish
 import lastfleetprotocol.components.design.generated.resources.builder_fixed
 import lastfleetprotocol.components.design.generated.resources.builder_forward
@@ -154,6 +157,9 @@ object LFRes {
         val builder_area: StringResource = Res.string.builder_area
         val builder_armour_hardness: StringResource = Res.string.builder_armour_hardness
         val builder_armour_density: StringResource = Res.string.builder_armour_density
+        val builder_drag_forward: StringResource = Res.string.builder_drag_forward
+        val builder_drag_lateral: StringResource = Res.string.builder_drag_lateral
+        val builder_drag_reverse: StringResource = Res.string.builder_drag_reverse
         val builder_size_category: StringResource = Res.string.builder_size_category
         val builder_module_type: StringResource = Res.string.builder_module_type
         val builder_max_hp: StringResource = Res.string.builder_max_hp

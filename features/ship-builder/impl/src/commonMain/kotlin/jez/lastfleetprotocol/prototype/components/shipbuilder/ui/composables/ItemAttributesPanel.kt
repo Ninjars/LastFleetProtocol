@@ -137,6 +137,30 @@ private fun HullAttributesContent(
 
     Spacer(modifier = Modifier.height(4.dp))
 
+    NumericField(
+        label = stringResource(LFRes.String.builder_drag_forward),
+        value = attributes.forwardDragModifier,
+        onValueChange = { onAttributesChanged(attributes.copy(forwardDragModifier = it)) },
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    NumericField(
+        label = stringResource(LFRes.String.builder_drag_lateral),
+        value = attributes.lateralDragModifier,
+        onValueChange = { onAttributesChanged(attributes.copy(lateralDragModifier = it)) },
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    NumericField(
+        label = stringResource(LFRes.String.builder_drag_reverse),
+        value = attributes.reverseDragModifier,
+        onValueChange = { onAttributesChanged(attributes.copy(reverseDragModifier = it)) },
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
     AttributeReadOnlyRow(
         label = stringResource(LFRes.String.builder_size_category),
         value = attributes.sizeCategory,

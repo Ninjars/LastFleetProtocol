@@ -43,6 +43,9 @@
     <string name="builder_area">Area</string>
     <string name="builder_armour_hardness">Armour Hardness</string>
     <string name="builder_armour_density">Armour Density</string>
+    <string name="builder_drag_forward">Forward Drag</string>
+    <string name="builder_drag_lateral">Lateral Drag</string>
+    <string name="builder_drag_reverse">Reverse Drag</string>
     <string name="builder_size_category">Size Category</string>
     <string name="builder_module_type">Module Type</string>
     <string name="builder_max_hp">Max HP</string>
