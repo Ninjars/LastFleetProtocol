@@ -400,6 +400,11 @@ Terminal velocity (builder stats):
   - Builder shows terminal velocity values that change when hull pieces are added/removed (because drag coefficients change).
   - Values are non-zero for ships with hull pieces.
 
+  **Additional changes shipped with this unit (beyond the stated scope):**
+  - Hull drag modifier authoring UI in `ItemAttributesPanel.HullAttributesContent` — three `NumericField`s for forward/lateral/reverse drag modifiers, written straight into `HullAttributes.{forward,lateral,reverse}DragModifier`. Without these fields the builder could not tune the R28 per-piece modifiers at all, which would block Unit 7. Added as commit `c565467`.
+  - Builder-level validation that rejects zero (or negative) drag modifiers: `NumericField` gained an `isError` param, each drag field sets it when `value <= 0f`, and the Finish button is disabled via a new `ItemAttributes.isValidForSave()` extension. Zero drag on an axis means infinite terminal velocity — unflyable. Data model still accepts 0 (per Unit 1's edge-case test); this is a UI-layer invariant only. Added as commit `23aa9f0`.
+  - `StatsPanel` additionally displays `turnRate` alongside the three terminal velocities (not just the three axis terminal velocities originally scoped). The turn rate is a newly derived stat from Unit 3's turn-rate model.
+
 ---
 
 - [ ] **Unit 7: Default ship design retuning**
