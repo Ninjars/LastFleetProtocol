@@ -29,6 +29,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttrib
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.DesignCanvas
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.ItemAttributesPanel
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.PartsPanel
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.isValidForSave
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.StatsPanel
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.TransformToolbar
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.EditorMode
@@ -189,6 +190,7 @@ private fun ItemCreationAttributesPanel(
         LFTextButton(
             text = stringResource(LFRes.String.builder_finish),
             onClick = onFinish,
+            enabled = creatingItem.attributes.isValidForSave(),
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(8.dp))

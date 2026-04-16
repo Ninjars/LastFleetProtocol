@@ -37,6 +37,16 @@ import jez.lastfleetprotocol.prototype.ui.resources.LFRes
 import org.jetbrains.compose.resources.stringResource
 
 /**
+ * Validation for a creating-item's attributes. Builder UI invariants —
+ * stricter than the data model, which accepts defaults like 0 drag.
+ */
+fun ItemAttributes.isValidForSave(): Boolean = when (this) {
+    is ItemAttributes.HullAttributes ->
+        forwardDragModifier > 0f && lateralDragModifier > 0f && reverseDragModifier > 0f
+    else -> true
+}
+
+/**
  * Type-specific attribute editor for items being created.
  * Renders different fields based on the item type (Hull, Module, Turret).
  */
@@ -141,6 +151,7 @@ private fun HullAttributesContent(
         label = stringResource(LFRes.String.builder_drag_forward),
         value = attributes.forwardDragModifier,
         onValueChange = { onAttributesChanged(attributes.copy(forwardDragModifier = it)) },
+        isError = attributes.forwardDragModifier <= 0f,
     )
 
     Spacer(modifier = Modifier.height(4.dp))
@@ -149,6 +160,7 @@ private fun HullAttributesContent(
         label = stringResource(LFRes.String.builder_drag_lateral),
         value = attributes.lateralDragModifier,
         onValueChange = { onAttributesChanged(attributes.copy(lateralDragModifier = it)) },
+        isError = attributes.lateralDragModifier <= 0f,
     )
 
     Spacer(modifier = Modifier.height(4.dp))
@@ -157,6 +169,7 @@ private fun HullAttributesContent(
         label = stringResource(LFRes.String.builder_drag_reverse),
         value = attributes.reverseDragModifier,
         onValueChange = { onAttributesChanged(attributes.copy(reverseDragModifier = it)) },
+        isError = attributes.reverseDragModifier <= 0f,
     )
 
     Spacer(modifier = Modifier.height(4.dp))
@@ -435,6 +448,7 @@ private fun NumericField(
     value: Float,
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    isError: Boolean = false,
 ) {
     var textValue by remember(value) { mutableStateOf("%.1f".format(value)) }
 
@@ -446,6 +460,7 @@ private fun NumericField(
         },
         label = { Text(label) },
         singleLine = true,
+        isError = isError,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = modifier.fillMaxWidth(),
     )
