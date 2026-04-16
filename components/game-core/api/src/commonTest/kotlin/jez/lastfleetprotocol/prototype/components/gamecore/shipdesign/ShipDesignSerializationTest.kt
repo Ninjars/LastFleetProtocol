@@ -247,6 +247,35 @@ class ShipDesignSerializationTest {
         assertEquals(2f, attrs.armour.density)
         assertEquals("heavy", attrs.sizeCategory)
         assertEquals(100f, attrs.mass)
+        // Drag modifiers default to 1.0 when not specified
+        assertEquals(1.0f, attrs.forwardDragModifier)
+        assertEquals(1.0f, attrs.lateralDragModifier)
+        assertEquals(1.0f, attrs.reverseDragModifier)
+    }
+
+    @Test
+    fun hullDragModifiersRoundTrip() {
+        val itemDef = ItemDefinition(
+            id = "hull-drag-test",
+            name = "Drag Test Hull",
+            vertices = emptyList(),
+            attributes = ItemAttributes.HullAttributes(
+                armour = SerializableArmourStats(hardness = 1f, density = 1f),
+                sizeCategory = "medium",
+                mass = 50f,
+                forwardDragModifier = 0.7f,
+                lateralDragModifier = 1.5f,
+                reverseDragModifier = 2.0f,
+            ),
+        )
+
+        val encoded = json.encodeToString(ItemDefinition.serializer(), itemDef)
+        val decoded = json.decodeFromString(ItemDefinition.serializer(), encoded)
+
+        val attrs = decoded.attributes as ItemAttributes.HullAttributes
+        assertEquals(0.7f, attrs.forwardDragModifier)
+        assertEquals(1.5f, attrs.lateralDragModifier)
+        assertEquals(2.0f, attrs.reverseDragModifier)
     }
 
     @Test

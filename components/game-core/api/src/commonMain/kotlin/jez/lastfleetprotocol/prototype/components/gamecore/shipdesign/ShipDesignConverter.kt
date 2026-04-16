@@ -158,6 +158,9 @@ fun convertShipDesign(
         lateralThrust = stats.lateralThrust,
         reverseThrust = stats.reverseThrust,
         angularThrust = stats.angularThrust,
+        forwardDragCoeff = stats.forwardDragCoeff,
+        lateralDragCoeff = stats.lateralDragCoeff,
+        reverseDragCoeff = stats.reverseDragCoeff,
     )
 
     return Result.success(

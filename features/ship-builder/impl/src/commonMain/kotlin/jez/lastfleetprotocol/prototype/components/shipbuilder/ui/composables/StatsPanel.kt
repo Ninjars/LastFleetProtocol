@@ -75,14 +75,15 @@ fun StatsPanel(
 
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = stringResource(LFRes.String.builder_acceleration),
+                text = stringResource(LFRes.String.builder_terminal_velocity),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            StatRow(stringResource(LFRes.String.builder_forward), "%.1f".format(stats.forwardAccel))
-            StatRow(stringResource(LFRes.String.builder_lateral), "%.1f".format(stats.lateralAccel))
-            StatRow(stringResource(LFRes.String.builder_reverse), "%.1f".format(stats.reverseAccel))
-            StatRow(stringResource(LFRes.String.builder_angular), "%.1f".format(stats.angularAccel))
+            val unlimited = stringResource(LFRes.String.builder_unlimited)
+            StatRow(stringResource(LFRes.String.builder_forward), formatTerminalVel(stats.terminalVelForward, unlimited))
+            StatRow(stringResource(LFRes.String.builder_lateral), formatTerminalVel(stats.terminalVelLateral, unlimited))
+            StatRow(stringResource(LFRes.String.builder_reverse), formatTerminalVel(stats.terminalVelReverse, unlimited))
+            StatRow(stringResource(LFRes.String.builder_turn_rate), "%.1f".format(stats.turnRate))
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -94,6 +95,9 @@ fun StatsPanel(
         }
     }
 }
+
+private fun formatTerminalVel(value: Float, unlimitedLabel: String): String =
+    if (value >= Float.MAX_VALUE / 2f) unlimitedLabel else "%.1f".format(value)
 
 @Composable
 private fun StatRow(label: String, value: String) {

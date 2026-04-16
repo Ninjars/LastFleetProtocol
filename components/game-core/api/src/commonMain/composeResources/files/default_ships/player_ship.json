@@ -33,7 +33,10 @@
                     "density": 2.0
                 },
                 "sizeCategory": "medium",
-                "mass": 50.0
+                "mass": 50.0,
+                "forwardDragModifier": 0.7,
+                "lateralDragModifier": 1.2,
+                "reverseDragModifier": 1.2
             }
         },
         {

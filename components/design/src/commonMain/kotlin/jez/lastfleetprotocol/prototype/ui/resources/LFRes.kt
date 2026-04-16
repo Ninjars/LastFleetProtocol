@@ -1,7 +1,6 @@
 package jez.lastfleetprotocol.prototype.ui.resources
 
 import lastfleetprotocol.components.design.generated.resources.Res
-import lastfleetprotocol.components.design.generated.resources.builder_acceleration
 import lastfleetprotocol.components.design.generated.resources.builder_angular
 import lastfleetprotocol.components.design.generated.resources.builder_angular_thrust
 import lastfleetprotocol.components.design.generated.resources.builder_area
@@ -15,6 +14,9 @@ import lastfleetprotocol.components.design.generated.resources.builder_custom_it
 import lastfleetprotocol.components.design.generated.resources.builder_default_facing
 import lastfleetprotocol.components.design.generated.resources.builder_density
 import lastfleetprotocol.components.design.generated.resources.builder_design_name
+import lastfleetprotocol.components.design.generated.resources.builder_drag_forward
+import lastfleetprotocol.components.design.generated.resources.builder_drag_lateral
+import lastfleetprotocol.components.design.generated.resources.builder_drag_reverse
 import lastfleetprotocol.components.design.generated.resources.builder_finish
 import lastfleetprotocol.components.design.generated.resources.builder_fixed
 import lastfleetprotocol.components.design.generated.resources.builder_forward
@@ -46,8 +48,11 @@ import lastfleetprotocol.components.design.generated.resources.builder_edit
 import lastfleetprotocol.components.design.generated.resources.builder_size_small
 import lastfleetprotocol.components.design.generated.resources.builder_stats
 import lastfleetprotocol.components.design.generated.resources.builder_systems
+import lastfleetprotocol.components.design.generated.resources.builder_terminal_velocity
 import lastfleetprotocol.components.design.generated.resources.builder_thrust
+import lastfleetprotocol.components.design.generated.resources.builder_turn_rate
 import lastfleetprotocol.components.design.generated.resources.builder_turrets
+import lastfleetprotocol.components.design.generated.resources.builder_unlimited
 import lastfleetprotocol.components.design.generated.resources.bullet_laser_green_10
 import lastfleetprotocol.components.design.generated.resources.button_cancel
 import lastfleetprotocol.components.design.generated.resources.button_continue
@@ -130,7 +135,9 @@ object LFRes {
         val builder_stats: StringResource = Res.string.builder_stats
         val builder_design_name: StringResource = Res.string.builder_design_name
         val builder_thrust: StringResource = Res.string.builder_thrust
-        val builder_acceleration: StringResource = Res.string.builder_acceleration
+        val builder_terminal_velocity: StringResource = Res.string.builder_terminal_velocity
+        val builder_turn_rate: StringResource = Res.string.builder_turn_rate
+        val builder_unlimited: StringResource = Res.string.builder_unlimited
         val builder_mass: StringResource = Res.string.builder_mass
         val builder_forward: StringResource = Res.string.builder_forward
         val builder_lateral: StringResource = Res.string.builder_lateral
@@ -150,6 +157,9 @@ object LFRes {
         val builder_area: StringResource = Res.string.builder_area
         val builder_armour_hardness: StringResource = Res.string.builder_armour_hardness
         val builder_armour_density: StringResource = Res.string.builder_armour_density
+        val builder_drag_forward: StringResource = Res.string.builder_drag_forward
+        val builder_drag_lateral: StringResource = Res.string.builder_drag_lateral
+        val builder_drag_reverse: StringResource = Res.string.builder_drag_reverse
         val builder_size_category: StringResource = Res.string.builder_size_category
         val builder_module_type: StringResource = Res.string.builder_module_type
         val builder_max_hp: StringResource = Res.string.builder_max_hp

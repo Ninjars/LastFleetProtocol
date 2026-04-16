@@ -33,6 +33,9 @@ sealed interface ItemAttributes {
         val armour: SerializableArmourStats,
         val sizeCategory: String,
         override val mass: Float,
+        val forwardDragModifier: Float = 1.0f,
+        val lateralDragModifier: Float = 1.0f,
+        val reverseDragModifier: Float = 1.0f,
     ) : ItemAttributes
 
     @Serializable
