@@ -1,7 +1,6 @@
 package jez.lastfleetprotocol.prototype.ui.resources
 
 import lastfleetprotocol.components.design.generated.resources.Res
-import lastfleetprotocol.components.design.generated.resources.builder_acceleration
 import lastfleetprotocol.components.design.generated.resources.builder_angular
 import lastfleetprotocol.components.design.generated.resources.builder_angular_thrust
 import lastfleetprotocol.components.design.generated.resources.builder_area
@@ -46,8 +45,11 @@ import lastfleetprotocol.components.design.generated.resources.builder_edit
 import lastfleetprotocol.components.design.generated.resources.builder_size_small
 import lastfleetprotocol.components.design.generated.resources.builder_stats
 import lastfleetprotocol.components.design.generated.resources.builder_systems
+import lastfleetprotocol.components.design.generated.resources.builder_terminal_velocity
 import lastfleetprotocol.components.design.generated.resources.builder_thrust
+import lastfleetprotocol.components.design.generated.resources.builder_turn_rate
 import lastfleetprotocol.components.design.generated.resources.builder_turrets
+import lastfleetprotocol.components.design.generated.resources.builder_unlimited
 import lastfleetprotocol.components.design.generated.resources.bullet_laser_green_10
 import lastfleetprotocol.components.design.generated.resources.button_cancel
 import lastfleetprotocol.components.design.generated.resources.button_continue
@@ -130,7 +132,9 @@ object LFRes {
         val builder_stats: StringResource = Res.string.builder_stats
         val builder_design_name: StringResource = Res.string.builder_design_name
         val builder_thrust: StringResource = Res.string.builder_thrust
-        val builder_acceleration: StringResource = Res.string.builder_acceleration
+        val builder_terminal_velocity: StringResource = Res.string.builder_terminal_velocity
+        val builder_turn_rate: StringResource = Res.string.builder_turn_rate
+        val builder_unlimited: StringResource = Res.string.builder_unlimited
         val builder_mass: StringResource = Res.string.builder_mass
         val builder_forward: StringResource = Res.string.builder_forward
         val builder_lateral: StringResource = Res.string.builder_lateral

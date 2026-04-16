@@ -291,7 +291,7 @@ Terminal velocity (builder stats):
 
 ---
 
-- [ ] **Unit 4: Wire drag through Ship and Navigator**
+- [x] **Unit 4: Wire drag through Ship and Navigator**
 
   **Goal:** Connect the drag coefficients from `ShipSpec.movementConfig` into the physics loop. Navigator calls `applyDrag()` each frame. Navigator's desired-speed computation uses terminal velocity instead of `MAX_SPEED_FACTOR`.
 
@@ -326,7 +326,7 @@ Terminal velocity (builder stats):
 
 ### Phase A3: Navigator Patch, UI, and Content
 
-- [ ] **Unit 5: Interim AI braking patch (R30)**
+- [x] **Unit 5: Interim AI braking patch (R30)**
 
   **Goal:** Replace the three `v²/(2a)` braking formulas in `ShipNavigator.computeBrakingStrategy()` with the closed-form drag-aware stopping distance. AI ships approach targets without oscillating.
 
@@ -361,9 +361,16 @@ Terminal velocity (builder stats):
   - AI combat is playable — enemy ships engage player ships without jittering.
   - Ships arriving at destinations don't overshoot by more than ~2× braking distance.
 
+  **Actual implementation (divergence from plan):**
+  - The navigator was fully rewritten (`3cdeef9`, `e95a5af`), not surgically patched at three sites. The pre-existing `computeBrakingStrategy()` / rotate-then-brake candidate scoring was removed.
+  - `stoppingDistanceUnderDrag(speed, thrust, dragCoeff, mass)` is the sole drag-aware brake calculation, with a `dragCoeff < DRAG_EPSILON` → `v²/(2a)` fallback.
+  - No `speedForBrakingDistance` inverse is used. Oscillation was instead cured by removing the velocity-correction loop entirely: cruising applies thrust proportional to target-direction alignment and lets drag cap speed at terminal velocity naturally; braking stops thrusting and lets drag decelerate, with `applyLowSpeedBrake` for the near-zero regime where quadratic drag vanishes.
+  - Turn-rate rotation (`rotateToward` with `turnRate = computeTurnRate(movementConfig, mass)`) makes rotation-time trivially `angleDelta / turnRate`; the rotate-then-brake candidate scoring simplified out of existence.
+  - R30 acceptance criterion (no oscillation, drag-aware braking) is met; the specific internal structure outlined in this unit's Approach section is not the final shape.
+
 ---
 
-- [ ] **Unit 6: Builder stats panel — terminal velocity display (R23)**
+- [x] **Unit 6: Builder stats panel — terminal velocity display (R23)**
 
   **Goal:** Replace the acceleration readouts in the builder's stats panel with per-axis terminal velocity. Show forward, lateral, reverse terminal velocities.
 

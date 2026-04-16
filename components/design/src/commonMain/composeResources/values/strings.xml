@@ -20,7 +20,9 @@
     <string name="builder_stats">Stats</string>
     <string name="builder_design_name">Design Name</string>
     <string name="builder_thrust">Thrust</string>
-    <string name="builder_acceleration">Acceleration</string>
+    <string name="builder_terminal_velocity">Terminal Vel.</string>
+    <string name="builder_turn_rate">Turn Rate</string>
+    <string name="builder_unlimited">∞</string>
     <string name="builder_mass">Mass</string>
     <string name="builder_forward">Forward</string>
     <string name="builder_lateral">Lateral</string>
