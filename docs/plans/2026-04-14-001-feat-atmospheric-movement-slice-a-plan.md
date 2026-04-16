@@ -407,7 +407,7 @@ Terminal velocity (builder stats):
 
 ---
 
-- [ ] **Unit 7: Default ship design retuning**
+- [x] **Unit 7: Default ship design retuning**
 
   **Goal:** Update the bundled default ship design JSON files with appropriate drag modifier values and retuned thrust values so combat is playable under the new drag model.
 
@@ -439,6 +439,18 @@ Terminal velocity (builder stats):
   - All four ship types feel distinct: light is fast and nimble, heavy is slow but tanky, player is responsive.
   - Combat produces committed-pass dynamics: ships can't pivot-and-dash; turning at speed causes visible skid.
   - The 60-second sanity check from the brainstorm's success criteria passes.
+
+  **Initial values applied (seed for feel-tuning iteration):**
+  Drag modifiers only — existing thrust values left alone since `e95a5af` retuned RHO=0.005 specifically for the previous thrust numbers. With those thrusts and the archetype modifiers below, the predicted per-axis terminal velocities (in scene units/sec) are:
+
+  | Ship | bbox | fwd / lat / rev modifier | Vt fwd | Vt lat | Vt rev |
+  |------|------|-------------------------|--------|--------|--------|
+  | player_ship  | 112×74  | 0.7 / 1.2 / 1.2 | 55.3 | 33.6 | 27.3 |
+  | enemy_light  | 84×60   | 0.8 / 0.8 / 0.8 | 54.6 | 35.4 | 34.5 |
+  | enemy_medium | 104×84  | 1.0 / 1.0 / 1.0 | 36.7 | 20.7 | 21.9 |
+  | enemy_heavy  | 104×100 | 1.3 / 1.8 / 1.8 | 27.2 | 10.5 | 12.7 |
+
+  Light roughly matches player forward; heavy is ~half player forward with a very poor lateral (expected committed-pass skid). Developer playtest of the 60-second sanity check is still required to confirm feel — if combat is sluggish, iterate by raising engine thrusts or lowering drag modifiers; if too twitchy, invert. Numbers derived from the Unit 2 formula `dragCoeff = extent × modifier × RHO`.
 
 ---
 
