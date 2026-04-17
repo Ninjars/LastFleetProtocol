@@ -86,3 +86,4 @@ For deeper context on specific topics, see `docs/ai_index.md` which routes to:
 - `docs/ai_workflows.md` — implementation workflows and validation checklists
 - `docs/ai_kubriko_constraints.md` — Kubriko runtime constraints
 - `docs/game_design.md`, `docs/ship.md`, `docs/weapons.md` — game design and mechanics
+- `docs/solutions/` — documented solutions to past problems (bugs, best practices, patterns), organized by category with YAML frontmatter (`module`, `tags`, `problem_type`). Relevant when implementing or debugging in documented areas.

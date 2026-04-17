@@ -69,6 +69,7 @@ Start with `docs/ai_index.md`, then follow these paths:
   - `docs/game_design.md`
   - `docs/ship.md`
   - `docs/weapons.md`
+- Past problems already solved (bugs, best practices, patterns) → `docs/solutions/` — organized by category (`best-practices/`, `runtime-errors/`, etc.) with YAML frontmatter (`module`, `tags`, `problem_type`). Relevant when implementing or debugging in documented areas.
 
 ## 6) Standard Execution Contract for Agents
 
