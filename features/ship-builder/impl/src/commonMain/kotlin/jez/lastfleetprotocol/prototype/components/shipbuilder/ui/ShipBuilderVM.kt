@@ -89,6 +89,9 @@ class ShipBuilderVM(
                     )
 
                     is ItemAttributes.TurretAttributes -> addTurretItem(intent.itemDefinition)
+
+                    is ItemAttributes.KeelAttributes ->
+                        TODO("Slice B Unit 5: addKeelItem — Keel placement via AddItem intent not yet wired")
                 }
                 autoSave()
             }
@@ -347,6 +350,11 @@ class ShipBuilderVM(
                             parentHullId = newState.placedHulls.firstOrNull()?.id ?: "",
                         )
                     )
+
+                    ItemType.KEEL -> TODO(
+                        "Slice B Unit 5: Keel placement happens via the mandatory picker, " +
+                            "not via FinishCreation's auto-placement path"
+                    )
                 }
             }
             recalculate(newState)
@@ -506,12 +514,22 @@ class ShipBuilderVM(
             isLimitedRotation = false,
             mass = 10f,
         )
+
+        ItemType.KEEL -> ItemAttributes.KeelAttributes(
+            armour = SerializableArmourStats(5f, 2f),
+            sizeCategory = "Medium",
+            mass = 40f,
+            maxHp = 150f,
+            lift = 200f,
+            shipClass = "",
+        )
     }
 
     private fun defaultNameFor(itemType: ItemType) = when (itemType) {
         ItemType.HULL -> "Custom Hull $nextId"
         ItemType.MODULE -> "Custom Module $nextId"
         ItemType.TURRET -> "Custom Turret $nextId"
+        ItemType.KEEL -> "Custom Keel $nextId"
     }
 
     private fun autoSave() {

@@ -108,6 +108,8 @@ fun ItemAttributesPanel(
                 area = area,
                 onAttributesChanged = onAttributesChanged,
             )
+
+            ItemType.KEEL -> TODO("Slice B Unit 7: KeelAttributesContent not yet wired")
         }
     }
 }

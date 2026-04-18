@@ -30,6 +30,10 @@ data class ShipStats(
     val terminalVelLateral: Float = Float.MAX_VALUE,
     val terminalVelReverse: Float = Float.MAX_VALUE,
     val turnRate: Float = 0f, // degrees per second
+    // Slice B: lift budget + flightworthiness gate. Populated by Unit 2's
+    // extension of calculateShipStats; left at defaults in Unit 1.
+    val totalLift: Float = 0f,
+    val isFlightworthy: Boolean = false,
 )
 
 /**

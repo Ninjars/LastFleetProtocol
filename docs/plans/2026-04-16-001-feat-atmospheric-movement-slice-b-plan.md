@@ -208,7 +208,7 @@ load existing design with placedKeel == null → PickingKeel (corrupt/pre-v3 rec
 
 ### Phase B1 — Data Model Foundation
 
-- [ ] **Unit 1: Type system extension for Keels**
+- [x] **Unit 1: Type system extension for Keels**
 
   **Goal:** Extend the shared type system so Keels have first-class representation: new `ItemType` value, new `ItemAttributes` variant, new `InternalSystemType` enum value, new `PlacedKeel` placement record, `placedKeel: PlacedKeel?` on `ShipDesign`, new `ShipStats` fields (`totalLift`, `isFlightworthy`), and a bumped `formatVersion`.
 

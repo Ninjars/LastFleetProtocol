@@ -3,6 +3,7 @@ package jez.lastfleetprotocol.prototype.components.gamecore.shipdesign
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
+import jez.lastfleetprotocol.prototype.components.gamecore.data.InternalSystemType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.float
 import kotlinx.serialization.json.jsonObject
@@ -30,11 +31,13 @@ class ShipDesignSerializationTest {
         val decoded = json.decodeFromString(ShipDesign.serializer(), encoded)
 
         assertEquals(design.name, decoded.name)
-        assertEquals(2, decoded.formatVersion)
+        assertEquals(3, decoded.formatVersion)
         assertTrue(decoded.itemDefinitions.isEmpty())
         assertTrue(decoded.placedHulls.isEmpty())
         assertTrue(decoded.placedModules.isEmpty())
         assertTrue(decoded.placedTurrets.isEmpty())
+        // placedKeel defaults to null (design is in PickingKeel state)
+        assertEquals(null, decoded.placedKeel)
     }
 
     @Test
@@ -364,6 +367,14 @@ class ShipDesignSerializationTest {
                         sizeCategory = "light",
                         mass = 3f,
                     )
+                    ItemType.KEEL -> ItemAttributes.KeelAttributes(
+                        armour = SerializableArmourStats(hardness = 2f, density = 1.5f),
+                        sizeCategory = "medium",
+                        mass = 40f,
+                        maxHp = 120f,
+                        lift = 200f,
+                        shipClass = "fighter",
+                    )
                 },
             )
 
@@ -371,5 +382,161 @@ class ShipDesignSerializationTest {
             val decoded = json.decodeFromString(ItemDefinition.serializer(), encoded)
             assertEquals(type, decoded.itemType)
         }
+    }
+
+    @Test
+    fun keelAttributesRoundTrips() {
+        val itemDef = ItemDefinition(
+            id = "keel-test",
+            name = "Fighter Keel",
+            vertices = listOf(
+                SceneOffset(10f.sceneUnit, 0f.sceneUnit),
+                SceneOffset(-5f.sceneUnit, 8f.sceneUnit),
+                SceneOffset(-5f.sceneUnit, (-8f).sceneUnit),
+            ),
+            attributes = ItemAttributes.KeelAttributes(
+                armour = SerializableArmourStats(hardness = 3f, density = 1.8f),
+                sizeCategory = "medium",
+                mass = 45f,
+                forwardDragModifier = 0.8f,
+                lateralDragModifier = 1.2f,
+                reverseDragModifier = 1.1f,
+                maxHp = 150f,
+                lift = 250f,
+                shipClass = "fighter",
+            ),
+        )
+
+        val encoded = json.encodeToString(ItemDefinition.serializer(), itemDef)
+        val decoded = json.decodeFromString(ItemDefinition.serializer(), encoded)
+
+        assertEquals(ItemType.KEEL, decoded.itemType)
+        val attrs = decoded.attributes as ItemAttributes.KeelAttributes
+        assertEquals(3f, attrs.armour.hardness)
+        assertEquals(1.8f, attrs.armour.density)
+        assertEquals("medium", attrs.sizeCategory)
+        assertEquals(45f, attrs.mass)
+        assertEquals(0.8f, attrs.forwardDragModifier)
+        assertEquals(1.2f, attrs.lateralDragModifier)
+        assertEquals(1.1f, attrs.reverseDragModifier)
+        assertEquals(150f, attrs.maxHp)
+        assertEquals(250f, attrs.lift)
+        assertEquals("fighter", attrs.shipClass)
+    }
+
+    @Test
+    fun keelAttributesDefaultsRoundTrip() {
+        // A Keel with only the required fields set — check defaults survive serialization.
+        val itemDef = ItemDefinition(
+            id = "keel-defaults",
+            name = "Default Keel",
+            vertices = emptyList(),
+            attributes = ItemAttributes.KeelAttributes(
+                armour = SerializableArmourStats(hardness = 1f, density = 1f),
+                sizeCategory = "small",
+                mass = 20f,
+            ),
+        )
+
+        val encoded = json.encodeToString(ItemDefinition.serializer(), itemDef)
+        val decoded = json.decodeFromString(ItemDefinition.serializer(), encoded)
+
+        val attrs = decoded.attributes as ItemAttributes.KeelAttributes
+        assertEquals(1.0f, attrs.forwardDragModifier)
+        assertEquals(1.0f, attrs.lateralDragModifier)
+        assertEquals(1.0f, attrs.reverseDragModifier)
+        assertEquals(100f, attrs.maxHp)
+        assertEquals(0f, attrs.lift)
+        assertEquals("", attrs.shipClass)
+    }
+
+    @Test
+    fun keelAttributesWithZeroLiftIsRepresentable() {
+        // Unit 1 test scenario: lift = 0 is valid for construction; the flightworthy
+        // gate catches it later (Unit 2), not the data model.
+        val attrs = ItemAttributes.KeelAttributes(
+            armour = SerializableArmourStats(hardness = 1f, density = 1f),
+            sizeCategory = "medium",
+            mass = 30f,
+            lift = 0f,
+        )
+        val encoded = json.encodeToString(
+            ItemAttributes.KeelAttributes.serializer(),
+            attrs,
+        )
+        val decoded = json.decodeFromString(
+            ItemAttributes.KeelAttributes.serializer(),
+            encoded,
+        )
+        assertEquals(0f, decoded.lift)
+    }
+
+    @Test
+    fun placedKeelRoundTrips() {
+        val placed = PlacedKeel(
+            id = "placed-keel-1",
+            itemDefinitionId = "keel-def-1",
+            position = SceneOffset(2.5f.sceneUnit, (-1.5f).sceneUnit),
+            rotation = 0.75f.rad,
+            mirrorX = true,
+        )
+        val encoded = json.encodeToString(PlacedKeel.serializer(), placed)
+        val decoded = json.decodeFromString(PlacedKeel.serializer(), encoded)
+
+        assertEquals("placed-keel-1", decoded.id)
+        assertEquals("keel-def-1", decoded.itemDefinitionId)
+        assertEquals(2.5f, decoded.position.x.raw)
+        assertEquals(-1.5f, decoded.position.y.raw)
+        assertEquals(0.75f, decoded.rotation.normalized)
+        assertEquals(true, decoded.mirrorX)
+        assertEquals(false, decoded.mirrorY)
+    }
+
+    @Test
+    fun shipDesignWithPlacedKeelRoundTrips() {
+        val design = ShipDesign(
+            name = "keel-bearing-design",
+            itemDefinitions = listOf(
+                ItemDefinition(
+                    id = "keel-def",
+                    name = "Fighter Keel",
+                    vertices = emptyList(),
+                    attributes = ItemAttributes.KeelAttributes(
+                        armour = SerializableArmourStats(hardness = 2f, density = 1.5f),
+                        sizeCategory = "medium",
+                        mass = 40f,
+                        lift = 200f,
+                        shipClass = "fighter",
+                    ),
+                ),
+            ),
+            placedKeel = PlacedKeel(
+                id = "placed-keel",
+                itemDefinitionId = "keel-def",
+                position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
+                rotation = 0f.rad,
+            ),
+        )
+
+        val encoded = json.encodeToString(ShipDesign.serializer(), design)
+        val decoded = json.decodeFromString(ShipDesign.serializer(), encoded)
+
+        assertEquals(3, decoded.formatVersion)
+        assertNotNull(decoded.placedKeel)
+        assertEquals("placed-keel", decoded.placedKeel!!.id)
+        assertEquals("keel-def", decoded.placedKeel!!.itemDefinitionId)
+        assertEquals(ItemType.KEEL, decoded.itemDefinitions[0].itemType)
+    }
+
+    @Test
+    fun internalSystemTypeHasKeel() {
+        // Slice B: KEEL is now a valid InternalSystemType, giving the enum 4 entries.
+        assertEquals(4, InternalSystemType.entries.size)
+        // Resolvable from string — ShipDesignConverter uses valueOf when emitting
+        // InternalSystemSpec for the Keel's HP in Unit 2.
+        assertEquals(
+            InternalSystemType.KEEL,
+            InternalSystemType.valueOf("KEEL"),
+        )
     }
 }
