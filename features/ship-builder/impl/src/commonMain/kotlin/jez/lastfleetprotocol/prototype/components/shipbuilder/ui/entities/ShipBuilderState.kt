@@ -63,10 +63,13 @@ data class ShipBuilderState(
 
     /**
      * All Keel `ItemDefinition`s available in the picker: bundled catalogue Keels
-     * plus any user-authored Keels from the on-disk item library.
+     * plus any user-authored Keels from the on-disk item library. Deduplicated by
+     * id so a library Keel that happens to share a catalogue id doesn't render
+     * twice in the picker — catalogue entries win for consistent display.
      */
     val availableKeels: List<ItemDefinition>
-        get() = PartsCatalog.keelItems + libraryItems.filter { it.itemType == ItemType.KEEL }
+        get() = (PartsCatalog.keelItems + libraryItems.filter { it.itemType == ItemType.KEEL })
+            .distinctBy { it.id }
 
     /**
      * Resolve an item definition by ID, checking (in priority order):

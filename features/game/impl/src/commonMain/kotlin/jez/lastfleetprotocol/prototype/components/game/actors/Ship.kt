@@ -280,7 +280,14 @@ class Ship(
             for (turret in turrets) turret.setFiringEnabled(false)
         }
 
-        onLifecycleTransition?.invoke(this, next)
+        try {
+            onLifecycleTransition?.invoke(this, next)
+        } catch (t: Throwable) {
+            // A throwing subscriber must not leave a ghost actor in the scene nor
+            // skip match-result cleanup for downstream transitions. Log and fall
+            // through to actor removal below.
+            println("[ship] onLifecycleTransition threw: $t")
+        }
 
         if (next is ShipLifecycle.Destroyed) {
             // Self-cleanup from the scene. `actorManager` is set in onAdded; unit

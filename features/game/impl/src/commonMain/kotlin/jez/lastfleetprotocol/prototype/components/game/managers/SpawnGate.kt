@@ -40,10 +40,27 @@ internal sealed interface SpawnGateResult {
 internal fun evaluateSpawnGate(
     design: ShipDesign,
     turretGuns: Map<String, GunData>,
+): SpawnGateResult = try {
+    runSpawnGate(design, turretGuns)
+} catch (t: Throwable) {
+    // Defensive: convertShipDesign and calculateShipStats return Result/values
+    // and are not supposed to throw, but an internal bug in either would otherwise
+    // propagate out of startDemoScene and crash the whole scene — exactly the
+    // failure the Result-loop was designed to prevent. See Slice B Unit 4.
+    SpawnGateResult.ConversionFailed(
+        "unexpected error: ${t.message ?: t::class.simpleName ?: "unknown"}",
+    )
+}
+
+private fun runSpawnGate(
+    design: ShipDesign,
+    turretGuns: Map<String, GunData>,
 ): SpawnGateResult {
     val conversion = convertShipDesign(design, turretGuns)
     val config = conversion.getOrElse {
-        return SpawnGateResult.ConversionFailed(it.message ?: it::class.simpleName ?: "unknown")
+        return SpawnGateResult.ConversionFailed(
+            it.message ?: it::class.simpleName ?: "unknown",
+        )
     }
 
     // Recompute flightworthiness from the design itself — this is the combat-load
