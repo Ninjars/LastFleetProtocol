@@ -517,7 +517,14 @@ load existing design with placedKeel == null → PickingKeel (corrupt/pre-v3 rec
 
 ---
 
-- [ ] **Unit 8: Bundled Keel content + updated default ship designs**
+- [x] **Unit 8: Bundled Keel content + updated default ship designs**
+
+  *Landed out-of-order between Units 4 and 5 (commit `05e56b8`) to unblock
+  end-to-end demo scene testing. Content approach matches the plan
+  (per-ship embedded Keel, not a shared catalogue; formatVersion 3;
+  shipClass per archetype). Unit 5 then added a parallel small catalogue
+  (`PartsCatalog.keelItems`) mirroring the four ship Keels so the picker
+  has something to show in a fresh design.*
 
   **Goal:** Ship at least one Keel `ItemDefinition` per bundled archetype (player / light / medium / heavy) — either as separate per-ship Keels or a shared small catalogue — and update the four bundled `default_ships/*.json` to reference them. Each default ship's `placedHulls` loses one entry (which becomes the Keel), `placedKeel` is added, and the formatVersion is bumped to 3. Lift values are tuned so each ship is flightworthy under its current part mass.
 
