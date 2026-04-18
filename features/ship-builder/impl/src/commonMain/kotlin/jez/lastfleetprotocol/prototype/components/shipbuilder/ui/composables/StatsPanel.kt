@@ -127,9 +127,18 @@ fun StatsPanel(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val unlimited = stringResource(LFRes.String.builder_unlimited)
-            StatRow(stringResource(LFRes.String.builder_forward), formatTerminalVel(stats.terminalVelForward, unlimited))
-            StatRow(stringResource(LFRes.String.builder_lateral), formatTerminalVel(stats.terminalVelLateral, unlimited))
-            StatRow(stringResource(LFRes.String.builder_reverse), formatTerminalVel(stats.terminalVelReverse, unlimited))
+            StatRow(
+                stringResource(LFRes.String.builder_forward),
+                formatTerminalVel(stats.terminalVelForward, unlimited)
+            )
+            StatRow(
+                stringResource(LFRes.String.builder_lateral),
+                formatTerminalVel(stats.terminalVelLateral, unlimited)
+            )
+            StatRow(
+                stringResource(LFRes.String.builder_reverse),
+                formatTerminalVel(stats.terminalVelReverse, unlimited)
+            )
             StatRow(stringResource(LFRes.String.builder_turn_rate), "%.1f".format(stats.turnRate))
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -156,18 +165,11 @@ private fun StatRow(label: String, value: String, valueColor: Color? = null) {
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.weight(1f),
         )
-        if (valueColor != null) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodySmall,
-                color = valueColor,
-            )
-        } else {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = valueColor ?: Color.Unspecified,
+        )
     }
 }
 
@@ -182,16 +184,18 @@ private fun FlightworthinessIndicator(
             MaterialTheme.colorScheme.onPrimaryContainer,
             stringResource(LFRes.String.builder_flightworthy),
         )
+
         FlightworthinessDisplay.NoKeel -> Triple(
             MaterialTheme.colorScheme.errorContainer,
             MaterialTheme.colorScheme.onErrorContainer,
             stringResource(LFRes.String.builder_no_keel),
         )
+
         is FlightworthinessDisplay.MassExceedsLift -> Triple(
             MaterialTheme.colorScheme.errorContainer,
             MaterialTheme.colorScheme.onErrorContainer,
             stringResource(LFRes.String.builder_mass_exceeds_lift) +
-                " (%.0f / %.0f)".format(display.mass, display.lift),
+                    " (%.0f / %.0f)".format(display.mass, display.lift),
         )
     }
     Text(
