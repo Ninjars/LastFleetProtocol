@@ -19,7 +19,6 @@ import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems
 import jez.lastfleetprotocol.prototype.components.gamecore.data.ShipConfig
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.DefaultShipDesignLoader
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.TurretGunLoader
-import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.convertShipDesign
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import me.tatarka.inject.annotations.Inject
@@ -61,6 +60,15 @@ class GameStateManager(
      * - enemy_medium → 1 enemy
      * - enemy_heavy → 1 enemy
      */
+    /** A single spawn slot: which design to load, where, for which team. */
+    private data class SpawnSlot(
+        val designName: String,
+        val position: SceneOffset,
+        val teamId: String,
+        val withAI: Boolean,
+        val drawOrder: Float,
+    )
+
     suspend fun startDemoScene() {
         stateManager.updateIsRunning(true)
 
@@ -68,73 +76,64 @@ class GameStateManager(
         val designs = shipDesignLoader.loadAll()
         val turretGuns = turretGunLoader.load()
 
-        // Convert designs to runtime configs — fatal on failure
-        val playerConfig = convertShipDesign(
-            designs["player_ship"] ?: error("Missing bundled design: player_ship"),
-            turretGuns,
-        ).getOrThrow()
-        val enemyLightConfig = convertShipDesign(
-            designs["enemy_light"] ?: error("Missing bundled design: enemy_light"),
-            turretGuns,
-        ).getOrThrow()
-        val enemyMediumConfig = convertShipDesign(
-            designs["enemy_medium"] ?: error("Missing bundled design: enemy_medium"),
-            turretGuns,
-        ).getOrThrow()
-        val enemyHeavyConfig = convertShipDesign(
-            designs["enemy_heavy"] ?: error("Missing bundled design: enemy_heavy"),
-            turretGuns,
-        ).getOrThrow()
+        // Spawn-slot mapping: filename-indexed design + per-instance placement.
+        val spawnSlots = listOf(
+            SpawnSlot("player_ship", SceneOffset((-300f).sceneUnit, (-50f).sceneUnit), Ship.TEAM_PLAYER, withAI = false, drawOrder = DrawOrder.PLAYER_SHIP),
+            SpawnSlot("player_ship", SceneOffset((-300f).sceneUnit, 50f.sceneUnit), Ship.TEAM_PLAYER, withAI = false, drawOrder = DrawOrder.PLAYER_SHIP),
+            SpawnSlot("enemy_light", SceneOffset(300f.sceneUnit, (-120f).sceneUnit), Ship.TEAM_ENEMY, withAI = true, drawOrder = DrawOrder.ENEMY_SHIP),
+            SpawnSlot("enemy_medium", SceneOffset(350f.sceneUnit, 0f.sceneUnit), Ship.TEAM_ENEMY, withAI = true, drawOrder = DrawOrder.ENEMY_SHIP),
+            SpawnSlot("enemy_heavy", SceneOffset(300f.sceneUnit, 120f.sceneUnit), Ship.TEAM_ENEMY, withAI = true, drawOrder = DrawOrder.ENEMY_SHIP),
+        )
 
-        // Create input controller for player ships
+        // Evaluate the spawn gate once per unique design (designs may be reused
+        // across multiple slots, e.g., two player ships share player_ship).
+        // Slice B Unit 4: replaces the Slice A `.getOrThrow()` calls that would
+        // crash the whole scene on any bundled design failing conversion.
+        val gateResults: Map<String, SpawnGateResult> = spawnSlots
+            .map { it.designName }.distinct()
+            .associateWith { name ->
+                val design = designs[name]
+                    ?: return@associateWith SpawnGateResult.ConversionFailed(
+                        "missing bundled design '$name'",
+                    )
+                evaluateSpawnGate(design, turretGuns)
+            }
+
+        // Create input controller for player ships (pre-spawn so it's ready to
+        // register each new player ship as they land).
         val inputController = InputController(selectableTeamId = Ship.TEAM_PLAYER)
         actorManager.add(inputController)
 
-        // Create 2 player ships (no AI modules — player-controlled)
-        createShip(
-            config = playerConfig,
-            position = SceneOffset((-300f).sceneUnit, (-50f).sceneUnit),
-            teamId = Ship.TEAM_PLAYER,
-            targetProvider = { enemyShips },
-            aiModules = emptyList(),
-            drawOrder = DrawOrder.PLAYER_SHIP,
-        )
-        createShip(
-            config = playerConfig,
-            position = SceneOffset((-300f).sceneUnit, 50f.sceneUnit),
-            teamId = Ship.TEAM_PLAYER,
-            targetProvider = { enemyShips },
-            aiModules = emptyList(),
-            drawOrder = DrawOrder.PLAYER_SHIP,
-        )
+        // Spawn loop — one slot at a time. Unready gates log and skip, letting
+        // every other slot proceed independently. No single failure aborts the
+        // scene setup.
+        for (slot in spawnSlots) {
+            when (val gate = gateResults.getValue(slot.designName)) {
+                is SpawnGateResult.Ready -> createShip(
+                    config = gate.config,
+                    position = slot.position,
+                    teamId = slot.teamId,
+                    targetProvider = if (slot.teamId == Ship.TEAM_PLAYER) {
+                        { enemyShips }
+                    } else {
+                        { playerShips }
+                    },
+                    aiModules = if (slot.withAI) listOf(BasicAI()) else emptyList(),
+                    drawOrder = slot.drawOrder,
+                )
 
-        // Create 3 enemy ships with BasicAI
-        createShip(
-            config = enemyLightConfig,
-            position = SceneOffset(300f.sceneUnit, (-120f).sceneUnit),
-            teamId = Ship.TEAM_ENEMY,
-            targetProvider = { playerShips },
-            aiModules = listOf(BasicAI()),
-            drawOrder = DrawOrder.ENEMY_SHIP,
-        )
-        createShip(
-            config = enemyMediumConfig,
-            position = SceneOffset(350f.sceneUnit, 0f.sceneUnit),
-            teamId = Ship.TEAM_ENEMY,
-            targetProvider = { playerShips },
-            aiModules = listOf(BasicAI()),
-            drawOrder = DrawOrder.ENEMY_SHIP,
-        )
-        createShip(
-            config = enemyHeavyConfig,
-            position = SceneOffset(300f.sceneUnit, 120f.sceneUnit),
-            teamId = Ship.TEAM_ENEMY,
-            targetProvider = { playerShips },
-            aiModules = listOf(BasicAI()),
-            drawOrder = DrawOrder.ENEMY_SHIP,
-        )
+                is SpawnGateResult.ConversionFailed -> println(
+                    "[combat] skipped slot '${slot.designName}': conversion failed — ${gate.reason}",
+                )
 
-        // Wire input controller with player ships
+                is SpawnGateResult.Unflightworthy -> println(
+                    "[combat] skipped slot '${slot.designName}': unflightworthy — " +
+                        "mass=${gate.totalMass}, lift=${gate.totalLift}",
+                )
+            }
+        }
+
+        // Wire input controller with whatever player ships successfully spawned.
         for (ship in playerShips) {
             inputController.registerShip(ship)
         }
@@ -142,6 +141,22 @@ class GameStateManager(
         // Add debug visualiser for all ships
         val debugVisualiser = DebugVisualiser()
         actorManager.add(debugVisualiser)
+
+        // Post-loop fallback: if either team ended up with zero spawned ships
+        // (every slot on that team failed a gate), resolve the match immediately
+        // so the game doesn't hang waiting for destruction events that can't fire.
+        val startupResult = when {
+            playerShips.isEmpty() && enemyShips.isEmpty() -> GameResult.DEFEAT // no-one to play
+            playerShips.isEmpty() -> GameResult.DEFEAT
+            enemyShips.isEmpty() -> GameResult.VICTORY
+            else -> null
+        }
+        if (startupResult != null) {
+            println("[combat] match resolved at startup: $startupResult (no opponents left to spawn)")
+            _gameResult.value = startupResult
+            stateManager.updateIsRunning(false)
+            onGameResult?.invoke(startupResult)
+        }
     }
 
     private fun createShip(

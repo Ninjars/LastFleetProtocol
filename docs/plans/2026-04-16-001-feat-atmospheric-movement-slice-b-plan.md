@@ -356,7 +356,7 @@ load existing design with placedKeel == null → PickingKeel (corrupt/pre-v3 rec
 
 ### Phase B3 — Combat-Load Flightworthiness Gate
 
-- [ ] **Unit 4: Combat-load flightworthiness recheck**
+- [x] **Unit 4: Combat-load flightworthiness recheck**
 
   **Goal:** `GameStateManager` refuses to spawn a `Ship` whose design is either structurally invalid (converter `Result.failure`) or unflightworthy (`!isFlightworthy`). The check is independent of the builder-side gate so that any save/share/import path added later remains safe. Also removes the existing `.getOrThrow()` call that would crash the scene setup if any bundled design fails to convert.
 
