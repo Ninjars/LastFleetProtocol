@@ -1,9 +1,10 @@
 {
     "name": "enemy_medium",
+    "formatVersion": 3,
     "itemDefinitions": [
         {
-            "id": "hull_enemy_medium_0",
-            "name": "Hull",
+            "id": "keel_enemy_medium_0",
+            "name": "Keel",
             "vertices": [
                 {
                     "x": 52.0,
@@ -27,7 +28,7 @@
                 }
             ],
             "attributes": {
-                "type": "hull",
+                "type": "keel",
                 "armour": {
                     "hardness": 5.0,
                     "density": 2.0
@@ -36,7 +37,10 @@
                 "mass": 50.0,
                 "forwardDragModifier": 1.0,
                 "lateralDragModifier": 1.0,
-                "reverseDragModifier": 1.0
+                "reverseDragModifier": 1.0,
+                "maxHp": 130.0,
+                "lift": 180.0,
+                "shipClass": "frigate"
             }
         },
         {
@@ -126,17 +130,15 @@
             }
         }
     ],
-    "placedHulls": [
-        {
-            "id": "placed_hull_0",
-            "itemDefinitionId": "hull_enemy_medium_0",
-            "position": {
-                "x": 0.0,
-                "y": 0.0
-            },
-            "rotation": 0.0
-        }
-    ],
+    "placedKeel": {
+        "id": "placed_keel_0",
+        "itemDefinitionId": "keel_enemy_medium_0",
+        "position": {
+            "x": 0.0,
+            "y": 0.0
+        },
+        "rotation": 0.0
+    },
     "placedModules": [
         {
             "id": "placed_module_0",
@@ -147,7 +149,7 @@
                 "y": 0.0
             },
             "rotation": 0.0,
-            "parentHullId": "placed_hull_0"
+            "parentHullId": "placed_keel_0"
         },
         {
             "id": "placed_module_1",
@@ -158,7 +160,7 @@
                 "y": 0.0
             },
             "rotation": 0.0,
-            "parentHullId": "placed_hull_0"
+            "parentHullId": "placed_keel_0"
         },
         {
             "id": "placed_module_2",
@@ -169,7 +171,7 @@
                 "y": 0.0
             },
             "rotation": 0.0,
-            "parentHullId": "placed_hull_0"
+            "parentHullId": "placed_keel_0"
         }
     ],
     "placedTurrets": [
@@ -182,7 +184,7 @@
                 "y": -40.0
             },
             "rotation": 0.0,
-            "parentHullId": "placed_hull_0"
+            "parentHullId": "placed_keel_0"
         },
         {
             "id": "placed_turret_1",
@@ -193,7 +195,7 @@
                 "y": 40.0
             },
             "rotation": 0.0,
-            "parentHullId": "placed_hull_0"
+            "parentHullId": "placed_keel_0"
         }
     ]
 }
