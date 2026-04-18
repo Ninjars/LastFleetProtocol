@@ -443,7 +443,7 @@ load existing design with placedKeel == null → PickingKeel (corrupt/pre-v3 rec
 
 ---
 
-- [ ] **Unit 6: Flightworthiness indicator and lift/mass readout**
+- [x] **Unit 6: Flightworthiness indicator and lift/mass readout**
 
   **Goal:** Stats panel header shows a three-state Flightworthiness Indicator (`Flightworthy` / `No Keel` / `Mass exceeds lift`); body shows `Lift` and `Mass` as live stats. The existing autoSave path is the only save path — no "save as ready" distinction is introduced. R24's spawn-time gate is fully covered by Unit 4.
 

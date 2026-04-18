@@ -137,6 +137,7 @@ private fun ShipBuilderScreen(
                 is EditorMode.EditingShip -> {
                     StatsPanel(
                         stats = state.stats,
+                        placedKeel = state.placedKeel,
                         designName = state.designName,
                         onNameChanged = { onIntent(ShipBuilderIntent.RenameDesign(it)) },
                         onLoadClicked = { onIntent(ShipBuilderIntent.LoadDesignClicked) },

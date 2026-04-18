@@ -19,6 +19,10 @@ import lastfleetprotocol.components.design.generated.resources.builder_drag_late
 import lastfleetprotocol.components.design.generated.resources.builder_drag_reverse
 import lastfleetprotocol.components.design.generated.resources.builder_finish
 import lastfleetprotocol.components.design.generated.resources.builder_fixed
+import lastfleetprotocol.components.design.generated.resources.builder_flightworthy
+import lastfleetprotocol.components.design.generated.resources.builder_lift
+import lastfleetprotocol.components.design.generated.resources.builder_mass_exceeds_lift
+import lastfleetprotocol.components.design.generated.resources.builder_no_keel
 import lastfleetprotocol.components.design.generated.resources.builder_forward
 import lastfleetprotocol.components.design.generated.resources.builder_forward_thrust
 import lastfleetprotocol.components.design.generated.resources.builder_hull_pieces
@@ -139,6 +143,10 @@ object LFRes {
         val button_cancel: StringResource = Res.string.button_cancel
 
         val builder_stats: StringResource = Res.string.builder_stats
+        val builder_flightworthy: StringResource = Res.string.builder_flightworthy
+        val builder_no_keel: StringResource = Res.string.builder_no_keel
+        val builder_mass_exceeds_lift: StringResource = Res.string.builder_mass_exceeds_lift
+        val builder_lift: StringResource = Res.string.builder_lift
         val builder_design_name: StringResource = Res.string.builder_design_name
         val builder_thrust: StringResource = Res.string.builder_thrust
         val builder_terminal_velocity: StringResource = Res.string.builder_terminal_velocity

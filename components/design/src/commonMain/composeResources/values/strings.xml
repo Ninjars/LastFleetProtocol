@@ -18,6 +18,10 @@
     <string name="button_add">Add</string>
 
     <string name="builder_stats">Stats</string>
+    <string name="builder_flightworthy">Flightworthy</string>
+    <string name="builder_no_keel">No Keel</string>
+    <string name="builder_mass_exceeds_lift">Mass exceeds lift</string>
+    <string name="builder_lift">Lift</string>
     <string name="builder_design_name">Design Name</string>
     <string name="builder_thrust">Thrust</string>
     <string name="builder_terminal_velocity">Terminal Vel.</string>
