@@ -249,7 +249,7 @@ load existing design with placedKeel == null → PickingKeel (corrupt/pre-v3 rec
 
 ---
 
-- [ ] **Unit 2: Lift/flightworthy computation + Keel as hull piece in conversion**
+- [x] **Unit 2: Lift/flightworthy computation + Keel as hull piece in conversion**
 
   **Goal:** Teach `calculateShipStats` and `convertShipDesign` about the Keel. Stats compute `totalLift` from the placed Keel, compute `isFlightworthy = totalLift > 0 && totalMass <= totalLift`, and include the Keel polygon in drag aggregation. The converter emits a `KEEL` `InternalSystemSpec`, registers the Keel's hull polygon for collision/drag alongside the other hull pieces, and refuses to produce a `ShipConfig` when `placedKeel == null`.
 

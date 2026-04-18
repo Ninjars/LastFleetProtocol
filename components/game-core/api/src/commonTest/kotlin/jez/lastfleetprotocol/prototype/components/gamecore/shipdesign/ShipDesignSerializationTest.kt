@@ -522,9 +522,10 @@ class ShipDesignSerializationTest {
         val decoded = json.decodeFromString(ShipDesign.serializer(), encoded)
 
         assertEquals(3, decoded.formatVersion)
-        assertNotNull(decoded.placedKeel)
-        assertEquals("placed-keel", decoded.placedKeel!!.id)
-        assertEquals("keel-def", decoded.placedKeel!!.itemDefinitionId)
+        val placedKeel = decoded.placedKeel
+        assertNotNull(placedKeel)
+        assertEquals("placed-keel", placedKeel.id)
+        assertEquals("keel-def", placedKeel.itemDefinitionId)
         assertEquals(ItemType.KEEL, decoded.itemDefinitions[0].itemType)
     }
 

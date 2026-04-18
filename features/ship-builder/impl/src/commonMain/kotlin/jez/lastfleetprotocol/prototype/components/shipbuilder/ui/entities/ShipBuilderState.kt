@@ -6,6 +6,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefini
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedItem
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedKeel
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurret
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.PartsCatalog
@@ -33,6 +34,7 @@ data class ShipBuilderState(
     val designName: String = "New Ship",
     val itemDefinitions: List<ItemDefinition> = emptyList(),
     val libraryItems: List<ItemDefinition> = emptyList(),
+    val placedKeel: PlacedKeel? = null,
     val placedHulls: List<PlacedHullPiece> = emptyList(),
     val placedModules: List<PlacedModule> = emptyList(),
     val placedTurrets: List<PlacedTurret> = emptyList(),

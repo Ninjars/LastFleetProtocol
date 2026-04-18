@@ -153,6 +153,7 @@ class ShipBuilderVM(
                                 it.copy(
                                     designName = loaded.name,
                                     itemDefinitions = loaded.itemDefinitions,
+                                    placedKeel = loaded.placedKeel,
                                     placedHulls = loaded.placedHulls,
                                     placedModules = loaded.placedModules,
                                     placedTurrets = loaded.placedTurrets,
@@ -568,5 +569,6 @@ class ShipBuilderVM(
 
 fun ShipBuilderState.toShipDesign(): ShipDesign = ShipDesign(
     name = designName, itemDefinitions = itemDefinitions,
+    placedKeel = placedKeel,
     placedHulls = placedHulls, placedModules = placedModules, placedTurrets = placedTurrets,
 )

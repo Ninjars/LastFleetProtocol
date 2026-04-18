@@ -23,24 +23,58 @@ import jez.lastfleetprotocol.prototype.components.gamecore.stats.calculateShipSt
  * descriptive [Result.failure] values, not thrown exceptions.
  *
  * Constraints enforced:
+ * - A [ShipDesign.placedKeel] is required (Slice B: exactly-one Keel per ship).
  * - At most one module per [InternalSystemType] (multi-module-per-type rejected in v1).
  * - All module `systemType` strings must map to a known [InternalSystemType] enum value.
  * - All turret `turretConfigId` values must resolve in the provided [turretGuns] map.
- * - At least one hull piece is required.
+ *
+ * Callers that process many designs should destructure the returned `Result` rather
+ * than calling `.getOrThrow()` — the combat-load path uses a Result-loop so a single
+ * failure doesn't abort the whole scene setup. See Slice B plan Unit 4.
  */
 fun convertShipDesign(
     design: ShipDesign,
     turretGuns: Map<String, GunData>,
     defaultEvasionModifier: Float = 1.0f,
 ): Result<ShipConfig> {
-    // --- Hull conversion ---
-    if (design.placedHulls.isEmpty()) {
-        return Result.failure(IllegalArgumentException("Ship design '${design.name}' has no hull pieces"))
-    }
-
     val itemDefsById = design.itemDefinitions.associateBy { it.id }
 
+    // --- Keel conversion (required) ---
+    val placedKeel = design.placedKeel
+        ?: return Result.failure(
+            IllegalArgumentException(
+                "Ship design '${design.name}' has no Keel — every ship requires exactly one"
+            )
+        )
+    val keelItemDef = itemDefsById[placedKeel.itemDefinitionId]
+        ?: return Result.failure(
+            IllegalArgumentException(
+                "Keel '${placedKeel.id}' references unknown item definition '${placedKeel.itemDefinitionId}'"
+            )
+        )
+    val keelAttrs = keelItemDef.attributes as? ItemAttributes.KeelAttributes
+        ?: return Result.failure(
+            IllegalArgumentException(
+                "Item definition '${placedKeel.itemDefinitionId}' is not a keel type"
+            )
+        )
+
     val hulls = mutableListOf<HullDefinition>()
+
+    // Emit the Keel as a hull piece — it participates in geometry, collision, and drag
+    // like any other placed hull piece.
+    hulls.add(
+        HullDefinition(
+            vertices = keelItemDef.vertices.map { transformVertex(it, placedKeel) },
+            armour = ArmourStats(
+                hardness = keelAttrs.armour.hardness,
+                density = keelAttrs.armour.density,
+            ),
+            mass = keelAttrs.mass,
+        )
+    )
+
+    // --- Additional hull pieces (optional post-Keel) ---
     for (placed in design.placedHulls) {
         val itemDef = itemDefsById[placed.itemDefinitionId]
             ?: return Result.failure(
@@ -74,6 +108,17 @@ fun convertShipDesign(
     // --- Module conversion ---
     val systemTypeGroups = design.placedModules.groupBy { it.systemType }
     val internalSystems = mutableListOf<InternalSystemSpec>()
+
+    // Slice B: Keel is tracked as an internal system (KEEL) with its own HP. Damage
+    // routing in Unit 3 promotes it to the side-arc primary.
+    internalSystems.add(
+        InternalSystemSpec(
+            type = InternalSystemType.KEEL,
+            maxHp = keelAttrs.maxHp,
+            density = keelAttrs.armour.density,
+            mass = keelAttrs.mass,
+        )
+    )
 
     for ((typeString, modules) in systemTypeGroups) {
         if (modules.size > 1) {
@@ -150,6 +195,7 @@ fun convertShipDesign(
         placedHulls = design.placedHulls,
         placedModules = design.placedModules,
         placedTurrets = design.placedTurrets,
+        placedKeel = design.placedKeel,
         resolveItem = { itemDefsById[it] },
     )
 
