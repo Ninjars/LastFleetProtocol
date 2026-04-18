@@ -203,8 +203,14 @@ class GameStateManager(
      * scene for the drift window. The ship removes itself from the actor manager
      * when it transitions to `Destroyed` — [GameStateManager] only mutates its
      * own backing team lists here.
+     *
+     * Intentionally does **not** pause the Kubriko loop when the result fires:
+     * doing so freezes any in-flight drift animations mid-countdown, breaking the
+     * brainstorm's "visibly drift before despawning" success criterion for the
+     * last-ship-on-team case. The UI overlays sit on top of the running scene,
+     * and ships self-remove on their terminal Destroyed transition.
      */
-    private fun onShipLifecycleTransition(ship: Ship, newState: ShipLifecycle) {
+    internal fun onShipLifecycleTransition(ship: Ship, newState: ShipLifecycle) {
         // Match-tally on every transition. Gate on _gameResult so we don't re-fire
         // after the match has already been resolved (e.g., the terminal
         // LiftFailed → Destroyed(LIFT_FAILURE) transition on the last enemy ship).
@@ -216,7 +222,6 @@ class GameStateManager(
             }
             if (result != null) {
                 _gameResult.value = result
-                stateManager.updateIsRunning(false)
                 onGameResult?.invoke(result)
             }
         }
@@ -228,6 +233,20 @@ class GameStateManager(
                 Ship.TEAM_PLAYER -> playerShips.remove(ship)
                 Ship.TEAM_ENEMY -> enemyShips.remove(ship)
             }
+        }
+    }
+
+    /**
+     * Register a pre-built [ship] directly into its team's backing list and wire
+     * its lifecycle hook. Used by unit tests that drive the transition hook
+     * without going through [createShip] — that path calls `actorManager.add`,
+     * which requires a live Kubriko harness to satisfy child-actor `onAdded`.
+     */
+    internal fun registerShipForTest(ship: Ship) {
+        ship.onLifecycleTransition = ::onShipLifecycleTransition
+        when (ship.teamId) {
+            Ship.TEAM_PLAYER -> playerShips.add(ship)
+            Ship.TEAM_ENEMY -> enemyShips.add(ship)
         }
     }
 

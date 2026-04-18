@@ -56,6 +56,21 @@ class Ship(
         private set
 
     /**
+     * Drift countdown in milliseconds for the `LiftFailed` window. Populated when
+     * the ship transitions `Active → LiftFailed`, decremented each frame, and read
+     * by [updateLifecycle] to decide when to move on to `Destroyed(LIFT_FAILURE)`.
+     *
+     * Kept as a private side-channel (rather than a data class field on
+     * `LiftFailed`) so the lifecycle's identity stays stable across the drift
+     * window — that's what lets the `next == lifecycle` guard in [updateLifecycle]
+     * suppress the per-frame transition hook.
+     *
+     * `internal` so tests can observe drift progress without poking at reflection.
+     */
+    internal var driftRemainingMs: Int = 0
+        private set
+
+    /**
      * Fires at *every* lifecycle transition. Subscribers branch on [ShipLifecycle]
      * to distinguish observer concerns (match-tally, UI) from terminal concerns
      * (cause-tagged logging, team-list cleanup). Victory fires the instant a Keel
@@ -244,24 +259,30 @@ class Ship(
      *
      * Transition order (reactor-priority):
      * 1. `Active` + reactor destroyed → `Destroyed(HULL)` directly (skips LiftFailed).
-     * 2. `Active` + keel destroyed    → `LiftFailed(DRIFT_WINDOW_MS)`.
-     * 3. `LiftFailed`                 → decrement `remainingMs`; when ≤ 0 → `Destroyed(LIFT_FAILURE)`.
+     * 2. `Active` + keel destroyed    → `LiftFailed` (drift window begins).
+     * 3. `LiftFailed`                 → tick [driftRemainingMs]; when ≤ 0 → `Destroyed(LIFT_FAILURE)`.
      *
      * A same-frame reactor+keel double-kill lands on `Destroyed(HULL)` — no drift.
-     * See Slice B plan Unit 3 Approach + Risks.
+     * The `LiftFailed` state is a singleton, so within the drift window the `next`
+     * value equals `lifecycle` and the transition hook is skipped — the hook only
+     * fires once on entry and once on the Destroyed transition.
      */
     fun updateLifecycle(deltaTimeInMilliseconds: Int) {
-        val next: ShipLifecycle? = when (val current = lifecycle) {
+        val next: ShipLifecycle? = when (lifecycle) {
             is ShipLifecycle.Active -> when {
                 shipSystems.isReactorDestroyed() -> ShipLifecycle.Destroyed(DestructionCause.HULL)
-                shipSystems.isKeelDestroyed() -> ShipLifecycle.LiftFailed(DRIFT_WINDOW_MS)
+                shipSystems.isKeelDestroyed() -> {
+                    driftRemainingMs = DRIFT_WINDOW_MS
+                    ShipLifecycle.LiftFailed
+                }
+
                 else -> null
             }
 
             is ShipLifecycle.LiftFailed -> {
-                val remaining = current.remainingMs - deltaTimeInMilliseconds
-                if (remaining <= 0) ShipLifecycle.Destroyed(DestructionCause.LIFT_FAILURE)
-                else ShipLifecycle.LiftFailed(remaining)
+                driftRemainingMs -= deltaTimeInMilliseconds
+                if (driftRemainingMs <= 0) ShipLifecycle.Destroyed(DestructionCause.LIFT_FAILURE)
+                else ShipLifecycle.LiftFailed
             }
 
             is ShipLifecycle.Destroyed -> null

@@ -5,7 +5,7 @@ package jez.lastfleetprotocol.prototype.components.game.actors
  *
  * Transitions (see [Ship.updateLifecycle]):
  * - `Active` → `Destroyed(HULL)` — reactor HP reaches zero. No drift window.
- * - `Active` → `LiftFailed(remainingMs)` — Keel HP reaches zero. Drift begins.
+ * - `Active` → `LiftFailed` — Keel HP reaches zero. Drift begins.
  * - `LiftFailed` → `Destroyed(LIFT_FAILURE)` — drift countdown reaches zero.
  *
  * Reactor destruction takes precedence on same-frame double-kills — a single hit
@@ -13,7 +13,10 @@ package jez.lastfleetprotocol.prototype.components.game.actors
  * `LiftFailed`. Rationale: reactor destruction is final combat death; drift is only
  * meaningful when the reactor survives.
  *
- * See Slice B plan Key Decisions 3 and 5.
+ * `LiftFailed` is a singleton: its drift countdown lives in a private field on
+ * [Ship] so that the state's identity stays stable across the drift window.
+ * Subscribers observing `onLifecycleTransition` only see the transition *into*
+ * `LiftFailed`, never per-frame countdown ticks.
  */
 sealed interface ShipLifecycle {
     /** Ship is flying, controllable, and a valid combat target. */
@@ -21,10 +24,11 @@ sealed interface ShipLifecycle {
 
     /**
      * Keel destroyed; ship is drifting under drag with controls disengaged. Still
-     * present in the scene but not a valid combat target. Transitions to
-     * `Destroyed(LIFT_FAILURE)` when [remainingMs] decrements below zero.
+     * present in the scene but not a valid combat target. Remaining drift time is
+     * tracked by `Ship.driftRemainingMs`. Transitions to `Destroyed(LIFT_FAILURE)`
+     * when the countdown decrements below zero.
      */
-    data class LiftFailed(val remainingMs: Int) : ShipLifecycle
+    data object LiftFailed : ShipLifecycle
 
     /** Terminal state. Actor is being or has been removed. Cause distinguishes R19 log events. */
     data class Destroyed(val cause: DestructionCause) : ShipLifecycle

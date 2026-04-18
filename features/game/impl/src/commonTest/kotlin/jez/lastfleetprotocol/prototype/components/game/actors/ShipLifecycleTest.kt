@@ -126,8 +126,8 @@ class ShipLifecycleTest {
 
         ship.updateLifecycle(16)
 
-        val lifeFailed = assertIs<ShipLifecycle.LiftFailed>(ship.lifecycle)
-        assertEquals(Ship.DRIFT_WINDOW_MS, lifeFailed.remainingMs)
+        assertIs<ShipLifecycle.LiftFailed>(ship.lifecycle)
+        assertEquals(Ship.DRIFT_WINDOW_MS, ship.driftRemainingMs)
         assertEquals(1, transitions.size)
         assertIs<ShipLifecycle.LiftFailed>(transitions.first())
         assertTrue(
@@ -142,20 +142,40 @@ class ShipLifecycleTest {
         val systems = makeSystems()
         val ship = makeShip(systems)
         systems.applyDamage(InternalSystemType.KEEL, damage = 10_000f, armourPiercing = 20f)
-        ship.updateLifecycle(16) // → LiftFailed(3000)
-        assertEquals(Ship.DRIFT_WINDOW_MS, (ship.lifecycle as ShipLifecycle.LiftFailed).remainingMs)
+        ship.updateLifecycle(16) // Active → LiftFailed, drift countdown seeded.
+        assertEquals(Ship.DRIFT_WINDOW_MS, ship.driftRemainingMs)
 
         ship.updateLifecycle(1000)
-        assertEquals(
-            Ship.DRIFT_WINDOW_MS - 1000,
-            (ship.lifecycle as ShipLifecycle.LiftFailed).remainingMs,
-        )
+        assertEquals(Ship.DRIFT_WINDOW_MS - 1000, ship.driftRemainingMs)
 
         ship.updateLifecycle(500)
+        assertEquals(Ship.DRIFT_WINDOW_MS - 1500, ship.driftRemainingMs)
+    }
+
+    @Test
+    fun liftFailed_hookFiresOnceAcrossManyFrames() {
+        // Regression: previously LiftFailed was a data class carrying remainingMs,
+        // so `next == lifecycle` never held during the countdown and the transition
+        // hook fired every frame. With LiftFailed as a data object, only the entry
+        // transition and the terminal Destroyed transition should invoke the hook.
+        val systems = makeSystems()
+        val ship = makeShip(systems)
+        val (transitions, _) = capturingHooks()
+        val destructions = mutableListOf<DestructionCause>()
+        wireShip(ship, transitions, destructions)
+
+        systems.applyDamage(InternalSystemType.KEEL, damage = 10_000f, armourPiercing = 20f)
+        ship.updateLifecycle(16) // → LiftFailed (1 transition)
+
+        // Tick 100 frames inside the drift window. None should fire the hook.
+        repeat(100) { ship.updateLifecycle(16) }
+
         assertEquals(
-            Ship.DRIFT_WINDOW_MS - 1500,
-            (ship.lifecycle as ShipLifecycle.LiftFailed).remainingMs,
+            1,
+            transitions.size,
+            "hook must not fire during the drift window — only on entry and exit",
         )
+        assertIs<ShipLifecycle.LiftFailed>(ship.lifecycle)
     }
 
     @Test
