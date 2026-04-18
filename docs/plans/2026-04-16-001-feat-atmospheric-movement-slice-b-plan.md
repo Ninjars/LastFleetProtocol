@@ -293,7 +293,7 @@ load existing design with placedKeel == null → PickingKeel (corrupt/pre-v3 rec
 
 ### Phase B2 — Runtime: Damage Routing and Lifecycle
 
-- [ ] **Unit 3: Keel arc routing and LIFT_FAILED lifecycle**
+- [x] **Unit 3: Keel arc routing and LIFT_FAILED lifecycle**
 
   **Goal:** Promote `InternalSystemType.KEEL` to the side-arc primary in `ArcDamageRouter` (demoting REACTOR to side-arc overflow). Introduce a three-state `ShipLifecycle` sealed type (`Active`, `LiftFailed(remainingMs)`, `Destroyed(cause)`) replacing `isDestroyed`. When the Keel's `InternalSystem` hits 0 HP, the ship transitions to `LiftFailed` with a 3-second countdown; navigator, thrust, and turrets disengage; drag and integration continue. When the countdown reaches 0 (or when the reactor is separately destroyed), the ship transitions to `Destroyed(cause)` and fires the destruction callback with the appropriate `DestructionCause`.
 

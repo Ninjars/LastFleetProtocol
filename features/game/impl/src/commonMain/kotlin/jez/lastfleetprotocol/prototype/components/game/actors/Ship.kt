@@ -48,10 +48,26 @@ class Ship(
     override val drawingOrder: Float = 0f,
 ) : Targetable, Dynamic, Parent {
 
-    var isDestroyed: Boolean = false
+    /**
+     * Three-state lifecycle replacing the Slice A `isDestroyed` flag.
+     * See [ShipLifecycle] for transitions and [updateLifecycle] for the state machine.
+     */
+    var lifecycle: ShipLifecycle = ShipLifecycle.Active
         private set
 
-    var onDestroyedCallback: ((Ship) -> Unit)? = null
+    /**
+     * Fires at *every* lifecycle transition. Subscribed by `GameStateManager` to
+     * re-tally match results via `none { is Active }` — so victory fires the instant
+     * a Keel is destroyed (entry into `LiftFailed`), even though the ship's actor
+     * remains in the scene during drift. See Slice B Key Decision 5.
+     */
+    var onLifecycleTransition: ((Ship, ShipLifecycle) -> Unit)? = null
+
+    /**
+     * Fires *only* at the terminal transition into [ShipLifecycle.Destroyed].
+     * Handles actor cleanup and the cause-tagged `println` destruction log.
+     */
+    var onDestroyedCallback: ((Ship, DestructionCause) -> Unit)? = null
 
     private lateinit var viewportManager: ViewportManager
     private lateinit var actorManager: ActorManager
@@ -156,7 +172,14 @@ class Ship(
     }
 
     override fun DrawScope.draw() {
-        // Draw each hull polygon
+        // Minimum-viable drift visual: desaturate (halve alpha on both stroke and fill)
+        // while the ship is drifting under `LiftFailed`. Satisfies the brainstorm's
+        // "visibly drift before despawning" success criterion without particle effects.
+        // Richer drift visuals (smoke trail, heading fade, turret slouch) stay deferred.
+        val alphaScale = if (lifecycle is ShipLifecycle.LiftFailed) 0.5f else 1f
+        val fillColor = teamFillColor.copy(alpha = teamFillColor.alpha * alphaScale)
+        val strokeColor = teamStrokeColor.copy(alpha = teamStrokeColor.alpha * alphaScale)
+
         for (verts in hullLocalVertices) {
             if (verts.size < 3) continue
 
@@ -167,10 +190,8 @@ class Ship(
             }
             path.close()
 
-            // Fill with translucent team colour
-            drawPath(path, teamFillColor, style = Fill)
-            // Stroke with opaque team colour
-            drawPath(path, teamStrokeColor, style = Stroke(width = 2f))
+            drawPath(path, fillColor, style = Fill)
+            drawPath(path, strokeColor, style = Stroke(width = 2f))
         }
         // Heading indicator (nose marker) is a separate child actor — see HeadingIndicator
     }
@@ -183,36 +204,91 @@ class Ship(
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {
-        // Run AI modules
-        for (ai in aiModules) {
-            ai.update(this, deltaTimeInMilliseconds)
+        when (val lc = lifecycle) {
+            is ShipLifecycle.Active -> {
+                // Full control path: AI, navigation, thrust, drag, integration.
+                for (ai in aiModules) {
+                    ai.update(this, deltaTimeInMilliseconds)
+                }
+                destination = navigator.navigate(
+                    movementConfig = spec.movementConfig,
+                    physics = physics,
+                    body = body,
+                    combatTarget = combatTarget,
+                    destination = destination,
+                    deltaMs = deltaTimeInMilliseconds,
+                )
+                val result = physics.integrate(deltaTimeInMilliseconds)
+                body.position += result.positionDelta
+                // Rotation handled by navigator via turn-rate model (not physics-integrated)
+            }
+
+            is ShipLifecycle.LiftFailed -> {
+                // Drift path: no AI, no navigation, no thrust, no turret updates. Drag
+                // keeps running so the ship decelerates naturally. Countdown inside
+                // updateLifecycle.
+                physics.applyDrag(spec.movementConfig, body.rotation)
+                val result = physics.integrate(deltaTimeInMilliseconds)
+                body.position += result.positionDelta
+            }
+
+            is ShipLifecycle.Destroyed -> Unit // Actor is being / has been removed.
         }
 
-        destination = navigator.navigate(
-            movementConfig = spec.movementConfig,
-            physics = physics,
-            body = body,
-            combatTarget = combatTarget,
-            destination = destination,
-            deltaMs = deltaTimeInMilliseconds,
-        )
-
-        val result = physics.integrate(deltaTimeInMilliseconds)
-        body.position += result.positionDelta
-        // Rotation is handled by the navigator via turn-rate model (not physics-integrated)
-
-        checkDestruction()
+        updateLifecycle(deltaTimeInMilliseconds)
     }
 
-    override fun isValidTarget(): Boolean {
-        return !isDestroyed
-    }
+    override fun isValidTarget(): Boolean = lifecycle is ShipLifecycle.Active
 
-    fun checkDestruction() {
-        if (shipSystems.isReactorDestroyed() && !isDestroyed) {
-            isDestroyed = true
-            onDestroyedCallback?.invoke(this)
-            actorManager.remove(this)
+    /**
+     * Resolve the next lifecycle state, fire transition hooks, and tick the drift
+     * countdown. Called once per frame at the end of [update].
+     *
+     * Transition order (reactor-priority):
+     * 1. `Active` + reactor destroyed → `Destroyed(HULL)` directly (skips LiftFailed).
+     * 2. `Active` + keel destroyed    → `LiftFailed(DRIFT_WINDOW_MS)`.
+     * 3. `LiftFailed`                 → decrement `remainingMs`; when ≤ 0 → `Destroyed(LIFT_FAILURE)`.
+     *
+     * A same-frame reactor+keel double-kill lands on `Destroyed(HULL)` — no drift.
+     * See Slice B plan Unit 3 Approach + Risks.
+     */
+    fun updateLifecycle(deltaTimeInMilliseconds: Int) {
+        val next: ShipLifecycle? = when (val current = lifecycle) {
+            is ShipLifecycle.Active -> when {
+                shipSystems.isReactorDestroyed() -> ShipLifecycle.Destroyed(DestructionCause.HULL)
+                shipSystems.isKeelDestroyed() -> ShipLifecycle.LiftFailed(DRIFT_WINDOW_MS)
+                else -> null
+            }
+
+            is ShipLifecycle.LiftFailed -> {
+                val remaining = current.remainingMs - deltaTimeInMilliseconds
+                if (remaining <= 0) ShipLifecycle.Destroyed(DestructionCause.LIFT_FAILURE)
+                else ShipLifecycle.LiftFailed(remaining)
+            }
+
+            is ShipLifecycle.Destroyed -> null
+        }
+
+        if (next == null || next == lifecycle) return
+
+        val previous = lifecycle
+        lifecycle = next
+
+        // Entering a non-Active state disables turret firing synchronously. This
+        // sidesteps the Kubriko ActorManager child-update-ordering race — a turret
+        // update scheduled for the same frame as the parent's transition won't see
+        // the stale `Active` state.
+        if (previous is ShipLifecycle.Active && next !is ShipLifecycle.Active) {
+            for (turret in turrets) turret.setFiringEnabled(false)
+        }
+
+        onLifecycleTransition?.invoke(this, next)
+
+        if (next is ShipLifecycle.Destroyed) {
+            onDestroyedCallback?.invoke(this, next.cause)
+            // `actorManager` is set in onAdded; unit tests drive the lifecycle
+            // directly without a Kubriko harness, so guard the side-effect.
+            if (::actorManager.isInitialized) actorManager.remove(this)
         }
     }
 
@@ -264,5 +340,11 @@ class Ship(
     companion object {
         const val TEAM_PLAYER = "player"
         const val TEAM_ENEMY = "enemy"
+
+        /**
+         * Drift window after Keel destruction before the ship is removed from the scene.
+         * Tuneable in playtest — starting value per Slice B plan's Deferred to Implementation.
+         */
+        const val DRIFT_WINDOW_MS = 3000
     }
 }

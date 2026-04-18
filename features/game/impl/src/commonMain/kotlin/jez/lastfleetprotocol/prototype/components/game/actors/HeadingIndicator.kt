@@ -30,11 +30,15 @@ class HeadingIndicator(
 
     // Isoceles triangle pointing right (+X = forward in ship convention).
     // Body-local coordinates: (0,0) is top-left, +X right, +Y down.
-    private val path = Path().apply {
-        moveTo(LENGTH, WIDTH / 2f)   // tip: right-centre (forward)
-        lineTo(0f, 0f)               // base top-left
-        lineTo(0f, WIDTH)            // base bottom-left
-        close()
+    // Lazy so that JVM unit tests can construct a Ship (which creates a
+    // HeadingIndicator) without initializing the Skia Path backend.
+    private val path by lazy {
+        Path().apply {
+            moveTo(LENGTH, WIDTH / 2f)   // tip: right-centre (forward)
+            lineTo(0f, 0f)               // base top-left
+            lineTo(0f, WIDTH)            // base bottom-left
+            close()
+        }
     }
 
     override fun onAdded(kubriko: Kubriko) {

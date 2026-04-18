@@ -19,7 +19,13 @@ import kotlin.random.Random
  * Arc layout (relative to ship forward = +X in atan2/Kubriko convention):
  * - Forward 90 arc (within 45 of forward) -> BRIDGE
  * - Rear 90 arc (within 45 of rear) -> MAIN_ENGINE
- * - Side arcs (everything else) -> REACTOR
+ * - Side arcs (everything else) -> KEEL
+ *
+ * Slice B promoted KEEL to the side-arc primary (demoting REACTOR to side-arc
+ * overflow). Polygon-based spatial targeting of internal systems (including hitting
+ * the Keel's polygon specifically) is deferred to a later damage-model slice.
+ * Overflow cascading still uses the existing `shuffled(random)` mechanism — KEEL
+ * joins the pool for forward/rear arcs automatically via [InternalSystemType.entries].
  */
 object ArcDamageRouter {
 
@@ -97,7 +103,7 @@ object ArcDamageRouter {
         return when {
             absAngle <= ARC_HALF_WIDTH -> InternalSystemType.BRIDGE         // Forward arc
             absAngle >= (PI.toFloat() - ARC_HALF_WIDTH) -> InternalSystemType.MAIN_ENGINE  // Rear arc
-            else -> InternalSystemType.REACTOR                               // Side arcs
+            else -> InternalSystemType.KEEL                                  // Side arcs (Slice B)
         }
     }
 }

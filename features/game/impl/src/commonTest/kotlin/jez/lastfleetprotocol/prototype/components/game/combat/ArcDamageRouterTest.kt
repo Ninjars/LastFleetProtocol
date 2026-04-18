@@ -26,6 +26,7 @@ class ArcDamageRouterTest {
         makeSpec(InternalSystemType.REACTOR),
         makeSpec(InternalSystemType.MAIN_ENGINE),
         makeSpec(InternalSystemType.BRIDGE),
+        makeSpec(InternalSystemType.KEEL),
     )
 
     private val shipPosition = SceneOffset(0f.sceneUnit, 0f.sceneUnit)
@@ -51,19 +52,21 @@ class ArcDamageRouterTest {
     }
 
     @Test
-    fun topSideHit_targetsReactor() {
-        // Impact from above (-Y direction, perpendicular to forward)
+    fun topSideHit_targetsKeel() {
+        // Impact from above (-Y direction, perpendicular to forward).
+        // Slice B: side arcs route to KEEL (was REACTOR in Slice A).
         val impactWorld = SceneOffset(0f.sceneUnit, (-10f).sceneUnit)
         val arc = ArcDamageRouter.determineArc(impactWorld, shipPosition, noRotation)
-        assertEquals(InternalSystemType.REACTOR, arc)
+        assertEquals(InternalSystemType.KEEL, arc)
     }
 
     @Test
-    fun bottomSideHit_targetsReactor() {
-        // Impact from below (+Y direction, perpendicular to forward)
+    fun bottomSideHit_targetsKeel() {
+        // Impact from below (+Y direction, perpendicular to forward).
+        // Slice B: side arcs route to KEEL (was REACTOR in Slice A).
         val impactWorld = SceneOffset(0f.sceneUnit, 10f.sceneUnit)
         val arc = ArcDamageRouter.determineArc(impactWorld, shipPosition, noRotation)
-        assertEquals(InternalSystemType.REACTOR, arc)
+        assertEquals(InternalSystemType.KEEL, arc)
     }
 
     // --- Arc boundary test (exactly 45 degrees) ---
@@ -113,6 +116,7 @@ class ArcDamageRouterTest {
             makeSpec(InternalSystemType.REACTOR, maxHp = 100f, density = 5f),
             makeSpec(InternalSystemType.MAIN_ENGINE, maxHp = 100f, density = 5f),
             makeSpec(InternalSystemType.BRIDGE, maxHp = 100f, density = 5f),
+            makeSpec(InternalSystemType.KEEL, maxHp = 100f, density = 5f),
         )
         val systems = ShipSystems(specs)
 
@@ -131,9 +135,30 @@ class ArcDamageRouterTest {
         // BRIDGE should have taken damage
         assertTrue(systems.getSystem(InternalSystemType.BRIDGE).currentHp < 100f,
             "Bridge should have taken damage")
-        // At least one secondary should also have taken damage
+        // At least one secondary should also have taken damage (KEEL now in the overflow pool)
         val secondaryDamaged = systems.getSystem(InternalSystemType.REACTOR).currentHp < 100f
                 || systems.getSystem(InternalSystemType.MAIN_ENGINE).currentHp < 100f
+                || systems.getSystem(InternalSystemType.KEEL).currentHp < 100f
         assertTrue(secondaryDamaged, "At least one secondary system should have taken spill damage")
+    }
+
+    @Test
+    fun routeDamage_sideArcHitsKeelAsPrimary() {
+        // Slice B: side arcs now route to KEEL. A side hit drops KEEL HP first.
+        val systems = ShipSystems(defaultSpecs())
+        ArcDamageRouter.routeDamage(
+            impactWorld = SceneOffset(0f.sceneUnit, 10f.sceneUnit), // +Y = side arc
+            shipPosition = shipPosition,
+            shipRotation = noRotation,
+            shipSystems = systems,
+            damage = 25f,
+            armourPiercing = 10f,
+        )
+        assertEquals(75f, systems.getSystem(InternalSystemType.KEEL).currentHp)
+        // REACTOR is now a side-arc overflow target, not the primary — untouched when
+        // all the damage absorbed by the primary.
+        assertEquals(100f, systems.getSystem(InternalSystemType.REACTOR).currentHp)
+        assertEquals(100f, systems.getSystem(InternalSystemType.BRIDGE).currentHp)
+        assertEquals(100f, systems.getSystem(InternalSystemType.MAIN_ENGINE).currentHp)
     }
 }

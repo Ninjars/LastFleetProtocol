@@ -7,7 +7,9 @@ import com.pandulapeter.kubriko.manager.Manager
 import com.pandulapeter.kubriko.manager.StateManager
 import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.types.SceneOffset
+import jez.lastfleetprotocol.prototype.components.game.actors.DestructionCause
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
+import jez.lastfleetprotocol.prototype.components.game.actors.ShipLifecycle
 import jez.lastfleetprotocol.prototype.components.game.actors.ShipSpec
 import jez.lastfleetprotocol.prototype.components.game.ai.AIModule
 import jez.lastfleetprotocol.prototype.components.game.ai.BasicAI
@@ -165,6 +167,7 @@ class GameStateManager(
             drawingOrder = drawOrder,
         )
 
+        ship.onLifecycleTransition = ::onShipLifecycleTransition
         ship.onDestroyedCallback = ::onShipDestroyed
 
         when (teamId) {
@@ -176,20 +179,39 @@ class GameStateManager(
         return ship
     }
 
-    private fun onShipDestroyed(ship: Ship) {
-        when (ship.teamId) {
-            Ship.TEAM_PLAYER -> playerShips.remove(ship)
-            Ship.TEAM_ENEMY -> enemyShips.remove(ship)
-        }
+    /**
+     * Fires at every [ShipLifecycle] transition. Re-tallies match results via the
+     * `none { is Active }` filter over the backing team lists — so victory fires the
+     * instant a Keel is destroyed (entry into [ShipLifecycle.LiftFailed]), even though
+     * the ship remains on the battlefield for the drift window. See Slice B Key
+     * Decision 5.
+     */
+    private fun onShipLifecycleTransition(ship: Ship, newState: ShipLifecycle) {
+        if (_gameResult.value != null) return // Match already resolved; don't re-fire.
+
         val result = when {
-            playerShips.isEmpty() -> GameResult.DEFEAT
-            enemyShips.isEmpty() -> GameResult.VICTORY
+            playerShips.none { it.lifecycle is ShipLifecycle.Active } -> GameResult.DEFEAT
+            enemyShips.none { it.lifecycle is ShipLifecycle.Active } -> GameResult.VICTORY
             else -> null
         }
         if (result != null) {
             _gameResult.value = result
             stateManager.updateIsRunning(false)
             onGameResult?.invoke(result)
+        }
+    }
+
+    /**
+     * Fires only at the terminal transition into [ShipLifecycle.Destroyed]. Removes
+     * the ship from the backing team list and emits the cause-tagged combat log.
+     * Match result has already been set by [onShipLifecycleTransition] at the
+     * LiftFailed entry (for lift-failure kills) or synchronously here (for hull kills).
+     */
+    private fun onShipDestroyed(ship: Ship, cause: DestructionCause) {
+        println("[combat] ${ship.teamId} ship destroyed: $cause")
+        when (ship.teamId) {
+            Ship.TEAM_PLAYER -> playerShips.remove(ship)
+            Ship.TEAM_ENEMY -> enemyShips.remove(ship)
         }
     }
 
