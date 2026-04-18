@@ -85,7 +85,6 @@ private fun ShipBuilderScreen(
                     onEditItem = { onIntent(ShipBuilderIntent.EditLibraryItem(it)) },
                     onDeleteItem = { onIntent(ShipBuilderIntent.DeleteLibraryItem(it)) },
                     customItems = state.customItemDefinitions,
-                    hasPlacedKeel = state.placedKeel != null,
                     modifier = Modifier.width(200.dp).fillMaxHeight(),
                 )
             }

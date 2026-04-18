@@ -43,6 +43,9 @@ import org.jetbrains.compose.resources.stringResource
 fun ItemAttributes.isValidForSave(): Boolean = when (this) {
     is ItemAttributes.HullAttributes ->
         forwardDragModifier > 0f && lateralDragModifier > 0f && reverseDragModifier > 0f
+    is ItemAttributes.KeelAttributes ->
+        forwardDragModifier > 0f && lateralDragModifier > 0f && reverseDragModifier > 0f &&
+            lift > 0f && maxHp > 0f
     else -> true
 }
 
@@ -109,7 +112,10 @@ fun ItemAttributesPanel(
                 onAttributesChanged = onAttributesChanged,
             )
 
-            ItemType.KEEL -> TODO("Slice B Unit 7: KeelAttributesContent not yet wired")
+            ItemType.KEEL -> KeelAttributesContent(
+                attributes = creatingItem.attributes as ItemAttributes.KeelAttributes,
+                onAttributesChanged = onAttributesChanged,
+            )
         }
     }
 }
@@ -172,6 +178,106 @@ private fun HullAttributesContent(
         value = attributes.reverseDragModifier,
         onValueChange = { onAttributesChanged(attributes.copy(reverseDragModifier = it)) },
         isError = attributes.reverseDragModifier <= 0f,
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    AttributeReadOnlyRow(
+        label = stringResource(LFRes.String.builder_size_category),
+        value = attributes.sizeCategory,
+    )
+}
+
+// --- Keel ---
+
+@Composable
+private fun KeelAttributesContent(
+    attributes: ItemAttributes.KeelAttributes,
+    onAttributesChanged: (ItemAttributes) -> Unit,
+) {
+    // Slice B Unit 7: mirrors HullAttributesContent (shared ExternalPartAttributes
+    // fields) and adds Keel-specific lift + shipClass + maxHp.
+    NumericField(
+        label = stringResource(LFRes.String.builder_armour_hardness),
+        value = attributes.armour.hardness,
+        onValueChange = {
+            onAttributesChanged(attributes.copy(armour = attributes.armour.copy(hardness = it)))
+        },
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    NumericField(
+        label = stringResource(LFRes.String.builder_armour_density),
+        value = attributes.armour.density,
+        onValueChange = {
+            onAttributesChanged(attributes.copy(armour = attributes.armour.copy(density = it)))
+        },
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    NumericField(
+        label = stringResource(LFRes.String.builder_mass),
+        value = attributes.mass,
+        onValueChange = { onAttributesChanged(attributes.copy(mass = it)) },
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    NumericField(
+        label = stringResource(LFRes.String.builder_drag_forward),
+        value = attributes.forwardDragModifier,
+        onValueChange = { onAttributesChanged(attributes.copy(forwardDragModifier = it)) },
+        isError = attributes.forwardDragModifier <= 0f,
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    NumericField(
+        label = stringResource(LFRes.String.builder_drag_lateral),
+        value = attributes.lateralDragModifier,
+        onValueChange = { onAttributesChanged(attributes.copy(lateralDragModifier = it)) },
+        isError = attributes.lateralDragModifier <= 0f,
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    NumericField(
+        label = stringResource(LFRes.String.builder_drag_reverse),
+        value = attributes.reverseDragModifier,
+        onValueChange = { onAttributesChanged(attributes.copy(reverseDragModifier = it)) },
+        isError = attributes.reverseDragModifier <= 0f,
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // Keel-specific: lift > 0 is required (a Keel with no lift makes every ship
+    // unflightworthy). maxHp > 0 is required (a Keel with no HP is insta-destroyed).
+    NumericField(
+        label = stringResource(LFRes.String.builder_lift),
+        value = attributes.lift,
+        onValueChange = { onAttributesChanged(attributes.copy(lift = it)) },
+        isError = attributes.lift <= 0f,
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    NumericField(
+        label = stringResource(LFRes.String.builder_max_hp),
+        value = attributes.maxHp,
+        onValueChange = { onAttributesChanged(attributes.copy(maxHp = it)) },
+        isError = attributes.maxHp <= 0f,
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    OutlinedTextField(
+        value = attributes.shipClass,
+        onValueChange = { onAttributesChanged(attributes.copy(shipClass = it)) },
+        label = { Text(stringResource(LFRes.String.builder_ship_class)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
     )
 
     Spacer(modifier = Modifier.height(4.dp))

@@ -487,7 +487,7 @@ load existing design with placedKeel == null → PickingKeel (corrupt/pre-v3 rec
 
 ### Phase B5 — Keel Content
 
-- [ ] **Unit 7: Keel attribute authoring UI**
+- [x] **Unit 7: Keel attribute authoring UI**
 
   **Goal:** The part editor supports authoring Keel items. Reuses the `HullAttributesContent` layout for shared fields and adds a `lift` numeric field and a `shipClass` text field. The parts-panel "Create Keel" button enters `EditorMode.CreatingItem(itemType = ItemType.KEEL)`.
 

@@ -8,8 +8,10 @@ import lastfleetprotocol.components.design.generated.resources.builder_armour_de
 import lastfleetprotocol.components.design.generated.resources.builder_armour_hardness
 import lastfleetprotocol.components.design.generated.resources.builder_cancel_creation
 import lastfleetprotocol.components.design.generated.resources.builder_create_hull
+import lastfleetprotocol.components.design.generated.resources.builder_create_keel
 import lastfleetprotocol.components.design.generated.resources.builder_create_module
 import lastfleetprotocol.components.design.generated.resources.builder_create_turret
+import lastfleetprotocol.components.design.generated.resources.builder_ship_class
 import lastfleetprotocol.components.design.generated.resources.builder_custom_items
 import lastfleetprotocol.components.design.generated.resources.builder_default_facing
 import lastfleetprotocol.components.design.generated.resources.builder_density
@@ -169,8 +171,10 @@ object LFRes {
         val builder_systems: StringResource = Res.string.builder_systems
         val builder_turrets: StringResource = Res.string.builder_turrets
         val builder_create_hull: StringResource = Res.string.builder_create_hull
+        val builder_create_keel: StringResource = Res.string.builder_create_keel
         val builder_create_module: StringResource = Res.string.builder_create_module
         val builder_create_turret: StringResource = Res.string.builder_create_turret
+        val builder_ship_class: StringResource = Res.string.builder_ship_class
         val builder_finish: StringResource = Res.string.builder_finish
         val builder_cancel_creation: StringResource = Res.string.builder_cancel_creation
         val builder_item_name: StringResource = Res.string.builder_item_name
