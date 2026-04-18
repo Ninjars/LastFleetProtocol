@@ -13,6 +13,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefini
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemLibraryRepository
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemType
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedKeel
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurret
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
@@ -55,8 +56,17 @@ class ShipBuilderVM(
             println("Failed to load item library: $e")
             emptyList()
         }
-        _state.update { it.copy(designName = initialName, libraryItems = library) }
-        autoSave()
+        // Slice B Unit 5: fresh designs start in PickingKeel. Any loaded design
+        // with a non-null placedKeel will override this in the ConfirmLoad handler.
+        _state.update {
+            it.copy(
+                designName = initialName,
+                libraryItems = library,
+                editorMode = EditorMode.PickingKeel,
+            )
+        }
+        // Do NOT autoSave here — PickingKeel is pre-commit and has no design state
+        // worth persisting. A save happens after the user picks a Keel.
     }
 
     /**
@@ -90,8 +100,13 @@ class ShipBuilderVM(
 
                     is ItemAttributes.TurretAttributes -> addTurretItem(intent.itemDefinition)
 
-                    is ItemAttributes.KeelAttributes ->
-                        TODO("Slice B Unit 5: addKeelItem — Keel placement via AddItem intent not yet wired")
+                    is ItemAttributes.KeelAttributes -> {
+                        // Keels are placed via the mandatory PickingKeel picker, not
+                        // via AddItem from the parts panel. The Parts panel's Keel
+                        // category is rendered disabled post-commit; this branch
+                        // guards against any call site that bypasses the UI.
+                        println("[builder] ignored AddItem for Keel — placement goes through PickingKeel")
+                    }
                 }
                 autoSave()
             }
@@ -148,6 +163,14 @@ class ShipBuilderVM(
                     }
 
                     if (loaded != null) {
+                        // Slice B Unit 5: loaded design drops straight into EditingShip
+                        // when it carries a Keel, or routes through PickingKeel recovery
+                        // when it doesn't (pre-v3 design, user cancelled, corrupt save).
+                        val resumeMode = if (loaded.placedKeel != null) {
+                            EditorMode.EditingShip
+                        } else {
+                            EditorMode.PickingKeel
+                        }
                         _state.update {
                             recalculate(
                                 it.copy(
@@ -160,6 +183,7 @@ class ShipBuilderVM(
                                     selectedItemId = null,
                                     showLoadDialog = false,
                                     savedDesigns = emptyList(),
+                                    editorMode = resumeMode,
                                 )
                             )
                         }
@@ -223,6 +247,44 @@ class ShipBuilderVM(
             is ShipBuilderIntent.DeleteLibraryItem -> {
                 deleteLibraryItem(intent.item)
                 _state.update { it.copy(libraryItems = it.libraryItems - intent.item) }
+            }
+
+            is ShipBuilderIntent.PickKeel -> {
+                // Slice B Unit 5: commit the selected Keel at origin and transition
+                // to EditingShip. Also snapshot the Keel's ItemDefinition into the
+                // design's itemDefinitions so the converter can resolve it at combat-
+                // load time even if the library or PartsCatalog entry later changes.
+                if (_state.value.editorMode !is EditorMode.PickingKeel) {
+                    println("[builder] ignored PickKeel outside PickingKeel mode")
+                    return
+                }
+                val placed = PlacedKeel(
+                    id = generateId("keel"),
+                    itemDefinitionId = intent.itemDefinition.id,
+                    position = SceneOffset(0f.sceneUnit, 0f.sceneUnit),
+                    rotation = 0f.rad,
+                )
+                _state.update { current ->
+                    recalculate(
+                        current.copy(
+                            placedKeel = placed,
+                            itemDefinitions = (current.itemDefinitions + intent.itemDefinition)
+                                .distinctBy { it.id },
+                            editorMode = EditorMode.EditingShip,
+                        )
+                    )
+                }
+                autoSave()
+            }
+
+            is ShipBuilderIntent.CancelKeelPick -> {
+                // Pre-commit: no design state to discard. Navigate back to landing;
+                // the side-effect channel fires the existing NavigateBack event.
+                if (_state.value.editorMode !is EditorMode.PickingKeel) {
+                    println("[builder] ignored CancelKeelPick outside PickingKeel mode")
+                    return
+                }
+                viewModelScope.launch { sendSideEffect(ShipBuilderSideEffect.NavigateBack) }
             }
 
             is ShipBuilderIntent.EditLibraryItem -> {
@@ -352,10 +414,11 @@ class ShipBuilderVM(
                         )
                     )
 
-                    ItemType.KEEL -> TODO(
-                        "Slice B Unit 5: Keel placement happens via the mandatory picker, " +
-                            "not via FinishCreation's auto-placement path"
-                    )
+                    // Keels save to the item library on FinishCreation but are NOT
+                    // auto-placed on the canvas — placement happens via the mandatory
+                    // PickingKeel picker when the user starts a new design. A newly-
+                    // authored Keel becomes available in the picker immediately.
+                    ItemType.KEEL -> newState
                 }
             }
             recalculate(newState)

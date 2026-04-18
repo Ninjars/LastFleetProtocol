@@ -398,7 +398,7 @@ load existing design with placedKeel == null → PickingKeel (corrupt/pre-v3 rec
 
 ### Phase B4 — Builder UX
 
-- [ ] **Unit 5: Mandatory Keel-picker first step**
+- [x] **Unit 5: Mandatory Keel-picker first step**
 
   **Goal:** When a new design is started (or when a loaded design has `placedKeel == null`), the builder enters `EditorMode.PickingKeel`: the canvas and the parts panel are hidden/disabled, and the right panel shows a Keel picker. Selecting a Keel commits it at origin as `placedKeel` and transitions to `EditorMode.EditingShip`. Post-commit, the Keel category in the parts panel is disabled — no second-Keel path.
 

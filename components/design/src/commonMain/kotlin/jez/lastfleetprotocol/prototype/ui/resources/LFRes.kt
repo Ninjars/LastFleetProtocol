@@ -22,6 +22,12 @@ import lastfleetprotocol.components.design.generated.resources.builder_fixed
 import lastfleetprotocol.components.design.generated.resources.builder_forward
 import lastfleetprotocol.components.design.generated.resources.builder_forward_thrust
 import lastfleetprotocol.components.design.generated.resources.builder_hull_pieces
+import lastfleetprotocol.components.design.generated.resources.builder_keel_class
+import lastfleetprotocol.components.design.generated.resources.builder_keel_lift
+import lastfleetprotocol.components.design.generated.resources.builder_keel_no_options
+import lastfleetprotocol.components.design.generated.resources.builder_keels
+import lastfleetprotocol.components.design.generated.resources.builder_pick_keel_description
+import lastfleetprotocol.components.design.generated.resources.builder_pick_keel_title
 import lastfleetprotocol.components.design.generated.resources.builder_item_attributes
 import lastfleetprotocol.components.design.generated.resources.builder_item_name
 import lastfleetprotocol.components.design.generated.resources.builder_lateral
@@ -146,6 +152,12 @@ object LFRes {
         val builder_load_design: StringResource = Res.string.builder_load_design
         val builder_no_saved_designs: StringResource = Res.string.builder_no_saved_designs
         val builder_hull_pieces: StringResource = Res.string.builder_hull_pieces
+        val builder_keels: StringResource = Res.string.builder_keels
+        val builder_pick_keel_title: StringResource = Res.string.builder_pick_keel_title
+        val builder_pick_keel_description: StringResource = Res.string.builder_pick_keel_description
+        val builder_keel_no_options: StringResource = Res.string.builder_keel_no_options
+        val builder_keel_class: StringResource = Res.string.builder_keel_class
+        val builder_keel_lift: StringResource = Res.string.builder_keel_lift
         val builder_systems: StringResource = Res.string.builder_systems
         val builder_turrets: StringResource = Res.string.builder_turrets
         val builder_create_hull: StringResource = Res.string.builder_create_hull

@@ -54,16 +54,52 @@ fun PartsPanel(
     onDeleteItem: (ItemDefinition) -> Unit,
     modifier: Modifier = Modifier,
     customItems: List<ItemDefinition> = emptyList(),
+    /**
+     * Slice B Unit 5: when true, the Keel section renders dimmed and non-interactive.
+     * The parts panel is only shown during `EditingShip`, which always follows a
+     * committed `PlacedKeel`, so this is effectively always true in Slice B — kept
+     * as a parameter so test fixtures and future "no keel" recovery flows can
+     * render the enabled form if needed.
+     */
+    hasPlacedKeel: Boolean = false,
 ) {
     val customHulls = customItems.filter { it.itemType == ItemType.HULL }
     val customModules = customItems.filter { it.itemType == ItemType.MODULE }
     val customTurrets = customItems.filter { it.itemType == ItemType.TURRET }
+    val customKeels = customItems.filter { it.itemType == ItemType.KEEL }
 
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
             .padding(8.dp)
     ) {
+        // Slice B Unit 5: Keel category is visible but disabled when a Keel is
+        // already placed (exactly-one-per-ship per R9). Create-Keel action is
+        // enabled so users can author Keels for later designs — placement goes
+        // through the PickingKeel picker, not this section. Unit 7 wires the
+        // `Create Keel` action.
+        val keelOptions = PartsCatalog.keelItems + customKeels
+        DisabledSection(
+            title = stringResource(LFRes.String.builder_keels),
+            enabled = !hasPlacedKeel,
+        ) {
+            for (item in keelOptions) {
+                ItemRow(
+                    name = item.name,
+                    detail = (item.attributes as? ItemAttributes.KeelAttributes)?.shipClass,
+                    mass = item.attributes.mass,
+                    previewColor = Color.Magenta,
+                    previewVerts = item.vertices,
+                    onClick = { /* disabled: placement via PickingKeel only */ },
+                    onDuplicate = null,
+                    onEdit = null,
+                    onDelete = null,
+                )
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
         CollapsibleSection(
             title = stringResource(LFRes.String.builder_hull_pieces),
             onAdd = { onCreateItem(ItemType.HULL) },
@@ -162,6 +198,55 @@ fun PartsPanel(
                     onDelete = { onDeleteItem(item) },
                 )
             }
+        }
+    }
+}
+
+/**
+ * A parts-panel section that renders with a dimmed title and without an Add action.
+ * Used for the Keel category post-Keel-commit to make the exactly-one invariant
+ * visually legible — users see that Keels exist as a category but can't add another.
+ */
+@Composable
+private fun DisabledSection(
+    title: String,
+    enabled: Boolean,
+    content: @Composable () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(true) }
+    val tint = if (enabled) {
+        MaterialTheme.colorScheme.onBackground
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+            .padding(vertical = 4.dp),
+    ) {
+        Image(
+            painter = painterResource(
+                if (expanded) Res.drawable.pointer_down else Res.drawable.pointer_right,
+            ),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(tint),
+            modifier = Modifier.size(24.dp),
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = tint,
+            modifier = Modifier.weight(1f),
+        )
+    }
+
+    AnimatedVisibility(visible = expanded) {
+        Column(modifier = Modifier.padding(start = 8.dp)) {
+            content()
         }
     }
 }

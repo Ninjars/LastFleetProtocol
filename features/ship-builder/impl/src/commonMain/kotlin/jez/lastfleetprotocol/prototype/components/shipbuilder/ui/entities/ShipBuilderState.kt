@@ -28,6 +28,15 @@ sealed interface EditorMode {
          */
         val editingItemId: String? = null,
     ) : EditorMode
+
+    /**
+     * Slice B Unit 5: mandatory first step when starting a new design (or when
+     * recovering a loaded design with `placedKeel == null`). Canvas and parts
+     * panel are hidden; the right panel shows a Keel picker. Selecting a Keel
+     * commits it at origin as `placedKeel` and transitions to [EditingShip].
+     * Cancelling pops back to the landing screen without persisting any state.
+     */
+    data object PickingKeel : EditorMode
 }
 
 data class ShipBuilderState(
@@ -51,6 +60,13 @@ data class ShipBuilderState(
      */
     val customItemDefinitions: List<ItemDefinition>
         get() = libraryItems
+
+    /**
+     * All Keel `ItemDefinition`s available in the picker: bundled catalogue Keels
+     * plus any user-authored Keels from the on-disk item library.
+     */
+    val availableKeels: List<ItemDefinition>
+        get() = PartsCatalog.keelItems + libraryItems.filter { it.itemType == ItemType.KEEL }
 
     /**
      * Resolve an item definition by ID, checking (in priority order):

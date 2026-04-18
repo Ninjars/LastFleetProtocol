@@ -34,6 +34,12 @@
     <string name="builder_hull_pieces">Hull Pieces</string>
     <string name="builder_systems">Systems</string>
     <string name="builder_turrets">Turrets</string>
+    <string name="builder_keels">Keels</string>
+    <string name="builder_pick_keel_title">Choose a Keel</string>
+    <string name="builder_pick_keel_description">Every ship is built around a Keel. This defines the ship's class and how much mass the ship can carry.</string>
+    <string name="builder_keel_no_options">No Keels available. Create one in a later design, or restart the app to pick from the bundled set.</string>
+    <string name="builder_keel_class">Class</string>
+    <string name="builder_keel_lift">Lift</string>
     <string name="builder_create_hull">Create Hull</string>
     <string name="builder_create_module">Create Module</string>
     <string name="builder_create_turret">Create Turret</string>
