@@ -56,18 +56,16 @@ class Ship(
         private set
 
     /**
-     * Fires at *every* lifecycle transition. Subscribed by `GameStateManager` to
-     * re-tally match results via `none { is Active }` — so victory fires the instant
-     * a Keel is destroyed (entry into `LiftFailed`), even though the ship's actor
-     * remains in the scene during drift. See Slice B Key Decision 5.
+     * Fires at *every* lifecycle transition. Subscribers branch on [ShipLifecycle]
+     * to distinguish observer concerns (match-tally, UI) from terminal concerns
+     * (cause-tagged logging, team-list cleanup). Victory fires the instant a Keel
+     * is destroyed (entry into `LiftFailed`), even though the ship's actor remains
+     * in the scene during drift.
+     *
+     * Ship itself handles its own actor-manager removal on the `Destroyed`
+     * transition — no second callback is needed for that.
      */
     var onLifecycleTransition: ((Ship, ShipLifecycle) -> Unit)? = null
-
-    /**
-     * Fires *only* at the terminal transition into [ShipLifecycle.Destroyed].
-     * Handles actor cleanup and the cause-tagged `println` destruction log.
-     */
-    var onDestroyedCallback: ((Ship, DestructionCause) -> Unit)? = null
 
     private lateinit var viewportManager: ViewportManager
     private lateinit var actorManager: ActorManager
@@ -285,9 +283,9 @@ class Ship(
         onLifecycleTransition?.invoke(this, next)
 
         if (next is ShipLifecycle.Destroyed) {
-            onDestroyedCallback?.invoke(this, next.cause)
-            // `actorManager` is set in onAdded; unit tests drive the lifecycle
-            // directly without a Kubriko harness, so guard the side-effect.
+            // Self-cleanup from the scene. `actorManager` is set in onAdded; unit
+            // tests drive the lifecycle directly without a Kubriko harness, so
+            // guard the side-effect.
             if (::actorManager.isInitialized) actorManager.remove(this)
         }
     }

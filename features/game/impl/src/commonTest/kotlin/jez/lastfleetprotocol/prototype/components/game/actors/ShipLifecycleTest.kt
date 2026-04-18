@@ -13,12 +13,34 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * Slice B Unit 3 — verifies the [ShipLifecycle] state machine, the two-hook
- * architecture (`onLifecycleTransition` + `onDestroyedCallback`), and the drift
- * window. These tests drive [Ship.updateLifecycle] directly; side effects that
- * require a Kubriko harness (actor removal, draw scope) are not exercised here.
+ * Slice B Unit 3 — verifies the [ShipLifecycle] state machine, the single
+ * `onLifecycleTransition` hook (subscribers branch on the new state to separate
+ * observer concerns from terminal cleanup), and the drift window. These tests
+ * drive [Ship.updateLifecycle] directly; side effects that require a Kubriko
+ * harness (actor removal, draw scope) are not exercised here.
  */
 class ShipLifecycleTest {
+
+    /**
+     * Extracts `cause` only when the new state is `Destroyed` — the single-hook
+     * subscription pattern that replaces the old separate `onDestroyedCallback`.
+     */
+    private fun capturingHooks(): Pair<MutableList<ShipLifecycle>, MutableList<DestructionCause>> {
+        val transitions = mutableListOf<ShipLifecycle>()
+        val destructions = mutableListOf<DestructionCause>()
+        return transitions to destructions
+    }
+
+    private fun wireShip(
+        ship: Ship,
+        transitions: MutableList<ShipLifecycle>,
+        destructions: MutableList<DestructionCause>,
+    ) {
+        ship.onLifecycleTransition = { _, next ->
+            transitions += next
+            if (next is ShipLifecycle.Destroyed) destructions += next.cause
+        }
+    }
 
     // --- Test fixtures ---
 
@@ -69,13 +91,11 @@ class ShipLifecycleTest {
     // --- Reactor destruction → Destroyed(HULL) ---
 
     @Test
-    fun reactorDestroyed_transitionsToDestroyedHull_fireBothHooks() {
+    fun reactorDestroyed_transitionsToDestroyedHull() {
         val systems = makeSystems()
         val ship = makeShip(systems)
-        val transitions = mutableListOf<ShipLifecycle>()
-        val destructions = mutableListOf<DestructionCause>()
-        ship.onLifecycleTransition = { _, next -> transitions += next }
-        ship.onDestroyedCallback = { _, cause -> destructions += cause }
+        val (transitions, destructions) = capturingHooks()
+        wireShip(ship, transitions, destructions)
 
         // Drive reactor HP to zero.
         systems.applyDamage(InternalSystemType.REACTOR, damage = 10_000f, armourPiercing = 20f)
@@ -98,10 +118,8 @@ class ShipLifecycleTest {
     fun keelDestroyed_transitionsToLiftFailed_notYetDestroyed() {
         val systems = makeSystems()
         val ship = makeShip(systems)
-        val transitions = mutableListOf<ShipLifecycle>()
-        val destructions = mutableListOf<DestructionCause>()
-        ship.onLifecycleTransition = { _, next -> transitions += next }
-        ship.onDestroyedCallback = { _, cause -> destructions += cause }
+        val (transitions, destructions) = capturingHooks()
+        wireShip(ship, transitions, destructions)
 
         systems.applyDamage(InternalSystemType.KEEL, damage = 10_000f, armourPiercing = 20f)
         assertTrue(systems.isKeelDestroyed())
@@ -112,7 +130,10 @@ class ShipLifecycleTest {
         assertEquals(Ship.DRIFT_WINDOW_MS, lifeFailed.remainingMs)
         assertEquals(1, transitions.size)
         assertIs<ShipLifecycle.LiftFailed>(transitions.first())
-        assertTrue(destructions.isEmpty(), "onDestroyedCallback must not fire at LiftFailed entry")
+        assertTrue(
+            destructions.isEmpty(),
+            "terminal cleanup must not fire at LiftFailed entry",
+        )
         assertFalse(ship.isValidTarget(), "LiftFailed ship is not a valid target")
     }
 
@@ -141,10 +162,8 @@ class ShipLifecycleTest {
     fun liftFailed_countdownReachesZero_transitionsToDestroyedLiftFailure() {
         val systems = makeSystems()
         val ship = makeShip(systems)
-        val transitions = mutableListOf<ShipLifecycle>()
-        val destructions = mutableListOf<DestructionCause>()
-        ship.onLifecycleTransition = { _, next -> transitions += next }
-        ship.onDestroyedCallback = { _, cause -> destructions += cause }
+        val (transitions, destructions) = capturingHooks()
+        wireShip(ship, transitions, destructions)
 
         systems.applyDamage(InternalSystemType.KEEL, damage = 10_000f, armourPiercing = 20f)
         ship.updateLifecycle(16) // Active → LiftFailed
@@ -158,7 +177,7 @@ class ShipLifecycleTest {
         assertEquals(2, transitions.size)
         assertIs<ShipLifecycle.LiftFailed>(transitions[0])
         assertIs<ShipLifecycle.Destroyed>(transitions[1])
-        // onDestroyedCallback fired exactly once, at the terminal transition.
+        // Terminal-cleanup branch (cause capture) ran exactly once, at the Destroyed transition.
         assertEquals(listOf(DestructionCause.LIFT_FAILURE), destructions)
     }
 
@@ -171,10 +190,8 @@ class ShipLifecycleTest {
         // no transient LiftFailed observed externally.
         val systems = makeSystems()
         val ship = makeShip(systems)
-        val transitions = mutableListOf<ShipLifecycle>()
-        val destructions = mutableListOf<DestructionCause>()
-        ship.onLifecycleTransition = { _, next -> transitions += next }
-        ship.onDestroyedCallback = { _, cause -> destructions += cause }
+        val (transitions, destructions) = capturingHooks()
+        wireShip(ship, transitions, destructions)
 
         systems.applyDamage(InternalSystemType.REACTOR, damage = 10_000f, armourPiercing = 20f)
         systems.applyDamage(InternalSystemType.KEEL, damage = 10_000f, armourPiercing = 20f)
@@ -195,10 +212,8 @@ class ShipLifecycleTest {
     fun alreadyDestroyedShip_updateLifecycleIsNoOp() {
         val systems = makeSystems()
         val ship = makeShip(systems)
-        val transitions = mutableListOf<ShipLifecycle>()
-        val destructions = mutableListOf<DestructionCause>()
-        ship.onLifecycleTransition = { _, next -> transitions += next }
-        ship.onDestroyedCallback = { _, cause -> destructions += cause }
+        val (transitions, destructions) = capturingHooks()
+        wireShip(ship, transitions, destructions)
 
         systems.applyDamage(InternalSystemType.REACTOR, damage = 10_000f, armourPiercing = 20f)
         ship.updateLifecycle(16) // → Destroyed(HULL)
@@ -214,26 +229,23 @@ class ShipLifecycleTest {
     // --- Hook is never invoked when there is no transition ---
 
     @Test
-    fun noTransition_hooksNotInvoked() {
+    fun noTransition_hookNotInvoked() {
         val ship = makeShip()
         var transitionCount = 0
-        var destructionCount = 0
         ship.onLifecycleTransition = { _, _ -> transitionCount++ }
-        ship.onDestroyedCallback = { _, _ -> destructionCount++ }
 
         repeat(10) { ship.updateLifecycle(16) }
 
         assertEquals(0, transitionCount)
-        assertEquals(0, destructionCount)
     }
 
-    // --- Missing hook subscribers don't crash ---
+    // --- Missing hook subscriber doesn't crash ---
 
     @Test
-    fun nullHooks_updateLifecycleSilentlySucceeds() {
+    fun nullHook_updateLifecycleSilentlySucceeds() {
         val systems = makeSystems()
         val ship = makeShip(systems)
-        // Hooks intentionally not assigned.
+        // Hook intentionally not assigned.
         systems.applyDamage(InternalSystemType.REACTOR, damage = 10_000f, armourPiercing = 20f)
         ship.updateLifecycle(16)
         assertIs<ShipLifecycle.Destroyed>(ship.lifecycle)

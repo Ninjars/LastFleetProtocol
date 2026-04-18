@@ -7,7 +7,6 @@ import com.pandulapeter.kubriko.manager.Manager
 import com.pandulapeter.kubriko.manager.StateManager
 import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.types.SceneOffset
-import jez.lastfleetprotocol.prototype.components.game.actors.DestructionCause
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.actors.ShipLifecycle
 import jez.lastfleetprotocol.prototype.components.game.actors.ShipSpec
@@ -168,7 +167,6 @@ class GameStateManager(
         )
 
         ship.onLifecycleTransition = ::onShipLifecycleTransition
-        ship.onDestroyedCallback = ::onShipDestroyed
 
         when (teamId) {
             Ship.TEAM_PLAYER -> playerShips.add(ship)
@@ -180,38 +178,41 @@ class GameStateManager(
     }
 
     /**
-     * Fires at every [ShipLifecycle] transition. Re-tallies match results via the
-     * `none { is Active }` filter over the backing team lists — so victory fires the
-     * instant a Keel is destroyed (entry into [ShipLifecycle.LiftFailed]), even though
-     * the ship remains on the battlefield for the drift window. See Slice B Key
-     * Decision 5.
+     * Single hook for all ship lifecycle transitions. Branches on [newState] to
+     * separate observer concerns (match-tally fires on any transition, via the
+     * `none { is Active }` filter) from terminal concerns (cause-tagged logging
+     * and backing-list cleanup fire only on [ShipLifecycle.Destroyed]).
+     *
+     * Victory fires the instant a Keel is destroyed (entry into
+     * [ShipLifecycle.LiftFailed]), even though the ship's actor remains in the
+     * scene for the drift window. The ship removes itself from the actor manager
+     * when it transitions to `Destroyed` — [GameStateManager] only mutates its
+     * own backing team lists here.
      */
     private fun onShipLifecycleTransition(ship: Ship, newState: ShipLifecycle) {
-        if (_gameResult.value != null) return // Match already resolved; don't re-fire.
-
-        val result = when {
-            playerShips.none { it.lifecycle is ShipLifecycle.Active } -> GameResult.DEFEAT
-            enemyShips.none { it.lifecycle is ShipLifecycle.Active } -> GameResult.VICTORY
-            else -> null
+        // Match-tally on every transition. Gate on _gameResult so we don't re-fire
+        // after the match has already been resolved (e.g., the terminal
+        // LiftFailed → Destroyed(LIFT_FAILURE) transition on the last enemy ship).
+        if (_gameResult.value == null) {
+            val result = when {
+                playerShips.none { it.lifecycle is ShipLifecycle.Active } -> GameResult.DEFEAT
+                enemyShips.none { it.lifecycle is ShipLifecycle.Active } -> GameResult.VICTORY
+                else -> null
+            }
+            if (result != null) {
+                _gameResult.value = result
+                stateManager.updateIsRunning(false)
+                onGameResult?.invoke(result)
+            }
         }
-        if (result != null) {
-            _gameResult.value = result
-            stateManager.updateIsRunning(false)
-            onGameResult?.invoke(result)
-        }
-    }
 
-    /**
-     * Fires only at the terminal transition into [ShipLifecycle.Destroyed]. Removes
-     * the ship from the backing team list and emits the cause-tagged combat log.
-     * Match result has already been set by [onShipLifecycleTransition] at the
-     * LiftFailed entry (for lift-failure kills) or synchronously here (for hull kills).
-     */
-    private fun onShipDestroyed(ship: Ship, cause: DestructionCause) {
-        println("[combat] ${ship.teamId} ship destroyed: $cause")
-        when (ship.teamId) {
-            Ship.TEAM_PLAYER -> playerShips.remove(ship)
-            Ship.TEAM_ENEMY -> enemyShips.remove(ship)
+        // Terminal cleanup on Destroyed.
+        if (newState is ShipLifecycle.Destroyed) {
+            println("[combat] ${ship.teamId} ship destroyed: ${newState.cause}")
+            when (ship.teamId) {
+                Ship.TEAM_PLAYER -> playerShips.remove(ship)
+                Ship.TEAM_ENEMY -> enemyShips.remove(ship)
+            }
         }
     }
 
