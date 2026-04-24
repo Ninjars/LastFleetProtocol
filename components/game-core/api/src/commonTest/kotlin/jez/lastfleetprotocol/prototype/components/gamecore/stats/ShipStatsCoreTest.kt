@@ -6,11 +6,13 @@ import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedKeel
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurret
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.SerializableArmourStats
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ShipStatsCoreTest {
@@ -281,5 +283,195 @@ class ShipStatsCoreTest {
         )
 
         assertTrue(stats.turnRate > 0f, "Turn rate should be positive with angular thrust")
+    }
+
+    // --- Slice B: lift + flightworthiness + Keel drag contribution ---
+
+    private fun makeKeelDef(
+        id: String = "keel1",
+        mass: Float = 40f,
+        lift: Float = 200f,
+        forwardDragModifier: Float = 1.0f,
+        lateralDragModifier: Float = 1.0f,
+        reverseDragModifier: Float = 1.0f,
+        armourDensity: Float = 0f,
+    ) = ItemDefinition(
+        id = id,
+        name = "Test Keel",
+        vertices = triangleVertices,
+        attributes = ItemAttributes.KeelAttributes(
+            armour = SerializableArmourStats(hardness = 3f, density = armourDensity),
+            sizeCategory = "medium",
+            mass = mass,
+            forwardDragModifier = forwardDragModifier,
+            lateralDragModifier = lateralDragModifier,
+            reverseDragModifier = reverseDragModifier,
+            maxHp = 150f,
+            lift = lift,
+            shipClass = "fighter",
+        ),
+    )
+
+    @Test
+    fun keelProvidesLift_shipUnderMassIsFlightworthy() {
+        val keelDef = makeKeelDef(mass = 40f, lift = 100f)
+        val engineDef = makeEngineDef(id = "eng", mass = 15f, forwardThrust = 1200f)
+        val defs = mapOf("keel1" to keelDef, "eng" to engineDef)
+
+        val stats = calculateShipStats(
+            placedHulls = emptyList(),
+            placedModules = listOf(
+                PlacedModule("pm1", "eng", "MAIN_ENGINE", SceneOffset.Zero, 0f.rad, parentHullId = "pk1")
+            ),
+            placedTurrets = emptyList(),
+            placedKeel = PlacedKeel("pk1", "keel1", SceneOffset.Zero, 0f.rad),
+            resolveItem = { defs[it] },
+        )
+        // totalMass = keel(40) + engine(15) = 55; lift = 100 → flightworthy
+        assertEquals(55f, stats.totalMass, 0.01f)
+        assertEquals(100f, stats.totalLift)
+        assertTrue(stats.isFlightworthy)
+    }
+
+    @Test
+    fun shipOverMass_isNotFlightworthy() {
+        val keelDef = makeKeelDef(mass = 40f, lift = 100f)
+        val engineDef = makeEngineDef(id = "eng", mass = 100f, forwardThrust = 1200f)
+        val defs = mapOf("keel1" to keelDef, "eng" to engineDef)
+
+        val stats = calculateShipStats(
+            placedHulls = emptyList(),
+            placedModules = listOf(
+                PlacedModule("pm1", "eng", "MAIN_ENGINE", SceneOffset.Zero, 0f.rad, parentHullId = "pk1")
+            ),
+            placedTurrets = emptyList(),
+            placedKeel = PlacedKeel("pk1", "keel1", SceneOffset.Zero, 0f.rad),
+            resolveItem = { defs[it] },
+        )
+        // totalMass = 40 + 100 = 140; lift = 100 → unflightworthy
+        assertEquals(140f, stats.totalMass, 0.01f)
+        assertEquals(100f, stats.totalLift)
+        assertFalse(stats.isFlightworthy)
+    }
+
+    @Test
+    fun noKeel_isNotFlightworthy() {
+        val hullDef = makeHullDef(id = "hull1", mass = 50f, armourDensity = 0f)
+        val stats = calculateShipStats(
+            placedHulls = listOf(
+                PlacedHullPiece("ph1", "hull1", SceneOffset.Zero, 0f.rad)
+            ),
+            placedModules = emptyList(),
+            placedTurrets = emptyList(),
+            placedKeel = null,
+            resolveItem = { if (it == "hull1") hullDef else null },
+        )
+        assertEquals(0f, stats.totalLift)
+        assertFalse(stats.isFlightworthy)
+    }
+
+    @Test
+    fun keelContributesToMass_includingArmour() {
+        // Keel mass = 40; armour contribution = density(2) * mass(40) * 0.1 = 8 → 48
+        val keelDef = makeKeelDef(mass = 40f, lift = 200f, armourDensity = 2f)
+        val stats = calculateShipStats(
+            placedHulls = emptyList(),
+            placedModules = emptyList(),
+            placedTurrets = emptyList(),
+            placedKeel = PlacedKeel("pk1", "keel1", SceneOffset.Zero, 0f.rad),
+            resolveItem = { if (it == "keel1") keelDef else null },
+        )
+        assertEquals(48f, stats.totalMass, 0.01f)
+    }
+
+    @Test
+    fun keelContributesToDragAggregation() {
+        // Two identical setups — only the Keel's forward drag modifier differs.
+        // Keel with low forward modifier → lower forward drag coefficient.
+        val lowDragKeel = makeKeelDef(id = "k_low", forwardDragModifier = 0.5f)
+        val highDragKeel = makeKeelDef(id = "k_high", forwardDragModifier = 2.0f)
+
+        val low = calculateShipStats(
+            placedHulls = emptyList(),
+            placedModules = emptyList(),
+            placedTurrets = emptyList(),
+            placedKeel = PlacedKeel("pk", "k_low", SceneOffset.Zero, 0f.rad),
+            resolveItem = { if (it == "k_low") lowDragKeel else null },
+        )
+        val high = calculateShipStats(
+            placedHulls = emptyList(),
+            placedModules = emptyList(),
+            placedTurrets = emptyList(),
+            placedKeel = PlacedKeel("pk", "k_high", SceneOffset.Zero, 0f.rad),
+            resolveItem = { if (it == "k_high") highDragKeel else null },
+        )
+
+        assertTrue(
+            low.forwardDragCoeff < high.forwardDragCoeff,
+            "Lower drag modifier should produce lower drag coefficient: low=${low.forwardDragCoeff} high=${high.forwardDragCoeff}",
+        )
+    }
+
+    @Test
+    fun keelAndHull_bothContributeToDragAggregation() {
+        // With both Keel and a hull piece in the same design, total drag reflects
+        // the area-weighted average of both per-piece modifiers.
+        val keelDef = makeKeelDef(forwardDragModifier = 0.5f)
+        val hullDef = makeHullDef(id = "hull1", mass = 50f, armourDensity = 0f)
+        val defs = mapOf("keel1" to keelDef, "hull1" to hullDef)
+
+        val keelOnly = calculateShipStats(
+            placedHulls = emptyList(),
+            placedModules = emptyList(),
+            placedTurrets = emptyList(),
+            placedKeel = PlacedKeel("pk", "keel1", SceneOffset.Zero, 0f.rad),
+            resolveItem = { defs[it] },
+        )
+        val keelAndHull = calculateShipStats(
+            placedHulls = listOf(
+                PlacedHullPiece("ph1", "hull1", SceneOffset.Zero, 0f.rad)
+            ),
+            placedModules = emptyList(),
+            placedTurrets = emptyList(),
+            placedKeel = PlacedKeel("pk", "keel1", SceneOffset.Zero, 0f.rad),
+            resolveItem = { defs[it] },
+        )
+
+        // Adding a hull with default modifier=1.0 to a Keel with modifier=0.5
+        // should raise the forward drag coefficient (average pulled toward 1.0).
+        assertTrue(
+            keelAndHull.forwardDragCoeff > keelOnly.forwardDragCoeff,
+            "Adding a hull with default drag should raise the aggregate drag vs a Keel-only ship",
+        )
+    }
+
+    @Test
+    fun zeroLiftKeel_isNotFlightworthy() {
+        // A Keel with lift=0 fails the gate even if mass is trivially small.
+        val keelDef = makeKeelDef(mass = 1f, lift = 0f)
+        val stats = calculateShipStats(
+            placedHulls = emptyList(),
+            placedModules = emptyList(),
+            placedTurrets = emptyList(),
+            placedKeel = PlacedKeel("pk", "keel1", SceneOffset.Zero, 0f.rad),
+            resolveItem = { if (it == "keel1") keelDef else null },
+        )
+        assertFalse(stats.isFlightworthy, "lift=0 must not be flightworthy")
+    }
+
+    @Test
+    fun exactlyEqualMassAndLift_isFlightworthy() {
+        // Boundary: totalMass == totalLift. Comparison is <= so it should pass.
+        val keelDef = makeKeelDef(mass = 100f, lift = 100f, armourDensity = 0f)
+        val stats = calculateShipStats(
+            placedHulls = emptyList(),
+            placedModules = emptyList(),
+            placedTurrets = emptyList(),
+            placedKeel = PlacedKeel("pk", "keel1", SceneOffset.Zero, 0f.rad),
+            resolveItem = { if (it == "keel1") keelDef else null },
+        )
+        assertEquals(100f, stats.totalMass, 0.01f)
+        assertEquals(100f, stats.totalLift)
+        assertTrue(stats.isFlightworthy)
     }
 }

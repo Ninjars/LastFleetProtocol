@@ -9,6 +9,7 @@ import com.pandulapeter.kubriko.helpers.extensions.toSceneOffset
 import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.pointerInput.PointerInputAware
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
+import jez.lastfleetprotocol.prototype.components.game.actors.ShipLifecycle
 import kotlin.time.TimeSource
 
 class InputController(
@@ -65,7 +66,7 @@ class InputController(
         val scenePos = screenOffset.toSceneOffset(viewportManager)
 
         val hitShip = selectableShips.firstOrNull { ship ->
-            !ship.isDestroyed && ship.isPointInHull(scenePos)
+            ship.lifecycle is ShipLifecycle.Active && ship.isPointInHull(scenePos)
         }
 
         if (hitShip != null) {

@@ -2,9 +2,11 @@ package jez.lastfleetprotocol.prototype.components.gamecore.stats
 
 import jez.lastfleetprotocol.prototype.components.gamecore.geometry.calculatePolygonArea
 import jez.lastfleetprotocol.prototype.components.gamecore.geometry.computeBoundingBoxExtents
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ExternalPartAttributes
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemDefinition
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedHullPiece
+import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedKeel
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedModule
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.PlacedTurret
 import kotlin.math.sqrt
@@ -30,6 +32,10 @@ data class ShipStats(
     val terminalVelLateral: Float = Float.MAX_VALUE,
     val terminalVelReverse: Float = Float.MAX_VALUE,
     val turnRate: Float = 0f, // degrees per second
+    // Slice B: lift budget + flightworthiness gate. Populated by Unit 2's
+    // extension of calculateShipStats; left at defaults in Unit 1.
+    val totalLift: Float = 0f,
+    val isFlightworthy: Boolean = false,
 )
 
 /**
@@ -41,12 +47,14 @@ data class ShipStats(
  * @param placedHulls hull pieces in the design
  * @param placedModules modules in the design
  * @param placedTurrets turrets in the design
+ * @param placedKeel the ship's single Keel placement, or `null` if not yet picked
  * @param resolveItem resolves an item-definition id to its [ItemDefinition], or null
  */
 fun calculateShipStats(
     placedHulls: List<PlacedHullPiece>,
     placedModules: List<PlacedModule>,
     placedTurrets: List<PlacedTurret>,
+    placedKeel: PlacedKeel? = null,
     resolveItem: (String) -> ItemDefinition?,
 ): ShipStats {
     // Hull mass + armour contribution
@@ -56,6 +64,19 @@ fun calculateShipStats(
         val attrs = def.attributes as? ItemAttributes.HullAttributes ?: continue
         hullMass += attrs.mass
         hullMass += attrs.armour.density * attrs.mass * 0.1f
+    }
+
+    // Keel mass + armour contribution + lift budget (Slice B)
+    var keelMass = 0f
+    var totalLift = 0f
+    if (placedKeel != null) {
+        val def = resolveItem(placedKeel.itemDefinitionId)
+        val attrs = def?.attributes as? ItemAttributes.KeelAttributes
+        if (attrs != null) {
+            keelMass += attrs.mass
+            keelMass += attrs.armour.density * attrs.mass * 0.1f
+            totalLift = attrs.lift
+        }
     }
 
     // Module mass and thrust
@@ -93,7 +114,8 @@ fun calculateShipStats(
         }
     }
 
-    val totalMass = hullMass + moduleMass + turretMass
+    val totalMass = hullMass + keelMass + moduleMass + turretMass
+    val isFlightworthy = totalLift > 0f && totalMass <= totalLift
 
     val forwardAccel = if (totalMass > 0f) forwardThrust / totalMass else 0f
     val lateralAccel = if (totalMass > 0f) lateralThrust / totalMass else 0f
@@ -101,24 +123,27 @@ fun calculateShipStats(
     val angularAccel = if (totalMass > 0f) angularThrust / totalMass else 0f
 
     // --- Drag coefficient computation (atmospheric model) ---
-    // Area-weighted average of per-hull-piece drag modifiers × bounding box extent × RHO
+    // Area-weighted average of per-piece drag modifiers × bounding box extent × RHO.
+    // Iterates a single combined list of exterior parts (hulls + keel) read via the
+    // ExternalPartAttributes interface — no cast-fallthrough bug when the sealed-variant
+    // set grows. See Slice B Key Decision 1.
+    val exteriorParts = buildExteriorParts(placedHulls, placedKeel, resolveItem)
+
     var totalHullArea = 0f
     var weightedForwardMod = 0f
     var weightedLateralMod = 0f
     var weightedReverseMod = 0f
     val allHullVertices = mutableListOf<com.pandulapeter.kubriko.types.SceneOffset>()
 
-    for (placedHull in placedHulls) {
-        val def = resolveItem(placedHull.itemDefinitionId) ?: continue
-        val attrs = def.attributes as? ItemAttributes.HullAttributes ?: continue
-        val area = calculatePolygonArea(def.vertices)
+    for ((attrs, vertices) in exteriorParts) {
+        val area = calculatePolygonArea(vertices)
         if (area > 0f) {
             totalHullArea += area
             weightedForwardMod += attrs.forwardDragModifier * area
             weightedLateralMod += attrs.lateralDragModifier * area
             weightedReverseMod += attrs.reverseDragModifier * area
         }
-        allHullVertices.addAll(def.vertices)
+        allHullVertices.addAll(vertices)
     }
 
     val (bbWidth, bbHeight) = computeBoundingBoxExtents(allHullVertices)
@@ -169,7 +194,32 @@ fun calculateShipStats(
         terminalVelLateral = terminalVelLateral,
         terminalVelReverse = terminalVelReverse,
         turnRate = turnRate,
+        totalLift = totalLift,
+        isFlightworthy = isFlightworthy,
     )
+}
+
+/**
+ * Build the list of exterior parts (hull pieces + keel) paired with their vertices,
+ * read through the [ExternalPartAttributes] interface for uniform drag aggregation.
+ */
+private fun buildExteriorParts(
+    placedHulls: List<PlacedHullPiece>,
+    placedKeel: PlacedKeel?,
+    resolveItem: (String) -> ItemDefinition?,
+): List<Pair<ExternalPartAttributes, List<com.pandulapeter.kubriko.types.SceneOffset>>> {
+    val parts = mutableListOf<Pair<ExternalPartAttributes, List<com.pandulapeter.kubriko.types.SceneOffset>>>()
+    for (placedHull in placedHulls) {
+        val def = resolveItem(placedHull.itemDefinitionId) ?: continue
+        val attrs = def.attributes as? ItemAttributes.HullAttributes ?: continue
+        parts += attrs to def.vertices
+    }
+    if (placedKeel != null) {
+        val def = resolveItem(placedKeel.itemDefinitionId)
+        val attrs = def?.attributes as? ItemAttributes.KeelAttributes
+        if (attrs != null) parts += attrs to def.vertices
+    }
+    return parts
 }
 
 private fun terminalVelocity(thrust: Float, dragCoeff: Float): Float {

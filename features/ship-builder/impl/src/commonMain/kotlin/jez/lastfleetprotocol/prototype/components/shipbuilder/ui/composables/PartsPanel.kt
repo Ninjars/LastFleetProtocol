@@ -58,12 +58,53 @@ fun PartsPanel(
     val customHulls = customItems.filter { it.itemType == ItemType.HULL }
     val customModules = customItems.filter { it.itemType == ItemType.MODULE }
     val customTurrets = customItems.filter { it.itemType == ItemType.TURRET }
+    val customKeels = customItems.filter { it.itemType == ItemType.KEEL }
 
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
             .padding(8.dp)
     ) {
+        // Slice B Unit 5/7: Keel category. Placement via row-click is disabled —
+        // exactly-one Keel per design, committed via the PickingKeel picker.
+        // Create Keel is enabled so users can author new Keels for future designs;
+        // authored Keels land in the library and surface in the picker on the
+        // next new design. Edit/duplicate/delete on custom Keels behave as
+        // other types.
+        CollapsibleSection(
+            title = stringResource(LFRes.String.builder_keels),
+            onAdd = { onCreateItem(ItemType.KEEL) },
+        ) {
+            for (item in PartsCatalog.keelItems) {
+                ItemRow(
+                    name = item.name,
+                    detail = (item.attributes as? ItemAttributes.KeelAttributes)?.shipClass,
+                    mass = item.attributes.mass,
+                    previewColor = Color.Magenta,
+                    previewVerts = item.vertices,
+                    onClick = { /* placement via PickingKeel only */ },
+                    onDuplicate = null,
+                    onEdit = null,
+                    onDelete = null,
+                )
+            }
+            for (item in customKeels) {
+                ItemRow(
+                    name = item.name,
+                    detail = (item.attributes as? ItemAttributes.KeelAttributes)?.shipClass,
+                    mass = item.attributes.mass,
+                    previewColor = Color.Magenta,
+                    previewVerts = item.vertices,
+                    onClick = { /* placement via PickingKeel only */ },
+                    onDuplicate = { onDuplicateItem(item) },
+                    onEdit = { onEditItem(item) },
+                    onDelete = { onDeleteItem(item) },
+                )
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
         CollapsibleSection(
             title = stringResource(LFRes.String.builder_hull_pieces),
             onAdd = { onCreateItem(ItemType.HULL) },

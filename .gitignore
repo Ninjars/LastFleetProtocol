@@ -19,3 +19,4 @@ captures
 node_modules/
 /.firebender/plans/
 /.claude/settings.local.json
+.context/

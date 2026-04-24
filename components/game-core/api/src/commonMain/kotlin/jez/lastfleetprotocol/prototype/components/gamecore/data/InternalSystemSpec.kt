@@ -18,4 +18,5 @@ enum class InternalSystemType {
     REACTOR,
     MAIN_ENGINE,
     BRIDGE,
+    KEEL,
 }

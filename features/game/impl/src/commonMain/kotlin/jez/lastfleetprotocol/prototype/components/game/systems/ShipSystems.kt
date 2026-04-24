@@ -49,6 +49,18 @@ class ShipSystems(
         getSystem(InternalSystemType.REACTOR).isDestroyed
 
     /**
+     * True once the Keel's HP reaches zero. Slice B: triggers the transition into
+     * [ShipLifecycle.LiftFailed] on the owning [Ship].
+     *
+     * Uses null-safe lookup rather than [getSystem] — a ShipSystems constructed
+     * without a KEEL spec (test fixtures predating Slice B, any helper that
+     * bypasses the converter gate) returns `false` here rather than crashing
+     * [Ship.updateLifecycle] on its first frame.
+     */
+    fun isKeelDestroyed(): Boolean =
+        systems[InternalSystemType.KEEL]?.isDestroyed ?: false
+
+    /**
      * Power is available only if the reactor is neither disabled nor destroyed.
      */
     fun isPowered(): Boolean {

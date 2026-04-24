@@ -15,5 +15,6 @@ fun calculateStats(state: ShipBuilderState): ShipStats =
         placedHulls = state.placedHulls,
         placedModules = state.placedModules,
         placedTurrets = state.placedTurrets,
+        placedKeel = state.placedKeel,
         resolveItem = state::resolveItemDefinition,
     )

@@ -28,6 +28,7 @@ import androidx.navigation.NavController
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemAttributes
 import jez.lastfleetprotocol.prototype.components.shipbuilder.canvas.DesignCanvas
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.ItemAttributesPanel
+import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.KeelPickerPanel
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.PartsPanel
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.isValidForSave
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.composables.StatsPanel
@@ -88,20 +89,24 @@ private fun ShipBuilderScreen(
                 )
             }
 
-            is EditorMode.CreatingItem -> {
-                // Hide items sidebar whilst in item creation mode
+            is EditorMode.CreatingItem,
+            is EditorMode.PickingKeel -> {
+                // Hide items sidebar whilst creating or picking
             }
         }
 
-        // Center: Design canvas with transform toolbar overlay
+        // Center: Design canvas with transform toolbar overlay.
+        // Hidden entirely during PickingKeel — the picker is the focus.
         Box(
             modifier = Modifier.weight(1f).fillMaxHeight(),
         ) {
-            DesignCanvas(
-                state = state,
-                onIntent = onCanvasIntent,
-                modifier = Modifier.fillMaxSize(),
-            )
+            if (editorMode !is EditorMode.PickingKeel) {
+                DesignCanvas(
+                    state = state,
+                    onIntent = onCanvasIntent,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
 
             if (editorMode is EditorMode.EditingShip) {
                 TransformToolbar(
@@ -123,7 +128,7 @@ private fun ShipBuilderScreen(
             }
         }
 
-        // Right panel: Stats (editing mode) or Item Attributes (creation mode)
+        // Right panel: Stats (editing) / Item Attributes (creation) / Keel picker (picking)
         Column(
             modifier = Modifier.width(200.dp).padding(8.dp).fillMaxHeight(),
         ) {
@@ -131,6 +136,7 @@ private fun ShipBuilderScreen(
                 is EditorMode.EditingShip -> {
                     StatsPanel(
                         stats = state.stats,
+                        placedKeel = state.placedKeel,
                         designName = state.designName,
                         onNameChanged = { onIntent(ShipBuilderIntent.RenameDesign(it)) },
                         onLoadClicked = { onIntent(ShipBuilderIntent.LoadDesignClicked) },
@@ -152,6 +158,15 @@ private fun ShipBuilderScreen(
                         onFinish = { onIntent(ShipBuilderIntent.FinishCreation) },
                         onCancel = { onIntent(ShipBuilderIntent.ExitCreationMode) },
                         modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                is EditorMode.PickingKeel -> {
+                    KeelPickerPanel(
+                        keels = state.availableKeels,
+                        onPickKeel = { onIntent(ShipBuilderIntent.PickKeel(it)) },
+                        onCancel = { onIntent(ShipBuilderIntent.CancelKeelPick) },
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
                     )
                 }
             }

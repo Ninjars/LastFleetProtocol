@@ -10,6 +10,8 @@ import jez.lastfleetprotocol.prototype.components.gamecore.data.ProjectileStats
 import kotlin.math.PI
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ShipDesignConverterTest {
@@ -46,6 +48,25 @@ class ShipDesignConverterTest {
         ),
     )
 
+    private fun makeKeelDef(
+        id: String = "keel_def_1",
+        lift: Float = 500f,
+        maxHp: Float = 150f,
+        shipClass: String = "fighter",
+    ) = ItemDefinition(
+        id = id,
+        name = "Test Keel",
+        vertices = triangleVertices,
+        attributes = ItemAttributes.KeelAttributes(
+            armour = SerializableArmourStats(hardness = 3f, density = 1.5f),
+            sizeCategory = "medium",
+            mass = 40f,
+            maxHp = maxHp,
+            lift = lift,
+            shipClass = shipClass,
+        ),
+    )
+
     private fun makeEngineDef(id: String = "engine_def_1") = ItemDefinition(
         id = id,
         name = "Main Engine",
@@ -77,7 +98,15 @@ class ShipDesignConverterTest {
         ),
     )
 
+    private fun defaultPlacedKeel() = PlacedKeel(
+        id = "pk1",
+        itemDefinitionId = "keel_def_1",
+        position = SceneOffset.Zero,
+        rotation = 0f.rad,
+    )
+
     private fun minimalDesign(
+        keel: PlacedKeel? = defaultPlacedKeel(),
         hulls: List<PlacedHullPiece> = listOf(
             PlacedHullPiece("ph1", "hull_def_1", SceneOffset.Zero, 0f.rad)
         ),
@@ -88,10 +117,13 @@ class ShipDesignConverterTest {
         turrets: List<PlacedTurret> = listOf(
             PlacedTurret("pt1", "turret_def_1", "standard_turret", SceneOffset.Zero, 0f.rad, parentHullId = "ph1"),
         ),
-        itemDefs: List<ItemDefinition> = listOf(makeHullDef(), makeReactorDef(), makeEngineDef(), makeTurretDef()),
+        itemDefs: List<ItemDefinition> = listOf(
+            makeHullDef(), makeKeelDef(), makeReactorDef(), makeEngineDef(), makeTurretDef(),
+        ),
     ) = ShipDesign(
         name = "Test Ship",
         itemDefinitions = itemDefs,
+        placedKeel = keel,
         placedHulls = hulls,
         placedModules = modules,
         placedTurrets = turrets,
@@ -103,8 +135,10 @@ class ShipDesignConverterTest {
         assertTrue(result.isSuccess, "Conversion should succeed: ${result.exceptionOrNull()}")
         val config = result.getOrThrow()
 
-        assertEquals(1, config.hulls.size)
-        assertEquals(2, config.internalSystems.size)
+        // Hulls list now includes the Keel + 1 regular hull piece
+        assertEquals(2, config.hulls.size)
+        // Internal systems now include KEEL + the 2 modules
+        assertEquals(3, config.internalSystems.size)
         assertEquals(1, config.turretConfigs.size)
         assertTrue(config.movementConfig.forwardThrust > 0f)
         assertTrue(config.totalMass > 0f)
@@ -119,7 +153,8 @@ class ShipDesignConverterTest {
             ),
         )
         val config = convertShipDesign(design, turretGuns).getOrThrow()
-        assertEquals(2, config.hulls.size)
+        // Keel + 2 hull pieces = 3 hulls
+        assertEquals(3, config.hulls.size)
     }
 
     @Test
@@ -130,21 +165,21 @@ class ShipDesignConverterTest {
                     id = "ph1",
                     itemDefinitionId = "hull_def_1",
                     position = SceneOffset(10f.sceneUnit, 20f.sceneUnit),
-                    rotation = 0f.rad, // no rotation for easy verification
+                    rotation = 0f.rad,
                 ),
             ),
         )
         val config = convertShipDesign(design, turretGuns).getOrThrow()
-        val hull = config.hulls.first()
+        // The hull piece is hulls[1] — hulls[0] is the Keel.
+        val hull = config.hulls[1]
 
-        // The first vertex (10, 0) + position offset (10, 20) = (20, 20)
+        // First vertex (10, 0) + position offset (10, 20) = (20, 20)
         assertEquals(20f, hull.vertices.first().x.raw, 0.01f)
         assertEquals(20f, hull.vertices.first().y.raw, 0.01f)
     }
 
     @Test
     fun happyPath_hullRotationTransform() {
-        // Rotate 90° (PI/2) — vertex at (10, 0) becomes (0, 10)
         val design = minimalDesign(
             hulls = listOf(
                 PlacedHullPiece(
@@ -156,7 +191,7 @@ class ShipDesignConverterTest {
             ),
         )
         val config = convertShipDesign(design, turretGuns).getOrThrow()
-        val noseVertex = config.hulls.first().vertices.first() // was (10, 0), now rotated
+        val noseVertex = config.hulls[1].vertices.first() // hulls[0] is the Keel
 
         assertEquals(0f, noseVertex.x.raw, 0.1f)
         assertEquals(10f, noseVertex.y.raw, 0.1f)
@@ -189,11 +224,33 @@ class ShipDesignConverterTest {
     }
 
     @Test
-    fun errorPath_zeroHulls_fails() {
-        val design = minimalDesign(hulls = emptyList())
+    fun errorPath_noKeel_fails() {
+        // Slice B: placedKeel is required. A design with no Keel produces Result.failure.
+        val result = convertShipDesign(minimalDesign(keel = null), turretGuns)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("no Keel") == true)
+    }
+
+    @Test
+    fun errorPath_noKeelDefinition_fails() {
+        // PlacedKeel references a missing itemDefinitionId.
+        val design = minimalDesign(
+            keel = PlacedKeel("pk1", "MISSING_KEEL_ID", SceneOffset.Zero, 0f.rad),
+        )
         val result = convertShipDesign(design, turretGuns)
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("no hull pieces") == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("MISSING_KEEL_ID") == true)
+    }
+
+    @Test
+    fun errorPath_keelPointsAtNonKeelDefinition_fails() {
+        // The PlacedKeel's itemDefinitionId resolves to a HullAttributes, not KeelAttributes.
+        val design = minimalDesign(
+            keel = PlacedKeel("pk1", "hull_def_1", SceneOffset.Zero, 0f.rad),
+        )
+        val result = convertShipDesign(design, turretGuns)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("not a keel type") == true)
     }
 
     @Test
@@ -208,7 +265,7 @@ class ShipDesignConverterTest {
             modules = listOf(
                 PlacedModule("pm1", "plasma_def", "PLASMA_CORE", SceneOffset.Zero, 0f.rad, parentHullId = "ph1"),
             ),
-            itemDefs = listOf(makeHullDef(), unknownDef, makeTurretDef()),
+            itemDefs = listOf(makeHullDef(), makeKeelDef(), unknownDef, makeTurretDef()),
         )
         val result = convertShipDesign(design, turretGuns)
         assertTrue(result.isFailure)
@@ -242,7 +299,7 @@ class ShipDesignConverterTest {
     }
 
     @Test
-    fun errorPath_unknownItemDefinitionId_fails() {
+    fun errorPath_unknownHullItemDefinitionId_fails() {
         val design = minimalDesign(
             hulls = listOf(
                 PlacedHullPiece("ph1", "MISSING_ID", SceneOffset.Zero, 0f.rad),
@@ -255,14 +312,142 @@ class ShipDesignConverterTest {
 
     @Test
     fun edgeCase_zeroModules_succeeds() {
+        // A Keel-only ship with no modules and no extra hulls is valid.
         val design = minimalDesign(modules = emptyList())
         val config = convertShipDesign(design, turretGuns).getOrThrow()
-        assertTrue(config.internalSystems.isEmpty())
+        // internalSystems still contains the KEEL entry even without modules
+        assertEquals(1, config.internalSystems.size)
+        assertEquals(InternalSystemType.KEEL, config.internalSystems.first().type)
+    }
+
+    @Test
+    fun edgeCase_zeroRegularHulls_succeeds() {
+        // A Keel alone is enough hull geometry to fly.
+        val design = minimalDesign(hulls = emptyList())
+        val config = convertShipDesign(design, turretGuns).getOrThrow()
+        assertEquals(1, config.hulls.size) // just the Keel
     }
 
     @Test
     fun edgeCase_defaultEvasionModifier() {
         val config = convertShipDesign(minimalDesign(), turretGuns, defaultEvasionModifier = 0.5f).getOrThrow()
         assertEquals(0.5f, config.combatStats.evasionModifier)
+    }
+
+    @Test
+    fun happyPath_keelEmitsInternalSystemSpec() {
+        val config = convertShipDesign(minimalDesign(), turretGuns).getOrThrow()
+        val keelSpec = config.internalSystems.firstOrNull { it.type == InternalSystemType.KEEL }
+        assertNotNull(keelSpec, "Converter must emit a KEEL InternalSystemSpec")
+        // maxHp reads from the authored KeelAttributes.maxHp
+        assertEquals(150f, keelSpec.maxHp)
+        assertEquals(40f, keelSpec.mass)
+    }
+
+    @Test
+    fun happyPath_keelAppearsAsFirstHull() {
+        // The converter emits the Keel as hulls[0] so runtime code (HullCollider,
+        // rendering) treats it as a hull piece.
+        val config = convertShipDesign(minimalDesign(), turretGuns).getOrThrow()
+        // The Keel triangle vertices should be present at hulls[0].
+        assertEquals(3, config.hulls[0].vertices.size)
+        assertEquals(10f, config.hulls[0].vertices[0].x.raw, 0.01f)
+    }
+
+    @Test
+    fun happyPath_keelContributesToDrag() {
+        // A Keel's drag modifier affects the final drag coefficient — swapping a Keel
+        // with high modifiers for one with low modifiers lowers terminal velocity.
+        val lowDragKeel = ItemDefinition(
+            id = "keel_low_drag",
+            name = "Low drag Keel",
+            vertices = triangleVertices,
+            attributes = ItemAttributes.KeelAttributes(
+                armour = SerializableArmourStats(hardness = 3f, density = 1.5f),
+                sizeCategory = "medium",
+                mass = 40f,
+                forwardDragModifier = 0.5f,
+                lift = 500f,
+                maxHp = 150f,
+                shipClass = "fighter",
+            ),
+        )
+        val highDragKeel = ItemDefinition(
+            id = "keel_high_drag",
+            name = "High drag Keel",
+            vertices = triangleVertices,
+            attributes = ItemAttributes.KeelAttributes(
+                armour = SerializableArmourStats(hardness = 3f, density = 1.5f),
+                sizeCategory = "medium",
+                mass = 40f,
+                forwardDragModifier = 2.0f,
+                lift = 500f,
+                maxHp = 150f,
+                shipClass = "fighter",
+            ),
+        )
+
+        val lowConfig = convertShipDesign(
+            minimalDesign(
+                keel = PlacedKeel("pk", "keel_low_drag", SceneOffset.Zero, 0f.rad),
+                itemDefs = listOf(makeHullDef(), lowDragKeel, makeReactorDef(), makeEngineDef(), makeTurretDef()),
+            ),
+            turretGuns,
+        ).getOrThrow()
+        val highConfig = convertShipDesign(
+            minimalDesign(
+                keel = PlacedKeel("pk", "keel_high_drag", SceneOffset.Zero, 0f.rad),
+                itemDefs = listOf(makeHullDef(), highDragKeel, makeReactorDef(), makeEngineDef(), makeTurretDef()),
+            ),
+            turretGuns,
+        ).getOrThrow()
+
+        assertTrue(
+            lowConfig.movementConfig.forwardDragCoeff < highConfig.movementConfig.forwardDragCoeff,
+            "Keel with lower forward drag modifier should produce lower drag coefficient: " +
+                "low=${lowConfig.movementConfig.forwardDragCoeff} vs high=${highConfig.movementConfig.forwardDragCoeff}"
+        )
+    }
+
+    @Test
+    fun edgeCase_minimalKeelOnlyShip_converts() {
+        // The smallest representable flightworthy ship: tiny Keel, lift = 1, no modules, no turrets.
+        val tinyKeel = ItemDefinition(
+            id = "tiny_keel",
+            name = "Tiny Keel",
+            vertices = triangleVertices,
+            attributes = ItemAttributes.KeelAttributes(
+                armour = SerializableArmourStats(hardness = 1f, density = 1f),
+                sizeCategory = "small",
+                mass = 0.5f,
+                lift = 1f,
+                maxHp = 10f,
+            ),
+        )
+        val design = ShipDesign(
+            name = "Minimal",
+            itemDefinitions = listOf(tinyKeel),
+            placedKeel = PlacedKeel("pk", "tiny_keel", SceneOffset.Zero, 0f.rad),
+            placedHulls = emptyList(),
+            placedModules = emptyList(),
+            placedTurrets = emptyList(),
+        )
+        val config = convertShipDesign(design, turretGuns).getOrThrow()
+        assertEquals(1, config.hulls.size)
+        assertEquals(1, config.internalSystems.size)
+        assertEquals(InternalSystemType.KEEL, config.internalSystems.first().type)
+    }
+
+    @Test
+    fun roundTripConversionAfterSerialization() {
+        // Cover Unit 2's integration: a ShipDesign constructed from a serialization
+        // round-trip still converts cleanly.
+        val design = minimalDesign()
+        val encoded = kotlinx.serialization.json.Json.encodeToString(ShipDesign.serializer(), design)
+        val decoded = kotlinx.serialization.json.Json.decodeFromString(ShipDesign.serializer(), encoded)
+        val config = convertShipDesign(decoded, turretGuns).getOrThrow()
+
+        // KEEL is slotted into internalSystems from the round-tripped design
+        assertNotNull(config.internalSystems.firstOrNull { it.type == InternalSystemType.KEEL })
     }
 }

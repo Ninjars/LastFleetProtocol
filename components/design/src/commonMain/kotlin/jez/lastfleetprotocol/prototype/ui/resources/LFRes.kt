@@ -8,8 +8,10 @@ import lastfleetprotocol.components.design.generated.resources.builder_armour_de
 import lastfleetprotocol.components.design.generated.resources.builder_armour_hardness
 import lastfleetprotocol.components.design.generated.resources.builder_cancel_creation
 import lastfleetprotocol.components.design.generated.resources.builder_create_hull
+import lastfleetprotocol.components.design.generated.resources.builder_create_keel
 import lastfleetprotocol.components.design.generated.resources.builder_create_module
 import lastfleetprotocol.components.design.generated.resources.builder_create_turret
+import lastfleetprotocol.components.design.generated.resources.builder_ship_class
 import lastfleetprotocol.components.design.generated.resources.builder_custom_items
 import lastfleetprotocol.components.design.generated.resources.builder_default_facing
 import lastfleetprotocol.components.design.generated.resources.builder_density
@@ -19,9 +21,19 @@ import lastfleetprotocol.components.design.generated.resources.builder_drag_late
 import lastfleetprotocol.components.design.generated.resources.builder_drag_reverse
 import lastfleetprotocol.components.design.generated.resources.builder_finish
 import lastfleetprotocol.components.design.generated.resources.builder_fixed
+import lastfleetprotocol.components.design.generated.resources.builder_flightworthy
+import lastfleetprotocol.components.design.generated.resources.builder_lift
+import lastfleetprotocol.components.design.generated.resources.builder_mass_exceeds_lift
+import lastfleetprotocol.components.design.generated.resources.builder_no_keel
 import lastfleetprotocol.components.design.generated.resources.builder_forward
 import lastfleetprotocol.components.design.generated.resources.builder_forward_thrust
 import lastfleetprotocol.components.design.generated.resources.builder_hull_pieces
+import lastfleetprotocol.components.design.generated.resources.builder_keel_class
+import lastfleetprotocol.components.design.generated.resources.builder_keel_lift
+import lastfleetprotocol.components.design.generated.resources.builder_keel_no_options
+import lastfleetprotocol.components.design.generated.resources.builder_keels
+import lastfleetprotocol.components.design.generated.resources.builder_pick_keel_description
+import lastfleetprotocol.components.design.generated.resources.builder_pick_keel_title
 import lastfleetprotocol.components.design.generated.resources.builder_item_attributes
 import lastfleetprotocol.components.design.generated.resources.builder_item_name
 import lastfleetprotocol.components.design.generated.resources.builder_lateral
@@ -133,6 +145,10 @@ object LFRes {
         val button_cancel: StringResource = Res.string.button_cancel
 
         val builder_stats: StringResource = Res.string.builder_stats
+        val builder_flightworthy: StringResource = Res.string.builder_flightworthy
+        val builder_no_keel: StringResource = Res.string.builder_no_keel
+        val builder_mass_exceeds_lift: StringResource = Res.string.builder_mass_exceeds_lift
+        val builder_lift: StringResource = Res.string.builder_lift
         val builder_design_name: StringResource = Res.string.builder_design_name
         val builder_thrust: StringResource = Res.string.builder_thrust
         val builder_terminal_velocity: StringResource = Res.string.builder_terminal_velocity
@@ -146,11 +162,19 @@ object LFRes {
         val builder_load_design: StringResource = Res.string.builder_load_design
         val builder_no_saved_designs: StringResource = Res.string.builder_no_saved_designs
         val builder_hull_pieces: StringResource = Res.string.builder_hull_pieces
+        val builder_keels: StringResource = Res.string.builder_keels
+        val builder_pick_keel_title: StringResource = Res.string.builder_pick_keel_title
+        val builder_pick_keel_description: StringResource = Res.string.builder_pick_keel_description
+        val builder_keel_no_options: StringResource = Res.string.builder_keel_no_options
+        val builder_keel_class: StringResource = Res.string.builder_keel_class
+        val builder_keel_lift: StringResource = Res.string.builder_keel_lift
         val builder_systems: StringResource = Res.string.builder_systems
         val builder_turrets: StringResource = Res.string.builder_turrets
         val builder_create_hull: StringResource = Res.string.builder_create_hull
+        val builder_create_keel: StringResource = Res.string.builder_create_keel
         val builder_create_module: StringResource = Res.string.builder_create_module
         val builder_create_turret: StringResource = Res.string.builder_create_turret
+        val builder_ship_class: StringResource = Res.string.builder_ship_class
         val builder_finish: StringResource = Res.string.builder_finish
         val builder_cancel_creation: StringResource = Res.string.builder_cancel_creation
         val builder_item_name: StringResource = Res.string.builder_item_name

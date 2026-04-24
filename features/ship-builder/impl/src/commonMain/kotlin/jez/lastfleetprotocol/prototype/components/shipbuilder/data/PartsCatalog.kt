@@ -168,5 +168,79 @@ object PartsCatalog {
         ),
     )
 
-    val allItems: List<ItemDefinition> = hullItems + moduleItems + turretItems
+    /**
+     * Bundled Keel definitions, mirroring the four default ships' Keels. Slice B
+     * users pick from this list (+ any custom Keels they authored) when starting a
+     * new design. See Unit 5 for the picker flow. Geometry and drag modifiers
+     * match the corresponding default ship so a fresh picker selection produces a
+     * ship structurally similar to the demo scene's.
+     */
+    val keelItems: List<ItemDefinition> = listOf(
+        ItemDefinition(
+            id = "keel_fighter_player",
+            name = "Player Fighter Keel",
+            vertices = hullItems[0].vertices,
+            attributes = ItemAttributes.KeelAttributes(
+                armour = SerializableArmourStats(hardness = 5f, density = 2f),
+                sizeCategory = "medium",
+                mass = 50f,
+                forwardDragModifier = 0.7f,
+                lateralDragModifier = 1.2f,
+                reverseDragModifier = 1.2f,
+                maxHp = 150f,
+                lift = 200f,
+                shipClass = "fighter",
+            ),
+        ),
+        ItemDefinition(
+            id = "keel_fighter_light",
+            name = "Light Fighter Keel",
+            vertices = hullItems[1].vertices,
+            attributes = ItemAttributes.KeelAttributes(
+                armour = SerializableArmourStats(hardness = 3f, density = 1f),
+                sizeCategory = "light",
+                mass = 30f,
+                forwardDragModifier = 0.8f,
+                lateralDragModifier = 0.8f,
+                reverseDragModifier = 0.8f,
+                maxHp = 100f,
+                lift = 120f,
+                shipClass = "fighter",
+            ),
+        ),
+        ItemDefinition(
+            id = "keel_frigate",
+            name = "Frigate Keel",
+            vertices = hullItems[2].vertices,
+            attributes = ItemAttributes.KeelAttributes(
+                armour = SerializableArmourStats(hardness = 5f, density = 2f),
+                sizeCategory = "medium",
+                mass = 50f,
+                forwardDragModifier = 1.0f,
+                lateralDragModifier = 1.0f,
+                reverseDragModifier = 1.0f,
+                maxHp = 130f,
+                lift = 180f,
+                shipClass = "frigate",
+            ),
+        ),
+        ItemDefinition(
+            id = "keel_cruiser",
+            name = "Cruiser Keel",
+            vertices = hullItems[3].vertices,
+            attributes = ItemAttributes.KeelAttributes(
+                armour = SerializableArmourStats(hardness = 8f, density = 4f),
+                sizeCategory = "heavy",
+                mass = 100f,
+                forwardDragModifier = 1.3f,
+                lateralDragModifier = 1.8f,
+                reverseDragModifier = 1.8f,
+                maxHp = 200f,
+                lift = 350f,
+                shipClass = "cruiser",
+            ),
+        ),
+    )
+
+    val allItems: List<ItemDefinition> = hullItems + moduleItems + turretItems + keelItems
 }

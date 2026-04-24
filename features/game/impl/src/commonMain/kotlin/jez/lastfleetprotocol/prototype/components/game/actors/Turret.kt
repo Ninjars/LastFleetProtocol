@@ -46,6 +46,25 @@ class Turret(
 
     var target: Targetable? = null
 
+    /**
+     * When false, [update] short-circuits: target is dropped, aim angle is cleared,
+     * and the gun stops firing. Set by the parent [Ship] synchronously at the
+     * lifecycle transition out of `Active` — avoids the ActorManager child-update
+     * ordering race on the frame the Keel dies. See Slice B Unit 3 Approach.
+     *
+     * Turret doesn't self-check parent state (it only sees the generic [Parent] interface);
+     * instead, Ship is the authority and pushes the flag down.
+     */
+    private var firingEnabled: Boolean = true
+
+    fun setFiringEnabled(enabled: Boolean) {
+        firingEnabled = enabled
+        if (!enabled) {
+            target = null
+            gun.angleToTarget = null
+        }
+    }
+
     private val gun: Gun by lazy {
         Gun(
             turretBody = body,
@@ -90,6 +109,13 @@ class Turret(
 
     override fun update(deltaTimeInMilliseconds: Int) {
         super.update(deltaTimeInMilliseconds)
+
+        if (!firingEnabled) {
+            // Parent ship is drifting or destroyed — do not track, rotate, or fire.
+            // We still call super.update above so child-actor position-follow logic runs.
+            return
+        }
+
         target?.let {
             if (!it.isValidTarget()) {
                 target = null

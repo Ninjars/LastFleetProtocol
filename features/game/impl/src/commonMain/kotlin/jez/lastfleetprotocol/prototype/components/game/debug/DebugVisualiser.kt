@@ -15,6 +15,7 @@ import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
+import jez.lastfleetprotocol.prototype.components.game.actors.ShipLifecycle
 import jez.lastfleetprotocol.prototype.components.game.utils.rotate
 import kotlin.math.cos
 import kotlin.math.sin
@@ -55,7 +56,7 @@ class DebugVisualiser : Visible, Dynamic {
     override fun DrawScope.draw() {
         for (actor in actorManager.allActors.value) {
             if (actor is Ship) {
-                if (!actor.isDestroyed) {
+                if (actor.lifecycle !is ShipLifecycle.Destroyed) {
                     drawShipDebug(actor)
                 }
             }

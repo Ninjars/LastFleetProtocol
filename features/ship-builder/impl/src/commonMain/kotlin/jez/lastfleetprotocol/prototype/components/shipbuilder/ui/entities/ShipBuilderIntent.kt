@@ -43,4 +43,11 @@ sealed interface ShipBuilderIntent {
     data class DuplicateLibraryItem(val item: ItemDefinition) : ShipBuilderIntent
     data class EditLibraryItem(val item: ItemDefinition) : ShipBuilderIntent
     data class DeleteLibraryItem(val item: ItemDefinition) : ShipBuilderIntent
+
+    // Slice B Unit 5 — mandatory Keel-picker first step
+    /** User chose a Keel from the picker. Commits it as [ShipBuilderState.placedKeel] at origin. */
+    data class PickKeel(val itemDefinition: ItemDefinition) : ShipBuilderIntent
+
+    /** User abandoned the Keel picker. Pops back to the landing screen; nothing persists. */
+    data object CancelKeelPick : ShipBuilderIntent
 }

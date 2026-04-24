@@ -20,6 +20,10 @@ class ShipSystemsTest {
         makeSpec(InternalSystemType.REACTOR),
         makeSpec(InternalSystemType.MAIN_ENGINE),
         makeSpec(InternalSystemType.BRIDGE),
+        // Slice B: KEEL is part of every converted ship. Keep this fixture
+        // representative of production so future tests don't accidentally
+        // construct a Ship with a KEEL-less ShipSystems and crash updateLifecycle.
+        makeSpec(InternalSystemType.KEEL),
     )
 
     // --- InternalSystem direct tests ---
