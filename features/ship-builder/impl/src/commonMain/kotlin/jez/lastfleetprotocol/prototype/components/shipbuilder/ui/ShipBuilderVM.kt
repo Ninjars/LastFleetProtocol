@@ -28,10 +28,17 @@ import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBu
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderSideEffect
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ui.entities.ShipBuilderState
 import jez.lastfleetprotocol.prototype.ui.common.ViewModelContract
+import jez.lastfleetprotocol.prototype.utils.export.ExportResult
+import jez.lastfleetprotocol.prototype.utils.export.ExportSourceKind
+import jez.lastfleetprotocol.prototype.utils.export.ExportSubject
+import jez.lastfleetprotocol.prototype.utils.export.RepoExporter
+import jez.lastfleetprotocol.prototype.utils.export.toSlug
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import me.tatarka.inject.annotations.Inject
 import kotlin.math.PI
 
@@ -39,6 +46,7 @@ import kotlin.math.PI
 class ShipBuilderVM(
     private val repository: ShipDesignRepository,
     private val itemLibrary: ItemLibraryRepository,
+    private val repoExporter: RepoExporter,
 ) : ViewModelContract<ShipBuilderIntent, ShipBuilderState, ShipBuilderSideEffect>() {
 
     private val _state = MutableStateFlow(ShipBuilderState())
@@ -46,6 +54,16 @@ class ShipBuilderVM(
 
     private var nextId = 0
     private val inputReducer = ShipBuilderInputReducer()
+
+    /**
+     * JSON for export serialization. Mirrors `FileShipDesignRepository`'s configuration
+     * (`prettyPrint = true`, `ignoreUnknownKeys = true`) so committed assets read back
+     * symmetrically through the same loaders.
+     */
+    private val exportJson = Json {
+        prettyPrint = true
+        ignoreUnknownKeys = true
+    }
 
     init {
         nextId = repository.listAll().size
@@ -58,11 +76,15 @@ class ShipBuilderVM(
         }
         // Slice B Unit 5: fresh designs start in PickingKeel. Any loaded design
         // with a non-null placedKeel will override this in the ConfirmLoad handler.
+        // Asset export (Item A): seed canExport from the repo-export gate. The gate is
+        // fixed at construction (system property + filesystem state), so a one-shot
+        // read is sufficient.
         _state.update {
             it.copy(
                 designName = initialName,
                 libraryItems = library,
                 editorMode = EditorMode.PickingKeel,
+                canExport = repoExporter.isAvailable,
             )
         }
         // Do NOT autoSave here — PickingKeel is pre-commit and has no design state
@@ -285,6 +307,28 @@ class ShipBuilderVM(
                     return
                 }
                 viewModelScope.launch { sendSideEffect(ShipBuilderSideEffect.NavigateBack) }
+            }
+
+            is ShipBuilderIntent.ExportLibraryItem -> {
+                handleExport(
+                    content = exportJson.encodeToString(intent.item),
+                    targetSubdir = "default_parts",
+                    nameForSlug = intent.item.name,
+                    subject = ExportSubject(intent.item.id, ExportSourceKind.ItemDefinition),
+                )
+            }
+
+            is ShipBuilderIntent.ExportCurrentDesign -> {
+                val design = _state.value.toShipDesign()
+                handleExport(
+                    content = exportJson.encodeToString(design),
+                    targetSubdir = "default_ships",
+                    nameForSlug = design.name,
+                    // Designs don't carry a stable id distinct from the name, so use
+                    // the name itself as the identity. Bundle-collision guard relies
+                    // on this for the "same logical design re-exporting itself" case.
+                    subject = ExportSubject(design.name, ExportSourceKind.ShipDesign),
+                )
             }
 
             is ShipBuilderIntent.EditLibraryItem -> {
@@ -627,6 +671,60 @@ class ShipBuilderVM(
                 println("Failed to delete item ${item.id}: $e")
             }
         }
+    }
+
+    /**
+     * Asset export (Item A): drive the [RepoExporter] for either an item or design and
+     * map the result to a user-visible side effect. The slug is derived from the raw
+     * name + the subject's id (the id seeds the fallback for empty slugs).
+     *
+     * Toast wording is hardcoded English here rather than routed through `getString`/
+     * `LFRes`. The Compose Resources `getString` API is suspending and reads from a
+     * runtime-initialised resource bundle that is not available in plain JVM unit
+     * tests; threading it through would force every test to spin up a Compose runtime
+     * harness for one string lookup. The format strings still live in `strings.xml` +
+     * `LFRes.String` for when the project introduces additional locales — at that
+     * point the toast layer (or a dedicated format service) takes over the lookup.
+     */
+    private fun handleExport(
+        content: String,
+        targetSubdir: String,
+        nameForSlug: String,
+        subject: ExportSubject,
+    ) {
+        val slug = toSlug(nameForSlug, fallbackSeed = subject.id)
+        val result = repoExporter.export(
+            content = content,
+            targetSubdir = targetSubdir,
+            slug = slug,
+            replacing = subject,
+        )
+        viewModelScope.launch {
+            sendSideEffect(result.toSideEffect())
+        }
+    }
+
+    private fun ExportResult.toSideEffect(): ShipBuilderSideEffect = when (this) {
+        is ExportResult.Wrote -> ShipBuilderSideEffect.ShowToast(
+            text = if (isOverwrite) {
+                "Overwrote $relativeRepoPath"
+            } else {
+                "Exported to $relativeRepoPath"
+            },
+        )
+
+        is ExportResult.RequiresClipboard -> ShipBuilderSideEffect.CopyToClipboard(
+            text = content,
+            toastMessage = "JSON copied — paste into $suggestionRelativePath",
+        )
+
+        is ExportResult.Error -> ShipBuilderSideEffect.ShowToast(
+            text = "Export failed: $reason",
+        )
+
+        is ExportResult.BundleCollision -> ShipBuilderSideEffect.ShowToast(
+            text = "Slug \"$bundledAssetName\" matches bundled asset — rename to disambiguate",
+        )
     }
 }
 

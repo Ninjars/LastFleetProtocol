@@ -50,4 +50,11 @@ sealed interface ShipBuilderIntent {
 
     /** User abandoned the Keel picker. Pops back to the landing screen; nothing persists. */
     data object CancelKeelPick : ShipBuilderIntent
+
+    // Asset export (Item A)
+    /** Promote a custom library [item] to the repo's `default_parts/` directory. */
+    data class ExportLibraryItem(val item: ItemDefinition) : ShipBuilderIntent
+
+    /** Promote the current ship design to the repo's `default_ships/` directory. */
+    data object ExportCurrentDesign : ShipBuilderIntent
 }

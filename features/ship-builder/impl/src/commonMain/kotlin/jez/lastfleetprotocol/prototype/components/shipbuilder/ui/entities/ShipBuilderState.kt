@@ -53,6 +53,14 @@ data class ShipBuilderState(
     val showLoadDialog: Boolean = false,
     val savedDesigns: List<String> = emptyList(),
     val editorMode: EditorMode = EditorMode.EditingShip,
+    /**
+     * Asset export (Item A): true when the runtime gate is open — JVM Desktop launched
+     * via `./gradlew :composeApp:run` with the repo-root resolved and validated. UI
+     * components hide export affordances when false. Seeded once at VM init from
+     * `RepoExporter.isAvailable`; the system property and filesystem don't change at
+     * runtime so no live updating is required.
+     */
+    val canExport: Boolean = false,
 ) {
     /**
      * Custom items available in the parts panel — sourced from the on-disk item library.
