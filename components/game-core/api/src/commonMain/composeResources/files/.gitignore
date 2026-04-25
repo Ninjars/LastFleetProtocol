@@ -1,0 +1,4 @@
+# Asset export (Item A) writes to <target>.tmp before atomic-renaming into place.
+# A successful write removes the .tmp; a crashed write may leave one behind.
+# Belt-and-suspenders: never commit .tmp files from this directory.
+*.tmp

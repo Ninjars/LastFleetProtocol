@@ -20,6 +20,12 @@ kotlin {
             implementation(libs.kotlininject.runtime)
             implementation(libs.kmp.appdirs)
         }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
+        jvmTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
     }
 }
 

@@ -73,7 +73,24 @@ class ShipBuilderVMKeelPickerTest {
     private fun makeVM(
         designRepo: ShipDesignRepository = FakeDesignRepository(),
         libraryRepo: ItemLibraryRepository = FakeItemLibraryRepository(),
-    ) = ShipBuilderVM(designRepo, libraryRepo)
+    ) = ShipBuilderVM(
+        repository = designRepo,
+        itemLibrary = libraryRepo,
+        // Asset export (Item A) — Keel-picker tests don't exercise export; gate-closed
+        // exporter is a safe default that lets the existing tests stay focused.
+        repoExporter = object : jez.lastfleetprotocol.prototype.utils.export.RepoExporter {
+            override val isAvailable: Boolean = false
+            override fun export(
+                content: String,
+                targetSubdir: String,
+                slug: String,
+                replacing: jez.lastfleetprotocol.prototype.utils.export.ExportSubject?,
+            ) = jez.lastfleetprotocol.prototype.utils.export.ExportResult.RequiresClipboard(
+                content = content,
+                suggestionRelativePath = "$targetSubdir/$slug.json",
+            )
+        },
+    )
 
     private fun makeKeelDef(id: String = "keel_test") = ItemDefinition(
         id = id,

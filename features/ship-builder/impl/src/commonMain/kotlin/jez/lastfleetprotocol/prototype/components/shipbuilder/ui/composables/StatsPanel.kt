@@ -52,6 +52,12 @@ fun StatsPanel(
     onNameChanged: (String) -> Unit,
     onLoadClicked: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Asset export (Item A): callback fired when the dev clicks "Export Design".
+     * Null hides the button — passed null when the runtime gate is closed
+     * (state.canExport == false), per CCD-6 "hidden, not disabled-with-tooltip".
+     */
+    onExportClicked: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier) {
         FlightworthinessIndicator(
@@ -148,6 +154,15 @@ fun StatsPanel(
                 onClick = onLoadClicked,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            if (onExportClicked != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                LFTextButton(
+                    text = stringResource(LFRes.String.builder_export_design),
+                    onClick = onExportClicked,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }

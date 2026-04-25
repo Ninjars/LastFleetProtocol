@@ -16,12 +16,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -53,17 +60,45 @@ fun ShipBuilderScreen(
     @Assisted navController: NavController,
 ) {
     val viewModel = viewModel { viewModelFactory() }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    // The new `LocalClipboard` API (CMP 1.10+) requires constructing platform-specific
+    // ClipEntry instances (Transferable on Desktop, ClipData on Android) under
+    // @ExperimentalComposeUiApi. The deprecated `LocalClipboardManager.setText` works
+    // identically across both platforms with a single AnnotatedString call. Using the
+    // deprecated API for v1; revisit if/when CMP removes it (likely 2.0+).
+    @Suppress("DEPRECATION")
+    val clipboardManager = LocalClipboardManager.current
+
     viewModel.HandleSideEffect {
         when (it) {
             is ShipBuilderSideEffect.NavigateBack -> navController.popBackStack()
+            is ShipBuilderSideEffect.ShowToast -> coroutineScope.launch {
+                snackbarHostState.showSnackbar(it.text)
+            }
+            is ShipBuilderSideEffect.CopyToClipboard -> coroutineScope.launch {
+                clipboardManager.setText(AnnotatedString(it.text))
+                snackbarHostState.showSnackbar(it.toastMessage)
+            }
         }
     }
 
-    ShipBuilderScreen(
-        state = viewModel.state.collectAsStateWithLifecycle().value,
-        onIntent = viewModel::accept,
-        onCanvasIntent = viewModel::handleCanvasIntent,
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        ShipBuilderScreen(
+            state = viewModel.state.collectAsStateWithLifecycle().value,
+            onIntent = viewModel::accept,
+            onCanvasIntent = viewModel::handleCanvasIntent,
+        )
+
+        // Snackbar host pinned to the bottom of the screen for export-action feedback
+        // (and any future transient messaging). Sits above the main layout so it's
+        // visible regardless of which sub-screen the editor is in.
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
 }
 
 @Composable
@@ -84,6 +119,12 @@ private fun ShipBuilderScreen(
                     onDuplicateItem = { onIntent(ShipBuilderIntent.DuplicateLibraryItem(it)) },
                     onEditItem = { onIntent(ShipBuilderIntent.EditLibraryItem(it)) },
                     onDeleteItem = { onIntent(ShipBuilderIntent.DeleteLibraryItem(it)) },
+                    // Asset export (Item A): only surfaces when the runtime gate is open.
+                    // Null on Android, null in packaged Desktop builds, null when running
+                    // from IDE without lfp.repo.root set. Hidden, not disabled-with-tooltip.
+                    onExportItem = if (state.canExport) {
+                        { onIntent(ShipBuilderIntent.ExportLibraryItem(it)) }
+                    } else null,
                     customItems = state.customItemDefinitions,
                     modifier = Modifier.width(200.dp).fillMaxHeight(),
                 )
@@ -140,6 +181,10 @@ private fun ShipBuilderScreen(
                         designName = state.designName,
                         onNameChanged = { onIntent(ShipBuilderIntent.RenameDesign(it)) },
                         onLoadClicked = { onIntent(ShipBuilderIntent.LoadDesignClicked) },
+                        // Asset export (Item A): hidden when the runtime gate is closed.
+                        onExportClicked = if (state.canExport) {
+                            { onIntent(ShipBuilderIntent.ExportCurrentDesign) }
+                        } else null,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

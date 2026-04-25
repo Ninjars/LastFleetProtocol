@@ -41,6 +41,9 @@ import jez.lastfleetprotocol.prototype.di.DependencyName.KUBRIKO_BACKGROUND
 import jez.lastfleetprotocol.prototype.di.DependencyName.KUBRIKO_GAME
 import jez.lastfleetprotocol.prototype.ui.navigation.LFNavHost
 import jez.lastfleetprotocol.prototype.utils.Constants
+import jez.lastfleetprotocol.prototype.utils.export.BundleIndex
+import jez.lastfleetprotocol.prototype.utils.export.RepoExporter
+import jez.lastfleetprotocol.prototype.utils.export.RepoExporterImpl
 import me.tatarka.inject.annotations.Component
 import me.tatarka.inject.annotations.Provides
 
@@ -74,6 +77,25 @@ abstract class AppComponent(
     @Singleton
     @Provides
     protected fun defaultShipDesignLoader(): DefaultShipDesignLoader = DefaultShipDesignLoader()
+
+    /**
+     * Asset export (Item A): bundled-asset slug index for the bundle-collision guard.
+     * For v1 the only bundled directory is `default_ships/` with the four shipped
+     * filenames in `DefaultShipDesignLoader.SHIP_FILENAMES`. The id-to-slug mapping is
+     * identity (slug == filename stem) since bundled designs use snake_case filenames
+     * matching their canonical id.
+     */
+    @Singleton
+    @Provides
+    protected fun bundleIndex(): BundleIndex = BundleIndex(
+        bySubdir = mapOf(
+            "default_ships" to DefaultShipDesignLoader.SHIP_FILENAMES.associateWith { it },
+        ),
+    )
+
+    @Singleton
+    @Provides
+    protected fun repoExporter(impl: RepoExporterImpl): RepoExporter = impl
 
     @Singleton
     @Provides

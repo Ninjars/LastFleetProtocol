@@ -7,13 +7,22 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ShipDesign(
     val name: String,
-    val formatVersion: Int = 3,
+    val formatVersion: Int = CURRENT_VERSION,
     val itemDefinitions: List<ItemDefinition> = emptyList(),
     val placedKeel: PlacedKeel? = null,
     val placedHulls: List<PlacedHullPiece> = emptyList(),
     val placedModules: List<PlacedModule> = emptyList(),
     val placedTurrets: List<PlacedTurret> = emptyList(),
-)
+) {
+    companion object {
+        /**
+         * Schema version of [ShipDesign] JSON. Bump on any breaking schema change.
+         * Asset export (Item A) Unit 6 verifies that every committed `default_*.json`
+         * matches this constant, so a forgotten bump on a schema change fails CI loudly.
+         */
+        const val CURRENT_VERSION: Int = 3
+    }
+}
 
 @Serializable
 data class SerializableArmourStats(

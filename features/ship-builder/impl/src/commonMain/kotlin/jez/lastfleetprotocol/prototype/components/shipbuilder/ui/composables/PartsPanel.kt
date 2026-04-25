@@ -39,6 +39,7 @@ import lastfleetprotocol.components.design.generated.resources.button_add
 import lastfleetprotocol.components.design.generated.resources.ic_add_2
 import lastfleetprotocol.components.design.generated.resources.ic_copy
 import lastfleetprotocol.components.design.generated.resources.ic_delete
+import lastfleetprotocol.components.design.generated.resources.ic_upload
 import lastfleetprotocol.components.design.generated.resources.ic_edit
 import lastfleetprotocol.components.design.generated.resources.pointer_down
 import lastfleetprotocol.components.design.generated.resources.pointer_right
@@ -54,6 +55,13 @@ fun PartsPanel(
     onDeleteItem: (ItemDefinition) -> Unit,
     modifier: Modifier = Modifier,
     customItems: List<ItemDefinition> = emptyList(),
+    /**
+     * Asset export (Item A): callback fired when the dev clicks the export icon on a
+     * custom item. Null disables the affordance — bundled-catalogue items always pass
+     * null (their JSON is already in the repo) and the screen passes null when the
+     * runtime gate is closed (state.canExport == false).
+     */
+    onExportItem: ((ItemDefinition) -> Unit)? = null,
 ) {
     val customHulls = customItems.filter { it.itemType == ItemType.HULL }
     val customModules = customItems.filter { it.itemType == ItemType.MODULE }
@@ -99,6 +107,7 @@ fun PartsPanel(
                     onDuplicate = { onDuplicateItem(item) },
                     onEdit = { onEditItem(item) },
                     onDelete = { onDeleteItem(item) },
+                    onExport = onExportItem?.let { exporter -> { exporter(item) } },
                 )
             }
         }
@@ -133,6 +142,7 @@ fun PartsPanel(
                     onDuplicate = { onDuplicateItem(item) },
                     onEdit = { onEditItem(item) },
                     onDelete = { onDeleteItem(item) },
+                    onExport = onExportItem?.let { exporter -> { exporter(item) } },
                 )
             }
         }
@@ -167,6 +177,7 @@ fun PartsPanel(
                     onDuplicate = { onDuplicateItem(item) },
                     onEdit = { onEditItem(item) },
                     onDelete = { onDeleteItem(item) },
+                    onExport = onExportItem?.let { exporter -> { exporter(item) } },
                 )
             }
         }
@@ -201,6 +212,7 @@ fun PartsPanel(
                     onDuplicate = { onDuplicateItem(item) },
                     onEdit = { onEditItem(item) },
                     onDelete = { onDeleteItem(item) },
+                    onExport = onExportItem?.let { exporter -> { exporter(item) } },
                 )
             }
         }
@@ -265,6 +277,7 @@ private fun ItemRow(
     onDuplicate: (() -> Unit)?,
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
+    onExport: (() -> Unit)? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -311,6 +324,15 @@ private fun ItemRow(
                     contentDescription = stringResource(LFRes.String.builder_delete),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = onDelete,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            if (onExport != null) {
+                LFIconButton(
+                    drawable = Res.drawable.ic_upload,
+                    contentDescription = stringResource(LFRes.String.builder_export_item),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = onExport,
                     modifier = Modifier.size(32.dp)
                 )
             }
