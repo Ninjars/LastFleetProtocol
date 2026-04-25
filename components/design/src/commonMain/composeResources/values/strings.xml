@@ -83,4 +83,13 @@
     <string name="builder_duplicate">Duplicate</string>
     <string name="builder_delete">Delete</string>
     <string name="builder_edit">Edit</string>
+
+    <!-- Asset export (Item A) -->
+    <string name="export_toast_new">Exported to %1$s</string>
+    <string name="export_toast_overwrite">Overwrote %1$s</string>
+    <string name="export_toast_clipboard">JSON copied — paste into %1$s</string>
+    <string name="export_toast_error">Export failed: %1$s</string>
+    <string name="export_toast_bundle_collision">Slug \"%1$s\" matches bundled asset — rename to disambiguate</string>
+    <string name="builder_export_item">Export</string>
+    <string name="builder_export_design">Export Design</string>
 </resources>

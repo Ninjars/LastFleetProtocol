@@ -57,6 +57,13 @@ import lastfleetprotocol.components.design.generated.resources.builder_size_larg
 import lastfleetprotocol.components.design.generated.resources.builder_size_medium
 import lastfleetprotocol.components.design.generated.resources.builder_duplicate
 import lastfleetprotocol.components.design.generated.resources.builder_edit
+import lastfleetprotocol.components.design.generated.resources.builder_export_design
+import lastfleetprotocol.components.design.generated.resources.builder_export_item
+import lastfleetprotocol.components.design.generated.resources.export_toast_bundle_collision
+import lastfleetprotocol.components.design.generated.resources.export_toast_clipboard
+import lastfleetprotocol.components.design.generated.resources.export_toast_error
+import lastfleetprotocol.components.design.generated.resources.export_toast_new
+import lastfleetprotocol.components.design.generated.resources.export_toast_overwrite
 import lastfleetprotocol.components.design.generated.resources.builder_size_small
 import lastfleetprotocol.components.design.generated.resources.builder_stats
 import lastfleetprotocol.components.design.generated.resources.builder_systems
@@ -209,6 +216,15 @@ object LFRes {
         val builder_duplicate: StringResource = Res.string.builder_duplicate
         val builder_delete: StringResource = Res.string.builder_edit
         val builder_edit: StringResource = Res.string.builder_edit
+
+        // Asset export (Item A)
+        val builder_export_item: StringResource = Res.string.builder_export_item
+        val builder_export_design: StringResource = Res.string.builder_export_design
+        val export_toast_new: StringResource = Res.string.export_toast_new
+        val export_toast_overwrite: StringResource = Res.string.export_toast_overwrite
+        val export_toast_clipboard: StringResource = Res.string.export_toast_clipboard
+        val export_toast_error: StringResource = Res.string.export_toast_error
+        val export_toast_bundle_collision: StringResource = Res.string.export_toast_bundle_collision
     }
 
     object Font {
