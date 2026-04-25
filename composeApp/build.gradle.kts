@@ -137,3 +137,18 @@ compose.desktop {
     }
 }
 
+// Asset export (Item A): inject the repo root as a JVM system property only on the
+// Compose Desktop `run` task so RepoExporter knows where to write committed assets when
+// the dev runs `./gradlew :composeApp:run`. Configuring this on the application block
+// instead would leak rootDir into packaged distributables (.dmg/.msi/.deb) — RepoExporter's
+// sentinel check would still close the gate on a fresh machine, but the dev's local path
+// would be embedded in the distributable. The run-task approach keeps shipped artefacts
+// clean.
+//
+// The Compose Desktop plugin creates the `run` task lazily; matchByName + configureEach
+// defers configuration to when the task is actually realized, so this works regardless of
+// task-registration order.
+tasks.matching { it.name == "run" }.configureEach {
+    (this as? JavaExec)?.jvmArgs("-Dlfp.repo.root=${rootDir.absolutePath}")
+}
+
