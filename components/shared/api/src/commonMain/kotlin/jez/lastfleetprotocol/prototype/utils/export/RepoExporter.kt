@@ -123,7 +123,23 @@ class RepoExporterImpl(
 
     private val resolvedRoot: String? = run {
         val root = resolveRepoRoot()
-        if (root != null && isValidRepoRoot(root)) root else null
+        when {
+            root == null -> null
+            isValidRepoRoot(root) -> root
+            else -> {
+                // Set but invalid: dev moved the repo, drive unmounted, or the path
+                // doesn't contain settings.gradle.kts. Log once so the silent
+                // clipboard fallback isn't a complete mystery — without this, the
+                // dev sees export-disappears-from-UI / clipboard-fallback with no
+                // indication that the property is the cause.
+                println(
+                    "[RepoExporter] lfp.repo.root='$root' is set but invalid " +
+                        "(directory missing or no settings.gradle.kts sentinel). " +
+                        "Export action will be hidden / fall back to clipboard.",
+                )
+                null
+            }
+        }
     }
 
     override val isAvailable: Boolean
@@ -135,17 +151,22 @@ class RepoExporterImpl(
         slug: String,
         replacing: ExportSubject?,
     ): ExportResult {
-        val bundledId = bundleIndex.lookupId(targetSubdir, slug)
-        if (bundledId != null && bundledId != replacing?.id) {
-            val name = bundleIndex.lookupName(targetSubdir, slug) ?: slug
-            return ExportResult.BundleCollision(name)
-        }
-
+        // Gate first. When the runtime gate is closed (Android, packaged Desktop,
+        // IDE Run without lfp.repo.root), every export returns RequiresClipboard —
+        // including the bundle-collision case. The collision guard exists to defend
+        // the in-repo bundled assets from being silently shadowed by a write; with
+        // no write happening, there's nothing to defend against.
         val root = resolvedRoot
             ?: return ExportResult.RequiresClipboard(
                 content = content,
                 suggestionRelativePath = "$targetSubdir/$slug.json",
             )
+
+        val bundledId = bundleIndex.lookupId(targetSubdir, slug)
+        if (bundledId != null && bundledId != replacing?.id) {
+            val name = bundleIndex.lookupName(targetSubdir, slug) ?: slug
+            return ExportResult.BundleCollision(name)
+        }
 
         val relative = "$targetSubdir/$slug.json"
         val absolute = "$root/$BUNDLED_ASSETS_RELATIVE_ROOT/$relative"

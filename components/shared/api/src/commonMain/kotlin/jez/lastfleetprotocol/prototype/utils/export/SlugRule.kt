@@ -44,7 +44,18 @@ fun toSlug(name: String, fallbackSeed: String): String {
     }.trim('_')
 
     if (collapsed.isEmpty()) {
-        return FALLBACK_PREFIX + fallbackSeed.take(FALLBACK_SEED_TAKE)
+        // Filter the seed through the same alnum rule. Without this, a fallbackSeed
+        // sourced from user input (e.g., ShipDesign uses `design.name` as its seed)
+        // could carry `.` `/` or `\` into the slug. Empty filtered seeds collapse to
+        // the bare prefix; those are still safe filenames and stay on the
+        // composeResources path inside the repo.
+        val safeSeed = buildString {
+            for (c in fallbackSeed.lowercase()) {
+                if (c.isAsciiAlnum()) append(c)
+                if (length >= FALLBACK_SEED_TAKE) break
+            }
+        }
+        return FALLBACK_PREFIX + safeSeed
     }
 
     if (collapsed.length <= MAX_SLUG_LENGTH) return collapsed

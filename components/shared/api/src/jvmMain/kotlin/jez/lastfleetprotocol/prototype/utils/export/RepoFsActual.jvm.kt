@@ -55,8 +55,15 @@ internal actual fun writeRepoFile(absolutePath: String, content: String) {
         )
     } finally {
         // No-op when the move succeeded (tmp is gone). On failure, removes the
-        // half-written file so it doesn't pollute the source tree.
-        Files.deleteIfExists(tmp)
+        // half-written file so it doesn't pollute the source tree. Wrap so a
+        // secondary exception here (rare: SecurityException on a permissions-
+        // constrained filesystem) doesn't mask the original write failure.
+        try {
+            Files.deleteIfExists(tmp)
+        } catch (_: IOException) {
+            // Best-effort cleanup; if the tmp file lingers, the *.tmp gitignore
+            // entry under composeResources/files/ defends against accidental commit.
+        }
     }
 }
 

@@ -225,14 +225,45 @@ class RepoExporterJvmTest {
         )
 
         val wrote = assertIs<ExportResult.Wrote>(result)
-        assertTrue(
-            !wrote.isOverwrite || wrote.isOverwrite,
-            "wrote variant returned regardless of overwrite flag",
-        )
+        // Fresh temp dir: nothing exists at the target path before this call.
+        // The collision guard's same-id exemption preserves the write; isOverwrite
+        // reflects the on-disk state, not the bundled-asset relationship.
+        assertEquals(false, wrote.isOverwrite, "first export to a fresh path is not an overwrite")
         assertEquals("{\"updated\":true}", assetPath("default_ships", "player_ship").readText())
     }
 
     // --- Gradle JVM-arg propagation smoke (informational) ---
+
+    // --- Real IO failure → ExportResult.Error (not just fake-driven) ---
+
+    @Test
+    fun export_realIoFailureReturnsError() {
+        // Plant a regular file where the target subdirectory should live. createDirectories
+        // refuses to materialise a directory at a path occupied by a file, raising an
+        // IOException that RepoExporterImpl wraps as ExportResult.Error. This exercises
+        // the catch(Throwable) path in production code (not just a fake-driven path) so
+        // a regression in the wrapping behaviour fails this test loudly.
+        val parentParent = fakeRepoRoot.resolve(
+            "components/game-core/api/src/commonMain/composeResources/files"
+        )
+        java.nio.file.Files.createDirectories(parentParent)
+        // Plant a file at "default_parts" — the target subdirectory.
+        parentParent.resolve("default_parts").writeText("not a directory")
+
+        val exporter = newExporter()
+        val result = exporter.export(
+            content = "{}",
+            targetSubdir = "default_parts",
+            slug = "anything",
+            replacing = ExportSubject("id-1", ExportSourceKind.ItemDefinition),
+        )
+
+        val error = assertIs<ExportResult.Error>(result)
+        assertTrue(
+            error.reason.isNotBlank(),
+            "Error reason should carry an IOException message, got: '${error.reason}'",
+        )
+    }
 
     @Test
     fun resolveRepoRoot_returnsPropertyValueWhenSet() {

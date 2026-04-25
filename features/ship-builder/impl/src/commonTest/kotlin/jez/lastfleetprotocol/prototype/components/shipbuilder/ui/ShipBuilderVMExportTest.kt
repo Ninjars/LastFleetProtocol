@@ -292,14 +292,28 @@ class ShipBuilderVMExportTest {
     // --- Design export targets default_ships ---
 
     @Test
-    fun exportCurrentDesign_targetsDefaultShipsSubdir() {
-        val exporter = FakeRepoExporter()
+    fun exportCurrentDesign_targetsDefaultShipsSubdirAndEmitsToast() {
+        val exporter = FakeRepoExporter(
+            nextResult = ExportResult.Wrote(
+                relativeRepoPath = "default_ships/heavy_cruiser.json",
+                isOverwrite = false,
+                slugRuleVersion = SLUG_RULE_VERSION,
+            ),
+        )
         val vm = makeVM(exporter)
         startCollecting(vm)
 
         vm.accept(ShipBuilderIntent.ExportCurrentDesign)
 
+        // Use-case routing: design exports go to default_ships/ with the right kind.
         assertEquals("default_ships", exporter.lastSubdir)
         assertEquals(ExportSourceKind.ShipDesign, exporter.lastReplacing?.sourceKind)
+        // Side-effect dispatch: design path emits the same Wrote → ShowToast mapping
+        // as item exports. Without this assertion the design path could silently
+        // skip sendSideEffect and only the subdir routing would be verified.
+        assertEquals(1, captured.size, "expected exactly one side effect, got $captured")
+        val effect = assertIs<ShipBuilderSideEffect.ShowToast>(captured[0])
+        assertContains(effect.text, "Exported to")
+        assertContains(effect.text, "default_ships/heavy_cruiser.json")
     }
 }

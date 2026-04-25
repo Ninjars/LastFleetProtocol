@@ -83,6 +83,19 @@ class SlugRuleTest {
         assertEquals("untitled-abc", toSlug("???", "abc"))
     }
 
+    @Test
+    fun fallbackSeedNonAlnumIsStripped() {
+        // Defence-in-depth: the fallback seed is filtered through the same alnum rule
+        // as the main slug so a seed sourced from user input (e.g., design.name) cannot
+        // carry path-traversal characters into the filename. First 8 alnum chars only.
+        // Input `../etc/passwd` → alnum chars in order are e,t,c,p,a,s,s,w,d — first 8 = etcpassw.
+        assertEquals("untitled-etcpassw", toSlug("???", "../etc/passwd"))
+        // All non-alnum: filtered seed is empty; result is just the bare prefix.
+        assertEquals("untitled-", toSlug("???", "../.."))
+        // Mixed: c gets through, : and \ skipped, then 1 2 3 — first 4 alnum = c123.
+        assertEquals("untitled-c123", toSlug("???", "C:\\1.2.3"))
+    }
+
     // --- Path-traversal defence ---
 
     @Test
