@@ -119,6 +119,12 @@ private fun ShipBuilderScreen(
                     onDuplicateItem = { onIntent(ShipBuilderIntent.DuplicateLibraryItem(it)) },
                     onEditItem = { onIntent(ShipBuilderIntent.EditLibraryItem(it)) },
                     onDeleteItem = { onIntent(ShipBuilderIntent.DeleteLibraryItem(it)) },
+                    // Asset export (Item A): only surfaces when the runtime gate is open.
+                    // Null on Android, null in packaged Desktop builds, null when running
+                    // from IDE without lfp.repo.root set. Hidden, not disabled-with-tooltip.
+                    onExportItem = if (state.canExport) {
+                        { onIntent(ShipBuilderIntent.ExportLibraryItem(it)) }
+                    } else null,
                     customItems = state.customItemDefinitions,
                     modifier = Modifier.width(200.dp).fillMaxHeight(),
                 )
@@ -175,6 +181,10 @@ private fun ShipBuilderScreen(
                         designName = state.designName,
                         onNameChanged = { onIntent(ShipBuilderIntent.RenameDesign(it)) },
                         onLoadClicked = { onIntent(ShipBuilderIntent.LoadDesignClicked) },
+                        // Asset export (Item A): hidden when the runtime gate is closed.
+                        onExportClicked = if (state.canExport) {
+                            { onIntent(ShipBuilderIntent.ExportCurrentDesign) }
+                        } else null,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

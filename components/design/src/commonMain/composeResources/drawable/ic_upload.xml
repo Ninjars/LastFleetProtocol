@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Material Symbols "upload" — used by asset export (Item A) for the "promote
+     this item from app data into the repo" affordance. Vertical arrow above
+     a tray, mirroring the platform "upload to remote" idiom. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:width="24dp"
+        android:height="24dp"
+        android:viewportWidth="960"
+        android:viewportHeight="960"
+        android:tint="?attr/colorControlNormal">
+    <path
+            android:fillColor="#000000"
+            android:pathData="M444,696L516,696L516,432L600,516L648,468L480,300L312,468L360,516L444,432L444,696ZM216,864Q186,864 165,843Q144,822 144,792L144,168Q144,138 165,117Q186,96 216,96L744,96Q774,96 795,117Q816,138 816,168L816,792Q816,822 795,843Q774,864 744,864L216,864ZM216,792L744,792Q744,792 744,792Q744,792 744,792L744,168Q744,168 744,168Q744,168 744,168L216,168Q216,168 216,168Q216,168 216,168L216,792Q216,792 216,792Q216,792 216,792Z" />
+</vector>
