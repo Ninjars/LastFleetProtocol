@@ -5,6 +5,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesign
 import jez.lastfleetprotocol.prototype.utils.deleteFile
 import jez.lastfleetprotocol.prototype.utils.listFiles
 import jez.lastfleetprotocol.prototype.utils.loadFile
+import jez.lastfleetprotocol.prototype.utils.sanitizeFilenameStem
 import jez.lastfleetprotocol.prototype.utils.saveFile
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -25,13 +26,13 @@ private val json = Json {
 class FileShipDesignRepository : ShipDesignRepository {
 
     override fun save(design: ShipDesign) {
-        val fileName = sanitizeName(design.name)
+        val fileName = sanitizeFilenameStem(design.name)
         val content = json.encodeToString(design)
         saveFile(DESIGNS_DIRECTORY, "$fileName.json", content)
     }
 
     override fun load(name: String): ShipDesign? {
-        val fileName = sanitizeName(name)
+        val fileName = sanitizeFilenameStem(name)
         val content = loadFile(DESIGNS_DIRECTORY, "$fileName.json") ?: return null
         return try {
             json.decodeFromString<ShipDesign>(content)
@@ -47,10 +48,7 @@ class FileShipDesignRepository : ShipDesignRepository {
     }
 
     override fun delete(name: String) {
-        val fileName = sanitizeName(name)
+        val fileName = sanitizeFilenameStem(name)
         deleteFile(DESIGNS_DIRECTORY, "$fileName.json")
     }
-
-    private fun sanitizeName(name: String): String =
-        name.replace(Regex("[^a-zA-Z0-9_\\- ]"), "_")
 }

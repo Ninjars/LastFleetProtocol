@@ -199,7 +199,7 @@ sequenceDiagram
 
 ## Implementation Units
 
-- [ ] **Unit 1: Scenario data model + sanitiser helper + DemoScenarioPreset**
+- [x] **Unit 1: Scenario data model + sanitiser helper + DemoScenarioPreset**
 
 **Goal.** Land the pure-domain types and shared sanitiser. End state: `:components:game-core:api` and `:components:shared:api` build cleanly across JVM and Android with the new types in place; `FileShipDesignRepository` switches to the lifted sanitiser without behavioural change. No other consumer yet.
 
