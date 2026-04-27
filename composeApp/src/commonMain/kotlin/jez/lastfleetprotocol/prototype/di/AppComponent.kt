@@ -19,6 +19,7 @@ import jez.lastfleetprotocol.prototype.components.game.GameScreenEntry
 import jez.lastfleetprotocol.prototype.components.game.ui.GameScreen
 import jez.lastfleetprotocol.prototype.components.gamecore.GameLoadingStatus
 import jez.lastfleetprotocol.prototype.components.gamecore.GameSessionState
+import jez.lastfleetprotocol.prototype.components.gamecore.scenarios.PendingScenario
 import jez.lastfleetprotocol.prototype.components.landingscreen.LandingScreenEntry
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.DefaultShipDesignLoader
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemLibraryRepository
@@ -96,6 +97,15 @@ abstract class AppComponent(
     @Singleton
     @Provides
     protected fun repoExporter(impl: RepoExporterImpl): RepoExporter = impl
+
+    /**
+     * Scenario-builder launch-path seam (Item B). Singleton so the scenario
+     * builder writer and `GameVM` reader share the same instance. Consume-
+     * on-read semantics live in `PendingScenario.consume()`.
+     */
+    @Singleton
+    @Provides
+    protected fun pendingScenario(): PendingScenario = PendingScenario()
 
     @Singleton
     @Provides

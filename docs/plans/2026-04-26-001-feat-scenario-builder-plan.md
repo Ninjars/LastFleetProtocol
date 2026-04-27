@@ -275,7 +275,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 2b: `PendingScenario` holder + GameVM consume-on-read**
+- [x] **Unit 2b: `PendingScenario` holder + GameVM consume-on-read**
 
 **Goal.** Introduce the launch-path seam: a `@Singleton` holder that scenario-builder writes to, and a `GameVM.init` that reads-and-clears it in one step before dispatching to `startScene` (custom) or `startDemoScene` (production demo). End state: an outside caller (Unit 4's VM) can write to `PendingScenario` and Game launches with custom slots; the production Play path that follows is guaranteed to see null.
 
