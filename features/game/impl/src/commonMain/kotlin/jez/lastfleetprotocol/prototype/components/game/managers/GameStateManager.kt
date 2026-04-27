@@ -1,7 +1,6 @@
 package jez.lastfleetprotocol.prototype.components.game.managers
 
 import com.pandulapeter.kubriko.actor.traits.Unique
-import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.Manager
 import com.pandulapeter.kubriko.manager.StateManager
@@ -12,11 +11,12 @@ import jez.lastfleetprotocol.prototype.components.game.actors.ShipLifecycle
 import jez.lastfleetprotocol.prototype.components.game.actors.ShipSpec
 import jez.lastfleetprotocol.prototype.components.game.ai.AIModule
 import jez.lastfleetprotocol.prototype.components.game.ai.BasicAI
-import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.game.debug.DebugVisualiser
 import jez.lastfleetprotocol.prototype.components.game.input.InputController
 import jez.lastfleetprotocol.prototype.components.game.systems.ShipSystems
 import jez.lastfleetprotocol.prototype.components.gamecore.data.ShipConfig
+import jez.lastfleetprotocol.prototype.components.gamecore.scenarios.DemoScenarioPreset
+import jez.lastfleetprotocol.prototype.components.gamecore.scenarios.SpawnSlotConfig
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.DefaultShipDesignLoader
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.TurretGunLoader
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,51 +45,51 @@ class GameStateManager(
 
     var onGameResult: ((GameResult) -> Unit)? = null
 
+    /**
+     * Most recently launched slot list. Updated on every `startScene` call;
+     * read by `restartScene` so the result-screen "Restart" button replays
+     * whatever scene the dev launched (custom scenario or demo). Deliberately
+     * NOT cleared by `clearScene` — between match end and restart, this is
+     * the only record of "what was running."
+     */
+    internal var lastLaunched: List<SpawnSlotConfig>? = null
+        private set
+
     fun setPaused(paused: Boolean) {
         if (paused == !stateManager.isRunning.value) return
         stateManager.updateIsRunning(!paused)
     }
 
     /**
-     * Load default ship designs from bundled resources, convert them to ShipConfig,
-     * and spawn all ships for the demo combat scenario.
-     *
-     * Spawn-slot mapping is filename-indexed:
-     * - player_ship → 2 player ships (no AI)
-     * - enemy_light → 1 enemy
-     * - enemy_medium → 1 enemy
-     * - enemy_heavy → 1 enemy
+     * Production demo entry point — preserves observable behaviour of the
+     * pre-refactor `startDemoScene`. Reads the canonical layout from
+     * [DemoScenarioPreset.SLOTS] (Unit 7 pins the shape).
      */
-    /** A single spawn slot: which design to load, where, for which team. */
-    private data class SpawnSlot(
-        val designName: String,
-        val position: SceneOffset,
-        val teamId: String,
-        val withAI: Boolean,
-        val drawOrder: Float,
-    )
+    suspend fun startDemoScene() = startScene(DemoScenarioPreset.SLOTS)
 
-    suspend fun startDemoScene() {
+    /**
+     * Generic scene entry point: load designs, evaluate spawn gates, then
+     * iterate [slots] spawning ships team-by-team. Used by the demo path
+     * (via [startDemoScene]) and by the scenario builder's launch path.
+     *
+     * Caches [slots] in [lastLaunched] so [restartScene] can replay the same
+     * scene after `clearScene`. Empty slot lists fall through the post-loop
+     * fallback to an immediate DEFEAT, matching the previous all-gates-failed
+     * behaviour.
+     */
+    suspend fun startScene(slots: List<SpawnSlotConfig>) {
+        lastLaunched = slots
         stateManager.updateIsRunning(true)
 
         // Load designs and turret guns (cached after first load)
         val designs = shipDesignLoader.loadAll()
         val turretGuns = turretGunLoader.load()
 
-        // Spawn-slot mapping: filename-indexed design + per-instance placement.
-        val spawnSlots = listOf(
-            SpawnSlot("player_ship", SceneOffset((-300f).sceneUnit, (-50f).sceneUnit), Ship.TEAM_PLAYER, withAI = false, drawOrder = DrawOrder.PLAYER_SHIP),
-            SpawnSlot("player_ship", SceneOffset((-300f).sceneUnit, 50f.sceneUnit), Ship.TEAM_PLAYER, withAI = false, drawOrder = DrawOrder.PLAYER_SHIP),
-            SpawnSlot("enemy_light", SceneOffset(300f.sceneUnit, (-120f).sceneUnit), Ship.TEAM_ENEMY, withAI = true, drawOrder = DrawOrder.ENEMY_SHIP),
-            SpawnSlot("enemy_medium", SceneOffset(350f.sceneUnit, 0f.sceneUnit), Ship.TEAM_ENEMY, withAI = true, drawOrder = DrawOrder.ENEMY_SHIP),
-            SpawnSlot("enemy_heavy", SceneOffset(300f.sceneUnit, 120f.sceneUnit), Ship.TEAM_ENEMY, withAI = true, drawOrder = DrawOrder.ENEMY_SHIP),
-        )
-
         // Evaluate the spawn gate once per unique design (designs may be reused
         // across multiple slots, e.g., two player ships share player_ship).
         // Slice B Unit 4: replaces the Slice A `.getOrThrow()` calls that would
         // crash the whole scene on any bundled design failing conversion.
-        val gateResults: Map<String, SpawnGateResult> = spawnSlots
+        val gateResults: Map<String, SpawnGateResult> = slots
             .map { it.designName }.distinct()
             .associateWith { name ->
                 val design = designs[name]
@@ -107,7 +107,7 @@ class GameStateManager(
         // Spawn loop — one slot at a time. Unready gates log and skip, letting
         // every other slot proceed independently. No single failure aborts the
         // scene setup.
-        for (slot in spawnSlots) {
+        for (slot in slots) {
             when (val gate = gateResults.getValue(slot.designName)) {
                 is SpawnGateResult.Ready -> createShip(
                     config = gate.config,
@@ -250,12 +250,24 @@ class GameStateManager(
         }
     }
 
+    /**
+     * Restart the most recently launched scene. Replays the cached
+     * [lastLaunched] slot list (custom scenario or demo) — `clearScene` does
+     * not clear that cache, so the result-screen "Restart" button always
+     * re-runs whatever the dev was playing. Falls back to the demo if no
+     * `startScene` has run yet (defensive — shouldn't happen in normal flow).
+     */
     suspend fun restartScene() {
         _gameResult.value = null
         clearScene()
-        startDemoScene()
+        startScene(lastLaunched ?: DemoScenarioPreset.SLOTS)
     }
 
+    /**
+     * Reset Kubriko-side actor state so a fresh scene can be set up. Does NOT
+     * clear [lastLaunched] — that cache decouples restart from scene transitions
+     * so a result → clear → restart cycle still replays the right slots.
+     */
     fun clearScene() {
         actorManager.removeAll()
         playerShips.clear()

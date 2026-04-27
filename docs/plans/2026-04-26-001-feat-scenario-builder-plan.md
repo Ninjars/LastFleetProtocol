@@ -238,7 +238,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 2a: GameStateManager refactor**
+- [x] **Unit 2a: GameStateManager refactor**
 
 **Goal.** Replace the private `SpawnSlot` data class with the public `SpawnSlotConfig`; expose a public `startScene(slots: List<SpawnSlotConfig>)` entry; reduce `startDemoScene` to literally `startScene(DemoScenarioPreset.SLOTS)`; add a private `lastLaunched` cache so `restartScene` re-runs the active scene. End state: production demo path's observable behaviour is unchanged; the manager has a public seam for arbitrary slot lists, but no caller uses it yet (Unit 2b wires the new caller).
 
