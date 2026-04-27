@@ -347,7 +347,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 4: `ScenarioBuilderVM` + intents/state/side-effects (test-first)**
+- [x] **Unit 4: `ScenarioBuilderVM` + intents/state/side-effects (test-first)**
 
 **Goal.** The MVI core of the scenario builder: state holds the in-progress scenario, intents drive edits and persistence, side effects route to the screen layer. End state: VM tests cover all intent paths against fakes for `ScenarioRepository`, `DefaultShipDesignLoader`, and `PendingScenario`; the VM compiles cleanly and is wireable from the screen.
 
