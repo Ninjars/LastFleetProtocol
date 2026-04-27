@@ -307,7 +307,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 3: `FileScenarioRepository` + `ScenarioRepository` contract**
+- [x] **Unit 3: `FileScenarioRepository` + `ScenarioRepository` contract**
 
 **Goal.** Persistence for named scenarios in `userDataDir/scenarios/`. End state: a `ScenarioRepository` instance can save/load/list/delete `Scenario`s by name; tests cover round-trip and sanitisation behaviour.
 
