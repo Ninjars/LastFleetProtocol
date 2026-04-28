@@ -404,7 +404,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 5: `ScenarioBuilderScreen` UI**
+- [x] **Unit 5: `ScenarioBuilderScreen` UI**
 
 **Goal.** The user-facing screen: top bar + two team panels + read-only mini-map. End state: from the dev menu, the dev sees the scenario builder, can compose a 2v2 from scratch, save and load, and click Launch.
 

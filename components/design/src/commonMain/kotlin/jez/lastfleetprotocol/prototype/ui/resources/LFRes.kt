@@ -88,12 +88,35 @@ import lastfleetprotocol.components.design.generated.resources.game_paused
 import lastfleetprotocol.components.design.generated.resources.game_victory
 import lastfleetprotocol.components.design.generated.resources.ic_add_2
 import lastfleetprotocol.components.design.generated.resources.ic_back
+import lastfleetprotocol.components.design.generated.resources.ic_delete
 import lastfleetprotocol.components.design.generated.resources.ic_exit
 import lastfleetprotocol.components.design.generated.resources.ic_menu
 import lastfleetprotocol.components.design.generated.resources.ic_music_off
 import lastfleetprotocol.components.design.generated.resources.ic_music_on
 import lastfleetprotocol.components.design.generated.resources.ic_sound_effects_off
 import lastfleetprotocol.components.design.generated.resources.ic_sound_effects_on
+import lastfleetprotocol.components.design.generated.resources.ic_warning
+import lastfleetprotocol.components.design.generated.resources.scenario_add_slot
+import lastfleetprotocol.components.design.generated.resources.scenario_ai_toggle
+import lastfleetprotocol.components.design.generated.resources.scenario_broken_slot_banner
+import lastfleetprotocol.components.design.generated.resources.scenario_builder_landing_link
+import lastfleetprotocol.components.design.generated.resources.scenario_builder_title
+import lastfleetprotocol.components.design.generated.resources.scenario_enemy_team
+import lastfleetprotocol.components.design.generated.resources.scenario_launch
+import lastfleetprotocol.components.design.generated.resources.scenario_launch_disabled_hint
+import lastfleetprotocol.components.design.generated.resources.scenario_load
+import lastfleetprotocol.components.design.generated.resources.scenario_load_dialog_title
+import lastfleetprotocol.components.design.generated.resources.scenario_minimap_empty
+import lastfleetprotocol.components.design.generated.resources.scenario_name_label
+import lastfleetprotocol.components.design.generated.resources.scenario_no_saved_scenarios
+import lastfleetprotocol.components.design.generated.resources.scenario_overwrite_confirm_message
+import lastfleetprotocol.components.design.generated.resources.scenario_overwrite_confirm_title
+import lastfleetprotocol.components.design.generated.resources.scenario_player_team
+import lastfleetprotocol.components.design.generated.resources.scenario_remove_slot
+import lastfleetprotocol.components.design.generated.resources.scenario_save
+import lastfleetprotocol.components.design.generated.resources.scenario_use_demo_defaults
+import lastfleetprotocol.components.design.generated.resources.scenario_x_position
+import lastfleetprotocol.components.design.generated.resources.scenario_y_position
 import lastfleetprotocol.components.design.generated.resources.megrim_regular
 import lastfleetprotocol.components.design.generated.resources.sairacondensed_black
 import lastfleetprotocol.components.design.generated.resources.sairacondensed_bold
@@ -118,12 +141,14 @@ object LFRes {
     object Drawable {
         val ic_exit: DrawableResource = Res.drawable.ic_exit
         val ic_back: DrawableResource = Res.drawable.ic_back
+        val ic_delete: DrawableResource = Res.drawable.ic_delete
         val ic_menu: DrawableResource = Res.drawable.ic_menu
         val ic_music_off: DrawableResource = Res.drawable.ic_music_off
         val ic_music_on: DrawableResource = Res.drawable.ic_music_on
         val ic_sound_effects_off: DrawableResource = Res.drawable.ic_sound_effects_off
         val ic_sound_effects_on: DrawableResource = Res.drawable.ic_sound_effects_on
         val ic_add: DrawableResource = Res.drawable.ic_add_2
+        val ic_warning: DrawableResource = Res.drawable.ic_warning
         val sprite_ship: DrawableResource = Res.drawable.sprite_ship
         val sprite_alien_ship: DrawableResource = Res.drawable.sprite_alien_ship
         val sprite_power_up: DrawableResource = Res.drawable.sprite_power_up
@@ -225,6 +250,29 @@ object LFRes {
         val export_toast_clipboard: StringResource = Res.string.export_toast_clipboard
         val export_toast_error: StringResource = Res.string.export_toast_error
         val export_toast_bundle_collision: StringResource = Res.string.export_toast_bundle_collision
+
+        // Scenario builder (Item B)
+        val scenario_builder_title: StringResource = Res.string.scenario_builder_title
+        val scenario_builder_landing_link: StringResource = Res.string.scenario_builder_landing_link
+        val scenario_player_team: StringResource = Res.string.scenario_player_team
+        val scenario_enemy_team: StringResource = Res.string.scenario_enemy_team
+        val scenario_add_slot: StringResource = Res.string.scenario_add_slot
+        val scenario_use_demo_defaults: StringResource = Res.string.scenario_use_demo_defaults
+        val scenario_save: StringResource = Res.string.scenario_save
+        val scenario_load: StringResource = Res.string.scenario_load
+        val scenario_launch: StringResource = Res.string.scenario_launch
+        val scenario_launch_disabled_hint: StringResource = Res.string.scenario_launch_disabled_hint
+        val scenario_remove_slot: StringResource = Res.string.scenario_remove_slot
+        val scenario_x_position: StringResource = Res.string.scenario_x_position
+        val scenario_y_position: StringResource = Res.string.scenario_y_position
+        val scenario_ai_toggle: StringResource = Res.string.scenario_ai_toggle
+        val scenario_broken_slot_banner: StringResource = Res.string.scenario_broken_slot_banner
+        val scenario_load_dialog_title: StringResource = Res.string.scenario_load_dialog_title
+        val scenario_no_saved_scenarios: StringResource = Res.string.scenario_no_saved_scenarios
+        val scenario_overwrite_confirm_title: StringResource = Res.string.scenario_overwrite_confirm_title
+        val scenario_overwrite_confirm_message: StringResource = Res.string.scenario_overwrite_confirm_message
+        val scenario_minimap_empty: StringResource = Res.string.scenario_minimap_empty
+        val scenario_name_label: StringResource = Res.string.scenario_name_label
     }
 
     object Font {

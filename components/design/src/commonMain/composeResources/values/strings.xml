@@ -92,4 +92,27 @@
     <string name="export_toast_bundle_collision">Slug \"%1$s\" matches bundled asset — rename to disambiguate</string>
     <string name="builder_export_item">Export</string>
     <string name="builder_export_design">Export Design</string>
+
+    <!-- Scenario builder (Item B) -->
+    <string name="scenario_builder_title">Scenario Builder</string>
+    <string name="scenario_builder_landing_link">Scenario Builder (dev)</string>
+    <string name="scenario_player_team">Player Team</string>
+    <string name="scenario_enemy_team">Enemy Team</string>
+    <string name="scenario_add_slot">Add Slot</string>
+    <string name="scenario_use_demo_defaults">Use Demo Defaults</string>
+    <string name="scenario_save">Save</string>
+    <string name="scenario_load">Load</string>
+    <string name="scenario_launch">Launch</string>
+    <string name="scenario_launch_disabled_hint">Each team needs at least one valid ship</string>
+    <string name="scenario_remove_slot">Remove Slot</string>
+    <string name="scenario_x_position">X</string>
+    <string name="scenario_y_position">Y</string>
+    <string name="scenario_ai_toggle">AI</string>
+    <string name="scenario_broken_slot_banner">Broken slot(s) will be skipped at launch</string>
+    <string name="scenario_load_dialog_title">Load Scenario</string>
+    <string name="scenario_no_saved_scenarios">No saved scenarios found.</string>
+    <string name="scenario_overwrite_confirm_title">Overwrite scenario?</string>
+    <string name="scenario_overwrite_confirm_message">A scenario with this name already exists. Overwrite it?</string>
+    <string name="scenario_minimap_empty">Add slots to position ships.</string>
+    <string name="scenario_name_label">Scenario Name</string>
 </resources>
