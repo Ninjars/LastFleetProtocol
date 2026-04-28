@@ -55,7 +55,6 @@ class ScenarioBuilderVM(
             it.copy(
                 designName = "Scenario ${saved.size + 1}",
                 savedScenarios = saved,
-                canShowLoadDialog = saved.isNotEmpty(),
             )
         }
         viewModelScope.launch {
@@ -150,9 +149,21 @@ class ScenarioBuilderVM(
     }
 
     private fun persistScenario(scenario: Scenario) {
-        scenarioRepository.save(scenario)
+        try {
+            scenarioRepository.save(scenario)
+        } catch (e: Exception) {
+            // Disk full, permission error, or any other IO failure. Surface the
+            // failure to the dev — without this guard the coroutine crashes
+            // silently and the UI's saved-list refresh below would falsely
+            // imply success.
+            println("Failed to save scenario \"${scenario.name}\": $e")
+            emitSideEffect(
+                ScenarioBuilderSideEffect.ShowToast("Failed to save \"${scenario.name}\""),
+            )
+            return
+        }
         val saved = scenarioRepository.listAll()
-        _state.update { it.copy(savedScenarios = saved, canShowLoadDialog = saved.isNotEmpty()) }
+        _state.update { it.copy(savedScenarios = saved) }
         emitSideEffect(ScenarioBuilderSideEffect.ShowToast("Saved scenario \"${scenario.name}\""))
     }
 

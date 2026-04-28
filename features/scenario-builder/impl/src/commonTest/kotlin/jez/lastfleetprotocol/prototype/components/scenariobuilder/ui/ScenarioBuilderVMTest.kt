@@ -12,6 +12,7 @@ import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesign
 import jez.lastfleetprotocol.prototype.components.scenariobuilder.ui.entities.ScenarioBuilderIntent
 import jez.lastfleetprotocol.prototype.components.scenariobuilder.ui.entities.ScenarioBuilderSideEffect
 import jez.lastfleetprotocol.prototype.components.scenariobuilder.ui.entities.ScenarioTeam
+import jez.lastfleetprotocol.prototype.utils.sanitizeFilenameStem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CompletableDeferred
@@ -62,17 +63,25 @@ class ScenarioBuilderVMTest {
 
     // --- Fakes ---
 
+    /**
+     * Mirrors `FileScenarioRepository`: keys are the sanitised filename stems
+     * (matching what `listAll()` returns in production), not the raw display
+     * names. Earlier revisions of this fake stored by raw name and silently
+     * masked overwrite-collision bugs for any name containing characters the
+     * sanitiser strips (e.g. "Mk.II" → on-disk "Mk_II"). The collision check
+     * in `ScenarioBuilderVM.handleSave` compares against sanitised stems.
+     */
     private class FakeScenarioRepository(
         private val store: MutableMap<String, Scenario> = mutableMapOf(),
     ) : ScenarioRepository {
         var saveCount = 0
         override fun save(scenario: Scenario) {
-            store[scenario.name] = scenario
+            store[sanitizeFilenameStem(scenario.name)] = scenario
             saveCount++
         }
-        override fun load(name: String): Scenario? = store[name]
+        override fun load(name: String): Scenario? = store[sanitizeFilenameStem(name)]
         override fun listAll(): List<String> = store.keys.toList()
-        override fun delete(name: String) { store.remove(name) }
+        override fun delete(name: String) { store.remove(sanitizeFilenameStem(name)) }
     }
 
     /**
@@ -258,6 +267,38 @@ class ScenarioBuilderVMTest {
 
         assertEquals(saveCountBefore + 1, repo.saveCount)
         assertNull(vm.state.value.showOverwriteConfirm)
+    }
+
+    @Test
+    fun saveClicked_emptyName_emitsToast_doesNotPersist() {
+        val repo = FakeScenarioRepository()
+        val vm = makeVM(repo = repo)
+        startCollecting(vm)
+        vm.accept(ScenarioBuilderIntent.RenameScenario("   "))
+
+        val saveCountBefore = repo.saveCount
+        vm.accept(ScenarioBuilderIntent.SaveClicked)
+
+        assertEquals(saveCountBefore, repo.saveCount, "blank name must not persist")
+        val toast = captured.filterIsInstance<ScenarioBuilderSideEffect.ShowToast>().single()
+        assertContains(toast.text, "Name cannot be empty")
+    }
+
+    @Test
+    fun saveClicked_collisionUsesSanitisedStem_notRawName() {
+        // "Mk.II" sanitises to "Mk_II". A pre-existing save under that stem
+        // must trigger the overwrite confirm even though the raw display
+        // names look different.
+        val repo = FakeScenarioRepository()
+        repo.save(Scenario(name = "Mk_II"))
+        val vm = makeVM(repo = repo)
+        vm.accept(ScenarioBuilderIntent.RenameScenario("Mk.II"))
+
+        val saveCountBefore = repo.saveCount
+        vm.accept(ScenarioBuilderIntent.SaveClicked)
+
+        assertEquals(saveCountBefore, repo.saveCount, "save must wait for ConfirmOverwrite")
+        assertNotNull(vm.state.value.showOverwriteConfirm)
     }
 
     @Test

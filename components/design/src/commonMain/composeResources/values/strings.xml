@@ -108,7 +108,7 @@
     <string name="scenario_x_position">X</string>
     <string name="scenario_y_position">Y</string>
     <string name="scenario_ai_toggle">AI</string>
-    <string name="scenario_broken_slot_banner">Broken slot(s) will be skipped at launch</string>
+    <string name="scenario_broken_slot_banner">%1$d broken slot(s) will be skipped at launch</string>
     <string name="scenario_load_dialog_title">Load Scenario</string>
     <string name="scenario_no_saved_scenarios">No saved scenarios found.</string>
     <string name="scenario_overwrite_confirm_title">Overwrite scenario?</string>

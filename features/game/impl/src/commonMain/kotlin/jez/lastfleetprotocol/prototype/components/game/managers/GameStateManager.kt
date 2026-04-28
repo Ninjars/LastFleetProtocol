@@ -78,10 +78,12 @@ class GameStateManager(
      * behaviour.
      */
     suspend fun startScene(slots: List<SpawnSlotConfig>) {
-        lastLaunched = slots
         stateManager.updateIsRunning(true)
 
-        // Load designs and turret guns (cached after first load)
+        // Load designs and turret guns (cached after first load). Do NOT cache
+        // [slots] in [lastLaunched] until the loader work succeeds — a throw
+        // here would otherwise leave restartScene replaying a scene that
+        // never started, producing a crash loop.
         val designs = shipDesignLoader.loadAll()
         val turretGuns = turretGunLoader.load()
 
@@ -157,6 +159,11 @@ class GameStateManager(
             stateManager.updateIsRunning(false)
             onGameResult?.invoke(startupResult)
         }
+
+        // Cache only after the spawn loop has run to completion — a thrown
+        // exception above leaves [lastLaunched] at its previous value so
+        // restartScene falls back gracefully.
+        lastLaunched = slots
     }
 
     private fun createShip(

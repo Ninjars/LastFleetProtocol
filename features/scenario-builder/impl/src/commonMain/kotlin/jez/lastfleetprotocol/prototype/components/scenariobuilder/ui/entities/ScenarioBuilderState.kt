@@ -46,8 +46,11 @@ data class ScenarioBuilderState(
     val showOverwriteConfirm: Scenario? = null,
     val libraryShipNames: List<String> = emptyList(),
     val libraryReady: Boolean = false,
-    val canShowLoadDialog: Boolean = false,
 ) {
+
+    /** Derived from [savedScenarios]; the load dialog only opens with content. */
+    val canShowLoadDialog: Boolean
+        get() = savedScenarios.isNotEmpty()
 
     /**
      * Slots whose `designName` no longer resolves against the bundled library.
@@ -70,7 +73,10 @@ data class ScenarioBuilderState(
      * ready so broken-slot detection is meaningful.
      */
     val canLaunch: Boolean
-        get() = libraryReady &&
-            slots.any { it.team == ScenarioTeam.PLAYER && it.id !in brokenSlotIds } &&
-            slots.any { it.team == ScenarioTeam.ENEMY && it.id !in brokenSlotIds }
+        get() {
+            if (!libraryReady) return false
+            val broken = brokenSlotIds // capture once — avoid recomputing inside the any{} loops
+            return slots.any { it.team == ScenarioTeam.PLAYER && it.id !in broken } &&
+                slots.any { it.team == ScenarioTeam.ENEMY && it.id !in broken }
+        }
 }

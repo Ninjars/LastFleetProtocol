@@ -209,7 +209,7 @@ private fun BrokenSlotBanner(brokenCount: Int) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "$brokenCount " + stringResource(LFRes.String.scenario_broken_slot_banner),
+                text = stringResource(LFRes.String.scenario_broken_slot_banner, brokenCount),
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
         }
@@ -250,6 +250,10 @@ private fun TeamPanel(
         Spacer(modifier = Modifier.height(4.dp))
         LFTextButton(
             text = stringResource(LFRes.String.scenario_add_slot),
+            // Disabled until the library has loaded — otherwise AddSlot would
+            // seed an empty designName which becomes a permanently-broken slot
+            // once libraryReady flips true.
+            enabled = state.libraryReady,
             onClick = { onIntent(ScenarioBuilderIntent.AddSlot(team)) },
         )
         LFTextButton(
