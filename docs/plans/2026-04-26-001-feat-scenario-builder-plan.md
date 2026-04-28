@@ -491,7 +491,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 7: `DemoScenarioPreset` parity + production-demo unchanged**
+- [x] **Unit 7: `DemoScenarioPreset` parity + production-demo unchanged**
 
 **Goal.** Lock the discipline. Tests assert that (a) the production `startDemoScene` path produces the same `SpawnSlotConfig` list as the scenario-builder "Use demo defaults" path, and (b) the canonical demo's positional and identity fields haven't drifted from a fixture.
 
