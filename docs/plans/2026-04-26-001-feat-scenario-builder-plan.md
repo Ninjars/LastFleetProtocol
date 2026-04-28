@@ -451,7 +451,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 6: `DevToolsGate` + landing-screen wiring + nav + AppComponent**
+- [x] **Unit 6: `DevToolsGate` + landing-screen wiring + nav + AppComponent**
 
 **Goal.** Make the scenario builder reachable. End state: on Desktop with `lfp.repo.root` set, the landing screen shows a "Scenario Builder (dev)" link appended to the existing button column; clicking it navigates to the scenario builder; on Android (or Desktop without the gate open), no link.
 

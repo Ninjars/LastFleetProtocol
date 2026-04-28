@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import jez.lastfleetprotocol.prototype.components.game.GameScreenEntry
 import jez.lastfleetprotocol.prototype.components.landingscreen.LandingScreenEntry
+import jez.lastfleetprotocol.prototype.components.scenariobuilder.ScenarioBuilderScreenEntry
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ShipBuilderScreenEntry
 import jez.lastfleetprotocol.prototype.components.splashscreen.SplashScreenEntry
 import me.tatarka.inject.annotations.Inject
@@ -19,6 +20,7 @@ fun LFNavHost(
     landingScreen: LandingScreenEntry,
     gameScreen: GameScreenEntry,
     shipBuilderScreen: ShipBuilderScreenEntry,
+    scenarioBuilderScreen: ScenarioBuilderScreenEntry,
 ) {
     val navController = rememberNavController()
     NavHost(
@@ -36,6 +38,9 @@ fun LFNavHost(
         }
         composable(LFNavDestination.SHIP_BUILDER) {
             shipBuilderScreen(navController)
+        }
+        composable(LFNavDestination.SCENARIO_BUILDER) {
+            scenarioBuilderScreen(navController)
         }
         composable(LFNavDestination.SETTINGS) {}
     }
