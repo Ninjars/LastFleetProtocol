@@ -1,7 +1,7 @@
 ---
 title: "feat: Scenario Builder — compose-and-launch dev tool"
 type: feat
-status: active
+status: completed
 date: 2026-04-26
 origin: docs/brainstorms/2026-04-26-scenario-builder-requirements.md
 ---
