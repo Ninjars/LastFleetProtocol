@@ -48,6 +48,8 @@ fun LandingScreen(
             is LandingSideEffect.GoToSettings -> navController.navigate(LFNavDestination.SETTINGS)
             is LandingSideEffect.StartNewGame -> navController.navigate(LFNavDestination.GAME)
             is LandingSideEffect.GoToShipBuilder -> navController.navigate(LFNavDestination.SHIP_BUILDER)
+            is LandingSideEffect.GoToScenarioBuilder ->
+                navController.navigate(LFNavDestination.SCENARIO_BUILDER)
         }
     }
 
@@ -129,6 +131,15 @@ private fun LandingScreenContent(
             eventHandler.accept(LandingIntent.ShowSettingsClicked)
         }
 
+        if (state.canShowDevTools) {
+            Spacer(modifier = Modifier.height(16.dp))
+            LFTextButton(
+                textRes = LFRes.String.scenario_builder_landing_link,
+            ) {
+                eventHandler.accept(LandingIntent.ScenarioBuilderClicked)
+            }
+        }
+
         Spacer(modifier = Modifier.weight(1f))
     }
 }
@@ -143,6 +154,7 @@ private fun LandingScreenPreview() {
                 soundEffectsEnabled = false,
                 hasSaveGame = true,
                 kubriko = Kubriko.newInstance(),
+                canShowDevTools = true,
             ),
         ) {}
     }

@@ -11,7 +11,7 @@ import lastfleetprotocol.components.game_core.api.generated.resources.Res
  *
  * Provide via `@Provides` in AppComponent — kotlin-inject is not available in game-core/api.
  */
-class DefaultShipDesignLoader {
+open class DefaultShipDesignLoader {
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -20,8 +20,11 @@ class DefaultShipDesignLoader {
     /**
      * Load all default ship designs. Must be called from a coroutine context
      * (Res.readBytes is suspending). Safe to call multiple times — returns cached results.
+     *
+     * `open` so consumer-side VMs (e.g., `ScenarioBuilderVM`) can be unit-tested
+     * with a fake loader that doesn't touch bundled resources.
      */
-    suspend fun loadAll(): Map<String, ShipDesign> {
+    open suspend fun loadAll(): Map<String, ShipDesign> {
         cached?.let { return it }
 
         val designs = mutableMapOf<String, ShipDesign>()

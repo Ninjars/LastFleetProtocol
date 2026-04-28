@@ -7,6 +7,7 @@ import jez.lastfleetprotocol.prototype.components.preferences.SetMusicEnabled
 import jez.lastfleetprotocol.prototype.components.preferences.SetSoundEffectsEnabled
 import jez.lastfleetprotocol.prototype.components.preferences.UserPreferences
 import jez.lastfleetprotocol.prototype.ui.common.ViewModelContract
+import jez.lastfleetprotocol.prototype.utils.export.DevToolsGate
 import jez.lastfleetprotocol.prototype.utils.stateInWhileSubscribed
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ sealed interface LandingIntent {
     data object ShowSettingsClicked : LandingIntent
     data object PlayClicked : LandingIntent
     data object ShipBuilderClicked : LandingIntent
+    data object ScenarioBuilderClicked : LandingIntent
 }
 
 data class LandingState(
@@ -27,12 +29,19 @@ data class LandingState(
     val soundEffectsEnabled: Boolean,
     val hasSaveGame: Boolean?,
     val kubriko: Kubriko,
+    /**
+     * Item B: dev-only `Scenario Builder (dev)` link visibility. Frozen at
+     * VM construction from `DevToolsGate.isAvailable` — the gate doesn't
+     * change at runtime within a process, so a static snapshot is sufficient.
+     */
+    val canShowDevTools: Boolean,
 )
 
 sealed interface LandingSideEffect {
     data object StartNewGame : LandingSideEffect
     data object GoToSettings : LandingSideEffect
     data object GoToShipBuilder : LandingSideEffect
+    data object GoToScenarioBuilder : LandingSideEffect
 }
 
 private data class InternalState(
@@ -57,9 +66,15 @@ class LandingVM(
     userPreferences: UserPreferences,
     private val setMusicEnabled: SetMusicEnabled,
     private val setSoundEffectsEnabled: SetSoundEffectsEnabled,
+    devToolsGate: DevToolsGate,
 ) : ViewModelContract<LandingIntent, LandingState, LandingSideEffect>() {
 
     private val internalState = MutableStateFlow(InternalState.default)
+
+    // Item B: gate snapshot is taken once at construction. The gate's
+    // underlying value (system property + filesystem) is fixed for the
+    // process lifetime, so a one-shot read is sufficient — no Flow needed.
+    private val canShowDevTools: Boolean = devToolsGate.isAvailable
 
     override val state: StateFlow<LandingState> = combine(
         internalState,
@@ -70,7 +85,8 @@ class LandingVM(
             internalState,
             musicEnabled,
             soundEffectsEnabled,
-            gameStateHolder.gameKubriko
+            gameStateHolder.gameKubriko,
+            canShowDevTools,
         )
     }.stateInWhileSubscribed(
         viewModelScope, createViewState(
@@ -78,6 +94,7 @@ class LandingVM(
             musicEnabled = false,
             soundEffectsEnabled = false,
             kubriko = gameStateHolder.gameKubriko,
+            canShowDevTools = canShowDevTools,
         )
     )
 
@@ -87,6 +104,7 @@ class LandingVM(
                 is LandingIntent.PlayClicked -> handlePlayClicked(internalState.value.saveGame)
                 is LandingIntent.ShowSettingsClicked -> sendSideEffect(LandingSideEffect.GoToSettings)
                 is LandingIntent.ShipBuilderClicked -> sendSideEffect(LandingSideEffect.GoToShipBuilder)
+                is LandingIntent.ScenarioBuilderClicked -> sendSideEffect(LandingSideEffect.GoToScenarioBuilder)
                 is LandingIntent.ToggleMusicClicked -> setMusicEnabled(intent.setEnabled)
                 is LandingIntent.ToggleSoundEffectsClicked -> setSoundEffectsEnabled(intent.setEnabled)
             }
@@ -109,7 +127,8 @@ class LandingVM(
             internalState: InternalState,
             musicEnabled: Boolean,
             soundEffectsEnabled: Boolean,
-            kubriko: Kubriko
+            kubriko: Kubriko,
+            canShowDevTools: Boolean,
         ) =
             LandingState(
                 kubriko = kubriko,
@@ -119,7 +138,8 @@ class LandingVM(
                     is InternalState.SaveGameState.Checking -> null
                     is InternalState.SaveGameState.Data -> true
                     is InternalState.SaveGameState.NoSaveGame -> false
-                }
+                },
+                canShowDevTools = canShowDevTools,
             )
     }
 }

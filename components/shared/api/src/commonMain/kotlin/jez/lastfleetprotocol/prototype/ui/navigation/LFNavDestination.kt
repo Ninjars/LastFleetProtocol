@@ -6,4 +6,5 @@ object LFNavDestination {
     const val GAME = "game"
     const val SETTINGS = "settings"
     const val SHIP_BUILDER = "ship_builder"
+    const val SCENARIO_BUILDER = "scenario_builder"
 }

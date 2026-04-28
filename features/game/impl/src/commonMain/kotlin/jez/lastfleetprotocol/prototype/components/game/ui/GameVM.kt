@@ -5,6 +5,7 @@ import com.pandulapeter.kubriko.Kubriko
 import jez.lastfleetprotocol.prototype.components.game.GameStateHolder
 import jez.lastfleetprotocol.prototype.components.game.managers.GameStateManager
 import jez.lastfleetprotocol.prototype.components.game.managers.GameStateManager.GameResult
+import jez.lastfleetprotocol.prototype.components.gamecore.scenarios.PendingScenario
 import jez.lastfleetprotocol.prototype.ui.common.ViewModelContract
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,7 +37,16 @@ sealed interface GameSideEffect {
 class GameVM(
     gameStateHolder: GameStateHolder,
     private val gameStateManager: GameStateManager,
+    pendingScenario: PendingScenario,
 ) : ViewModelContract<GameIntent, GameState, GameSideEffect>() {
+
+    /**
+     * Consumed at construction so the production Play-from-landing path that
+     * follows a scenario-builder launch never replays stale slots. Read-and-
+     * cleared in one step; persistence of "what is currently running" lives
+     * in `GameStateManager.lastLaunched`, not here.
+     */
+    private val initialSlots = pendingScenario.consume()
 
     private val _isPaused = MutableStateFlow(false)
 
@@ -102,6 +112,10 @@ class GameVM(
     }
 
     init {
-        viewModelScope.launch { gameStateManager.startDemoScene() }
+        viewModelScope.launch {
+            initialSlots
+                ?.let { gameStateManager.startScene(it) }
+                ?: gameStateManager.startDemoScene()
+        }
     }
 }

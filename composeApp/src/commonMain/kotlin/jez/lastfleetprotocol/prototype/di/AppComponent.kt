@@ -19,11 +19,16 @@ import jez.lastfleetprotocol.prototype.components.game.GameScreenEntry
 import jez.lastfleetprotocol.prototype.components.game.ui.GameScreen
 import jez.lastfleetprotocol.prototype.components.gamecore.GameLoadingStatus
 import jez.lastfleetprotocol.prototype.components.gamecore.GameSessionState
+import jez.lastfleetprotocol.prototype.components.gamecore.scenarios.PendingScenario
 import jez.lastfleetprotocol.prototype.components.landingscreen.LandingScreenEntry
+import jez.lastfleetprotocol.prototype.components.gamecore.scenarios.ScenarioRepository
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.DefaultShipDesignLoader
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ItemLibraryRepository
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.ShipDesignRepository
 import jez.lastfleetprotocol.prototype.components.gamecore.shipdesign.TurretGunLoader
+import jez.lastfleetprotocol.prototype.components.scenariobuilder.ScenarioBuilderScreenEntry
+import jez.lastfleetprotocol.prototype.components.scenariobuilder.data.FileScenarioRepository
+import jez.lastfleetprotocol.prototype.components.scenariobuilder.ui.ScenarioBuilderScreen
 import jez.lastfleetprotocol.prototype.components.shipbuilder.ShipBuilderScreenEntry
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.FileItemLibraryRepository
 import jez.lastfleetprotocol.prototype.components.shipbuilder.data.FileShipDesignRepository
@@ -42,6 +47,8 @@ import jez.lastfleetprotocol.prototype.di.DependencyName.KUBRIKO_GAME
 import jez.lastfleetprotocol.prototype.ui.navigation.LFNavHost
 import jez.lastfleetprotocol.prototype.utils.Constants
 import jez.lastfleetprotocol.prototype.utils.export.BundleIndex
+import jez.lastfleetprotocol.prototype.utils.export.DevToolsGate
+import jez.lastfleetprotocol.prototype.utils.export.DevToolsGateImpl
 import jez.lastfleetprotocol.prototype.utils.export.RepoExporter
 import jez.lastfleetprotocol.prototype.utils.export.RepoExporterImpl
 import me.tatarka.inject.annotations.Component
@@ -69,7 +76,13 @@ abstract class AppComponent(
     protected fun shipBuilderScreenEntry(shipBuilderScreen: ShipBuilderScreen): ShipBuilderScreenEntry = shipBuilderScreen
 
     @Provides
+    protected fun scenarioBuilderScreenEntry(scenarioBuilderScreen: ScenarioBuilderScreen): ScenarioBuilderScreenEntry = scenarioBuilderScreen
+
+    @Provides
     protected fun shipDesignRepository(fileRepo: FileShipDesignRepository): ShipDesignRepository = fileRepo
+
+    @Provides
+    protected fun scenarioRepository(fileRepo: FileScenarioRepository): ScenarioRepository = fileRepo
 
     @Provides
     protected fun itemLibraryRepository(fileRepo: FileItemLibraryRepository): ItemLibraryRepository = fileRepo
@@ -96,6 +109,24 @@ abstract class AppComponent(
     @Singleton
     @Provides
     protected fun repoExporter(impl: RepoExporterImpl): RepoExporter = impl
+
+    /**
+     * Item B: dev-tool gate. Today wraps `RepoExporter.isAvailable`; future
+     * dev tools that don't need repo-write can swap in a different impl
+     * without touching consumer-side code.
+     */
+    @Singleton
+    @Provides
+    protected fun devToolsGate(impl: DevToolsGateImpl): DevToolsGate = impl
+
+    /**
+     * Scenario-builder launch-path seam (Item B). Singleton so the scenario
+     * builder writer and `GameVM` reader share the same instance. Consume-
+     * on-read semantics live in `PendingScenario.consume()`.
+     */
+    @Singleton
+    @Provides
+    protected fun pendingScenario(): PendingScenario = PendingScenario()
 
     @Singleton
     @Provides

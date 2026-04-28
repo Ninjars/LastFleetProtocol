@@ -51,6 +51,8 @@ kotlin {
             implementation(project(":features:game:impl"))
             implementation(project(":features:ship-builder:api"))
             implementation(project(":features:ship-builder:impl"))
+            implementation(project(":features:scenario-builder:api"))
+            implementation(project(":features:scenario-builder:impl"))
 
             implementation(compose.runtime)
             implementation(compose.foundation)

@@ -1,7 +1,7 @@
 ---
 title: "feat: Scenario Builder — compose-and-launch dev tool"
 type: feat
-status: active
+status: completed
 date: 2026-04-26
 origin: docs/brainstorms/2026-04-26-scenario-builder-requirements.md
 ---
@@ -199,7 +199,7 @@ sequenceDiagram
 
 ## Implementation Units
 
-- [ ] **Unit 1: Scenario data model + sanitiser helper + DemoScenarioPreset**
+- [x] **Unit 1: Scenario data model + sanitiser helper + DemoScenarioPreset**
 
 **Goal.** Land the pure-domain types and shared sanitiser. End state: `:components:game-core:api` and `:components:shared:api` build cleanly across JVM and Android with the new types in place; `FileShipDesignRepository` switches to the lifted sanitiser without behavioural change. No other consumer yet.
 
@@ -238,7 +238,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 2a: GameStateManager refactor**
+- [x] **Unit 2a: GameStateManager refactor**
 
 **Goal.** Replace the private `SpawnSlot` data class with the public `SpawnSlotConfig`; expose a public `startScene(slots: List<SpawnSlotConfig>)` entry; reduce `startDemoScene` to literally `startScene(DemoScenarioPreset.SLOTS)`; add a private `lastLaunched` cache so `restartScene` re-runs the active scene. End state: production demo path's observable behaviour is unchanged; the manager has a public seam for arbitrary slot lists, but no caller uses it yet (Unit 2b wires the new caller).
 
@@ -275,7 +275,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 2b: `PendingScenario` holder + GameVM consume-on-read**
+- [x] **Unit 2b: `PendingScenario` holder + GameVM consume-on-read**
 
 **Goal.** Introduce the launch-path seam: a `@Singleton` holder that scenario-builder writes to, and a `GameVM.init` that reads-and-clears it in one step before dispatching to `startScene` (custom) or `startDemoScene` (production demo). End state: an outside caller (Unit 4's VM) can write to `PendingScenario` and Game launches with custom slots; the production Play path that follows is guaranteed to see null.
 
@@ -307,7 +307,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 3: `FileScenarioRepository` + `ScenarioRepository` contract**
+- [x] **Unit 3: `FileScenarioRepository` + `ScenarioRepository` contract**
 
 **Goal.** Persistence for named scenarios in `userDataDir/scenarios/`. End state: a `ScenarioRepository` instance can save/load/list/delete `Scenario`s by name; tests cover round-trip and sanitisation behaviour.
 
@@ -347,7 +347,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 4: `ScenarioBuilderVM` + intents/state/side-effects (test-first)**
+- [x] **Unit 4: `ScenarioBuilderVM` + intents/state/side-effects (test-first)**
 
 **Goal.** The MVI core of the scenario builder: state holds the in-progress scenario, intents drive edits and persistence, side effects route to the screen layer. End state: VM tests cover all intent paths against fakes for `ScenarioRepository`, `DefaultShipDesignLoader`, and `PendingScenario`; the VM compiles cleanly and is wireable from the screen.
 
@@ -404,7 +404,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 5: `ScenarioBuilderScreen` UI**
+- [x] **Unit 5: `ScenarioBuilderScreen` UI**
 
 **Goal.** The user-facing screen: top bar + two team panels + read-only mini-map. End state: from the dev menu, the dev sees the scenario builder, can compose a 2v2 from scratch, save and load, and click Launch.
 
@@ -451,7 +451,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 6: `DevToolsGate` + landing-screen wiring + nav + AppComponent**
+- [x] **Unit 6: `DevToolsGate` + landing-screen wiring + nav + AppComponent**
 
 **Goal.** Make the scenario builder reachable. End state: on Desktop with `lfp.repo.root` set, the landing screen shows a "Scenario Builder (dev)" link appended to the existing button column; clicking it navigates to the scenario builder; on Android (or Desktop without the gate open), no link.
 
@@ -491,7 +491,7 @@ sequenceDiagram
 
 ---
 
-- [ ] **Unit 7: `DemoScenarioPreset` parity + production-demo unchanged**
+- [x] **Unit 7: `DemoScenarioPreset` parity + production-demo unchanged**
 
 **Goal.** Lock the discipline. Tests assert that (a) the production `startDemoScene` path produces the same `SpawnSlotConfig` list as the scenario-builder "Use demo defaults" path, and (b) the canonical demo's positional and identity fields haven't drifted from a fixture.
 
