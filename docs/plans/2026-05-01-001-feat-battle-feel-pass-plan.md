@@ -342,7 +342,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 6: `ShipNavigator` cruiser-class AI tuning**
+- [x] **Unit 6: `ShipNavigator` cruiser-class AI tuning**
 
 **Goal.** Tune cruiser-class navigation constants — `ARRIVAL_THRESHOLD`, `BRAKING_MARGIN`, `PROXIMITY_RADIUS_FACTOR`, etc. — so that a cruiser approaches a target at scale, brakes at a sensible distance proportional to its (rebased) mass and the new effective range, and orbits at a tactical engagement distance. Slice A's `stoppingDistanceUnderDrag` formula stays unchanged — only the input values change.
 

@@ -54,8 +54,11 @@ class Turret(
      * they still rotate-toward-target for visual feedback. `ProjectileStats` is an
      * immutable `@Serializable` data class, so the cache is stable for the turret's
      * lifetime.
+     *
+     * Public so AI modules (`BasicAI`) can derive their orbit-engagement distance
+     * from the ship's actual weapon reach rather than a global hardcode (item C unit 6).
      */
-    private val effectiveRangeM: Float = gunData.projectileStats.effectiveRangeM()
+    val effectiveRangeM: Float = gunData.projectileStats.effectiveRangeM()
 
     /**
      * When false, [update] short-circuits: target is dropped, aim angle is cleared,

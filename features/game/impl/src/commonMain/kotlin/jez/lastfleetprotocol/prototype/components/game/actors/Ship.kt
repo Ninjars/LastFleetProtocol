@@ -109,6 +109,15 @@ class Ship(
         )
     }
 
+    /**
+     * Item C unit 6: largest weapon's effective range across all turrets, in metres.
+     * `BasicAI` derives its orbit-engagement distance from this so cruisers approach
+     * to within firing range of their longest weapon, not a global hardcode.
+     * Returns 0f when the ship has no turrets — caller handles the fallback.
+     */
+    fun maxTurretEffectiveRangeM(): Float =
+        turrets.maxOfOrNull { it.effectiveRangeM } ?: 0f
+
     override val actors: List<Actor> = hullColliders + turrets + headingIndicator
 
     override var velocity: SceneOffset

@@ -230,7 +230,13 @@ class ShipNavigator(
     }
 
     companion object {
-        private const val ARRIVAL_THRESHOLD = 5f
+        // Item C unit 6: ARRIVAL_THRESHOLD bumped from 5m to 50m for cruiser-class
+        // scale. At 1 SU = 1 m and a 100m cruiser, 5m was too tight — any drift
+        // past the orbit point would loop into oscillation. 50m gives the
+        // navigator a sensible "we've arrived" tolerance proportional to ship size.
+        // Other constants remain proportional to hullRadius / speed and don't need
+        // class-specific rebasing — they scale automatically with the rebased ship.
+        private const val ARRIVAL_THRESHOLD = 50f
         private const val CORRECTION_EPSILON = 0.1f
         private const val DRAG_EPSILON = 0.0001f
         private const val BRAKING_MARGIN = 0.8f
