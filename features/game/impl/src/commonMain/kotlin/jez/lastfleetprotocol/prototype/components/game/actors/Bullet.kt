@@ -121,8 +121,13 @@ internal class Bullet(
             projectileStats.armourPiercing
         }
 
-        // Velocity-threshold expiration is the *primary* mechanism when drag is configured.
-        if (projectileStats.expirationVelocityFraction > 0f &&
+        // Velocity-threshold expiration is the *primary* mechanism when drag is
+        // configured. Guard on both dragK > 0 AND expirationVelocityFraction > 0
+        // — if dragK is zero, velocity never decays and the threshold check would
+        // never fire anyway, but the explicit guard prevents a config that has
+        // expirationVelocityFraction > 0 with dragK = 0 from being silently broken.
+        if (projectileStats.dragK > 0f &&
+            projectileStats.expirationVelocityFraction > 0f &&
             currentSpeed < projectileStats.expirationVelocityFraction * muzzleSpeed
         ) {
             actorManager.remove(this)

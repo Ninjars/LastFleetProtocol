@@ -141,6 +141,15 @@ class GameStateManager(
             inputController.registerShip(ship)
         }
 
+        // Cache lastLaunched as soon as the spawn loop is done (item B unit 2a
+        // pattern). Doing this BEFORE the camera setup means a hypothetical
+        // throw from setCameraPosition / setScaleFactor doesn't leave
+        // restartScene replaying the previous scene — it correctly re-runs
+        // whatever just spawned. Camera setup is best-effort; an exception
+        // there is recoverable on next Restart, but lastLaunched needs to
+        // reflect what's actually live on the field.
+        lastLaunched = slots
+
         // Item C unit 7: centre the camera on the player-team centroid at scene
         // start so the battlefield is framed without requiring an immediate pan.
         // Initial zoom is a fixed scale chosen to frame a ~3km cruiser-class
@@ -172,11 +181,6 @@ class GameStateManager(
             stateManager.updateIsRunning(false)
             onGameResult?.invoke(startupResult)
         }
-
-        // Cache only after the spawn loop has run to completion — a thrown
-        // exception above leaves [lastLaunched] at its previous value so
-        // restartScene falls back gracefully.
-        lastLaunched = slots
     }
 
     private fun createShip(

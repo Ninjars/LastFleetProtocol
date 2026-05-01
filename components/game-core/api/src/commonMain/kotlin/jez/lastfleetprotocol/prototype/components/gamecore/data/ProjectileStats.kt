@@ -57,15 +57,20 @@ fun ProjectileStats.effectiveRangeM(): Float =
 
 /**
  * Current speed at time [tSeconds] under exponential drag, given [ProjectileStats.speed]
- * as the muzzle velocity. Used by tests and by Unit 2's `Bullet` integration loop.
- * Returns [ProjectileStats.speed] unchanged when [ProjectileStats.dragK] is zero.
+ * as the muzzle velocity. Closed-form helper for tests and tuning calculations;
+ * the in-flight `Bullet` integrates per-frame via `velocity *= exp(-dragK * dt)`
+ * directly rather than calling this. Returns [ProjectileStats.speed] unchanged
+ * when [ProjectileStats.dragK] is zero.
  */
 fun ProjectileStats.speedAt(tSeconds: Float): Float =
     if (dragK > 0f) speed * exp(-dragK * tSeconds) else speed
 
 /**
  * Time in seconds until the projectile's velocity decays to [ProjectileStats.expirationVelocityFraction]
- * of the muzzle speed. Returns `Float.POSITIVE_INFINITY` when drag is unconfigured.
+ * of the muzzle speed. Closed-form tuning helper — useful when picking drag
+ * coefficients against a target effective-range time-of-flight. Not called from
+ * `Bullet.update`, which checks the current-velocity threshold each frame.
+ * Returns `Float.POSITIVE_INFINITY` when drag is unconfigured.
  */
 fun ProjectileStats.timeToExpirationVelocity(): Float =
     if (dragK > 0f && expirationVelocityFraction > 0f) {

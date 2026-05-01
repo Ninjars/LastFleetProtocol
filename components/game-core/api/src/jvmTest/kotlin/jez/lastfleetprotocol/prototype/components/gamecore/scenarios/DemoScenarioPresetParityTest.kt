@@ -41,16 +41,19 @@ class DemoScenarioPresetParityTest {
 
     @Test
     fun slotPositions_matchCanonical() {
-        // Player team at x = -1500m (3 km from enemy team), y = ±200m intra-team
-        assertEquals(-1500f, DemoScenarioPreset.SLOTS[0].position.x.raw)
+        // Player team at x = -2500m (5 km from enemy team), y = ±200m intra-team.
+        // 5 km separation puts ships outside the AI orbit distance
+        // (~3.6 km at ORBIT_RANGE_FRACTION=0.8 × turret_heavy effective range)
+        // so cruisers visibly approach and engage on scene start.
+        assertEquals(-2500f, DemoScenarioPreset.SLOTS[0].position.x.raw)
         assertEquals(-200f, DemoScenarioPreset.SLOTS[0].position.y.raw)
-        assertEquals(-1500f, DemoScenarioPreset.SLOTS[1].position.x.raw)
+        assertEquals(-2500f, DemoScenarioPreset.SLOTS[1].position.x.raw)
         assertEquals(200f, DemoScenarioPreset.SLOTS[1].position.y.raw)
 
-        // Enemy team at x = +1500m, y = ±200m intra-team
-        assertEquals(1500f, DemoScenarioPreset.SLOTS[2].position.x.raw)
+        // Enemy team at x = +2500m, y = ±200m intra-team
+        assertEquals(2500f, DemoScenarioPreset.SLOTS[2].position.x.raw)
         assertEquals(-200f, DemoScenarioPreset.SLOTS[2].position.y.raw)
-        assertEquals(1500f, DemoScenarioPreset.SLOTS[3].position.x.raw)
+        assertEquals(2500f, DemoScenarioPreset.SLOTS[3].position.x.raw)
         assertEquals(200f, DemoScenarioPreset.SLOTS[3].position.y.raw)
     }
 
@@ -72,13 +75,14 @@ class DemoScenarioPresetParityTest {
     @Test
     fun teamSeparation_matchesCruiserEngagementBand() {
         // Item C origin D2: cruiser engagement range 3-5 km.
-        // The demo's 3 km team separation lands exactly at the close end of
-        // the band — cruisers should immediately be in firing range when the
-        // scene starts. Drift detection: if positions ever change, the band
-        // assumption needs to be re-validated.
+        // The demo's 5 km separation lands at the far end of the band — outside
+        // the AI orbit-engagement distance (~3.6 km at ORBIT_RANGE_FRACTION=0.8)
+        // so cruisers visibly approach and engage rather than retreating to
+        // orbit. Drift detection: if positions ever change, re-validate that
+        // separation > orbit distance so the demo still shows approach behaviour.
         val playerXs = DemoScenarioPreset.SLOTS.filter { it.teamId == "player" }.map { it.position.x.raw }
         val enemyXs = DemoScenarioPreset.SLOTS.filter { it.teamId == "enemy" }.map { it.position.x.raw }
         val separation = (enemyXs.average() - playerXs.average()).toFloat()
-        assertEquals(3000f, separation, "team separation should match the 3km cruiser-engagement-band target")
+        assertEquals(5000f, separation, "team separation should match the 5km cruiser-engagement-band target")
     }
 }

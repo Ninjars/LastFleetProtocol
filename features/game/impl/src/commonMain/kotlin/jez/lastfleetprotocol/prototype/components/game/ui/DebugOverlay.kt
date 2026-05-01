@@ -63,12 +63,13 @@ internal fun DebugOverlay(
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
-                        // Track move/enter; explicitly do NOT call
+                        // Track Move + Enter only; do NOT observe Press events
+                        // (they can interfere with KubrikoViewport gesture
+                        // detection on Android). Explicitly do NOT call
                         // event.changes.forEach { it.consume() } — events
                         // propagate to children (KubrikoViewport) unchanged.
                         if (event.type == PointerEventType.Move ||
-                            event.type == PointerEventType.Enter ||
-                            event.type == PointerEventType.Press
+                            event.type == PointerEventType.Enter
                         ) {
                             mouseScreenPx = event.changes.firstOrNull()?.position
                         } else if (event.type == PointerEventType.Exit) {

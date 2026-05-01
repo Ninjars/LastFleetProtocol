@@ -12,10 +12,12 @@ import com.pandulapeter.kubriko.types.SceneOffset
  *
  * Item C unit 9 rebuilt this from the original 2-player + 3-enemy mixed-class
  * layout into the cruiser-vs-cruiser engagement that matches the
- * cruiser-only narrowed scope of item C. At 1 SU = 1 m, ±1500 SU on X
- * places the teams 3 km apart — within the 3-5 km cruiser engagement band
- * from origin D2. The ±200 SU intra-team offset on Y produces a 400 m
- * spacing between the two cruisers per side.
+ * cruiser-only narrowed scope of item C. At 1 SU = 1 m, ±2500 SU on X
+ * places the teams 5 km apart — outside the AI's orbit-engagement distance
+ * (≈3.6 km at ORBIT_RANGE_FRACTION=0.8 × turret_heavy effective range)
+ * so the cruisers visibly approach and engage rather than retreating to
+ * orbit. The ±200 SU intra-team offset on Y produces a 400 m spacing
+ * between the two cruisers per side.
  *
  * `teamId` values are inlined string literals because `Ship.TEAM_PLAYER` /
  * `TEAM_ENEMY` constants live in `:features:game:impl` (downstream of this
@@ -29,28 +31,28 @@ object DemoScenarioPreset {
     val SLOTS: List<SpawnSlotConfig> = listOf(
         SpawnSlotConfig(
             designName = "enemy_heavy",
-            position = SceneOffset((-1500f).sceneUnit, (-200f).sceneUnit),
+            position = SceneOffset((-2500f).sceneUnit, (-200f).sceneUnit),
             teamId = "player",
             withAI = false,
             drawOrder = 10f,
         ),
         SpawnSlotConfig(
             designName = "enemy_heavy",
-            position = SceneOffset((-1500f).sceneUnit, 200f.sceneUnit),
+            position = SceneOffset((-2500f).sceneUnit, 200f.sceneUnit),
             teamId = "player",
             withAI = false,
             drawOrder = 10f,
         ),
         SpawnSlotConfig(
             designName = "enemy_heavy",
-            position = SceneOffset(1500f.sceneUnit, (-200f).sceneUnit),
+            position = SceneOffset(2500f.sceneUnit, (-200f).sceneUnit),
             teamId = "enemy",
             withAI = true,
             drawOrder = 20f,
         ),
         SpawnSlotConfig(
             designName = "enemy_heavy",
-            position = SceneOffset(1500f.sceneUnit, 200f.sceneUnit),
+            position = SceneOffset(2500f.sceneUnit, 200f.sceneUnit),
             teamId = "enemy",
             withAI = true,
             drawOrder = 20f,

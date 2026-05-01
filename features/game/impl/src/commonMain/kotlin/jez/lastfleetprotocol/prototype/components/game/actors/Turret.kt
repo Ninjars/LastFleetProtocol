@@ -55,10 +55,13 @@ class Turret(
      * immutable `@Serializable` data class, so the cache is stable for the turret's
      * lifetime.
      *
-     * Public so AI modules (`BasicAI`) can derive their orbit-engagement distance
-     * from the ship's actual weapon reach rather than a global hardcode (item C unit 6).
+     * `internal` — read by `Ship.maxTurretEffectiveRangeM()` (same module) so AI
+     * modules can derive their orbit-engagement distance from the ship's actual
+     * weapon reach rather than a global hardcode (item C unit 6). External callers
+     * should go through `Ship.maxTurretEffectiveRangeM()` rather than reading this
+     * directly.
      */
-    val effectiveRangeM: Float = gunData.projectileStats.effectiveRangeM()
+    internal val effectiveRangeM: Float = gunData.projectileStats.effectiveRangeM()
 
     /**
      * When false, [update] short-circuits: target is dropped, aim angle is cleared,
