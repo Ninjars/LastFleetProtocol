@@ -237,7 +237,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 3: Cruiser turret drag tuning + projectile rebase**
+- [x] **Unit 3: Cruiser turret drag tuning + projectile rebase**
 
 **Goal.** `turret_guns.json` projectile values are rescaled from current ~150–250 SU/s × ~3–5 s lifetime (effective range ~750 m) to muzzle ~500–700 m/s with drag-driven effective range ~3–4 km. `dragK` and `expirationVelocityFraction` populated for cruiser-relevant turret types.
 
