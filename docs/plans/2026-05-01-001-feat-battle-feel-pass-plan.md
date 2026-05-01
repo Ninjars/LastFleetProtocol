@@ -1,7 +1,7 @@
 ---
 title: "feat: Battle-feel pass — cruiser-class slice"
 type: feat
-status: active
+status: completed
 date: 2026-05-01
 origin: docs/brainstorms/2026-04-29-battle-feel-requirements.md
 ---
