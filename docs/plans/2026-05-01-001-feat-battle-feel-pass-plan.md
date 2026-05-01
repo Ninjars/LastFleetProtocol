@@ -306,7 +306,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 5: `enemy_heavy.json` cruiser physics rebase**
+- [x] **Unit 5: `enemy_heavy.json` cruiser physics rebase**
 
 **Goal.** Rebase cruiser-class movement constants (`forwardThrust`, `lateralThrust`, `reverseThrust`, `angularThrust`, system masses) to produce ~1 m/s² acceleration when fully loaded. Pure data tuning. **The pre-rebase values get captured first as a written baseline-feel reference (in-session subjective comparison; saved scenarios cannot serve as the baseline because they don't store ship stats).**
 
