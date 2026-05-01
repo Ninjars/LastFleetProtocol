@@ -124,7 +124,7 @@ None. Codebase patterns + Slice A precedent cover the work.
 
 ## Implementation Units
 
-- [ ] **Unit 1: `ProjectileStats` schema migration**
+- [x] **Unit 1: `ProjectileStats` schema migration**
 
 **Goal.** Add the optional drag fields to `ProjectileStats` with serialization defaults so existing JSON deserialises unchanged. Add a derived helper for muzzle-speed-derived effective range using the *correct* integrated formula. Pure data-model change; no behavioural impact on its own.
 
