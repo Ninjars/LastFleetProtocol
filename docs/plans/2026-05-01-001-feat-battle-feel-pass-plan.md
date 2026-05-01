@@ -412,7 +412,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 8: Debug overlay (distance rings, mouse readout, FPS)**
+- [x] **Unit 8: Debug overlay (distance rings, mouse readout, FPS)**
 
 **Goal.** Compose-side overlay above `KubrikoViewport` in `GameScreen`. Renders concentric distance rings at 1 km, 3 km, 5 km centred on the camera-view centre; mouse-cursor world-position readout in metres; FPS counter (frame-rate visibility for downstream perf-touching items). Gated on `DevToolsGate.isAvailable`.
 

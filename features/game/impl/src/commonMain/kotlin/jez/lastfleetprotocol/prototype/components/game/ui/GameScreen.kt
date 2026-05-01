@@ -92,6 +92,13 @@ private fun GameScreen(
                 .background(MaterialTheme.colorScheme.primary),
         )
 
+        // Debug overlay (Item C unit 8) — gated on DevToolsGate. Sits above the
+        // viewport but below the pause / result overlays. Mouse pointerInput
+        // does not consume events, so KubrikoViewport's pan/zoom keeps working.
+        if (state.canShowDebugOverlay && !state.isPaused && state.gameResult == null) {
+            DebugOverlay(viewportManager = state.viewportManager)
+        }
+
         // HUD: menu button (only when not paused and no result)
         if (!state.isPaused && state.gameResult == null) {
             Row(
