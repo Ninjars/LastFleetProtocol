@@ -1,6 +1,7 @@
 package jez.lastfleetprotocol.prototype.components.game.managers
 
 import com.pandulapeter.kubriko.actor.traits.Unique
+import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.Manager
 import com.pandulapeter.kubriko.manager.StateManager
@@ -139,6 +140,18 @@ class GameStateManager(
         for (ship in playerShips) {
             inputController.registerShip(ship)
         }
+
+        // Item C unit 7: centre the camera on the player-team centroid at scene
+        // start so the battlefield is framed without requiring an immediate pan.
+        // Initial zoom is a fixed scale chosen to frame a ~3km cruiser-class
+        // engagement at typical 1080p+ resolutions; player can wheel-zoom from
+        // there. Window-width-derived bounds are a future polish item.
+        if (playerShips.isNotEmpty()) {
+            viewportManager.setCameraPosition(playerShips.centroidPosition())
+        } else {
+            viewportManager.setCameraPosition(SceneOffset.Zero)
+        }
+        viewportManager.setScaleFactor(INITIAL_SCALE_FACTOR)
 
         // Add debug visualiser for all ships
         val debugVisualiser = DebugVisualiser()
@@ -279,5 +292,32 @@ class GameStateManager(
         actorManager.removeAll()
         playerShips.clear()
         enemyShips.clear()
+    }
+
+    /**
+     * Mean SceneOffset of every ship's body position in the receiver list.
+     * Item C unit 7: used by `startScene` to centre the camera on the player
+     * team at scene start. Caller verifies the list is non-empty.
+     */
+    private fun List<Ship>.centroidPosition(): SceneOffset {
+        var sumX = 0f
+        var sumY = 0f
+        for (ship in this) {
+            sumX += ship.body.position.x.raw
+            sumY += ship.body.position.y.raw
+        }
+        val count = this.size.toFloat()
+        return SceneOffset((sumX / count).sceneUnit, (sumY / count).sceneUnit)
+    }
+
+    private companion object {
+        /**
+         * Initial camera zoom at scene start. Empirically chosen to frame a
+         * ~3km cruiser-class engagement at typical 1080p+ resolutions: at
+         * 1920px wide, scale 0.5f shows ~3840 m of world horizontally. Player
+         * can wheel-zoom to taste from there; bounds are clamped at the
+         * `ViewportManager` level (see `AppComponent.ViewportManager`).
+         */
+        const val INITIAL_SCALE_FACTOR = 0.5f
     }
 }

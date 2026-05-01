@@ -376,7 +376,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 7: Camera zoom bounds + initial centroid + initial zoom**
+- [x] **Unit 7: Camera zoom bounds + initial centroid + initial zoom**
 
 **Goal.** Wire `ViewportManager` constructor with explicit min/max zoom bounds (200 m–15 km visible *intent*; 0.05–20.0 absolute guard rails). Add post-spawn-loop call to centre the camera on the player-team centroid at ~3 km initial zoom. Bounds derived from actual window width via `LocalWindowInfo`.
 
