@@ -274,7 +274,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 4: Per-turret effective-range check (small AI behaviour addition)**
+- [x] **Unit 4: Per-turret effective-range check (small AI behaviour addition)**
 
 **Goal.** Turrets only fire when target is within their projectile's drag-aware effective range. Small *behaviour addition* — turrets currently fire at any distance regardless. Unit lands the range check using `ProjectileStats.effectiveRangeM()`.
 
