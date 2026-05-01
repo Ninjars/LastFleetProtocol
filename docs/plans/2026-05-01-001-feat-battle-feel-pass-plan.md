@@ -1,7 +1,7 @@
 ---
 title: "feat: Battle-feel pass — cruiser-class slice"
 type: feat
-status: active
+status: completed
 date: 2026-05-01
 origin: docs/brainstorms/2026-04-29-battle-feel-requirements.md
 ---
@@ -124,7 +124,7 @@ None. Codebase patterns + Slice A precedent cover the work.
 
 ## Implementation Units
 
-- [ ] **Unit 1: `ProjectileStats` schema migration**
+- [x] **Unit 1: `ProjectileStats` schema migration**
 
 **Goal.** Add the optional drag fields to `ProjectileStats` with serialization defaults so existing JSON deserialises unchanged. Add a derived helper for muzzle-speed-derived effective range using the *correct* integrated formula. Pure data-model change; no behavioural impact on its own.
 
@@ -166,7 +166,7 @@ None. Codebase patterns + Slice A precedent cover the work.
 
 ---
 
-- [ ] **Unit 2: `Bullet` drag integration + velocity-based expiration + `currentPenetration` threading**
+- [x] **Unit 2: `Bullet` drag integration + velocity-based expiration + `currentPenetration` threading**
 
 **Goal.** Bullet projectile decays its velocity each frame, exposes a `currentPenetration` value derived from current speed, expires on velocity-threshold (primary) or lifetime (secondary), AND **threads `currentPenetration` through the existing `KineticImpactResolver.resolve` call** so drag-aware penetration actually reaches the hit path during C. Backward-compatible: bullets with `dragK = 0f` behave exactly as today.
 
@@ -237,7 +237,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 3: Cruiser turret drag tuning + projectile rebase**
+- [x] **Unit 3: Cruiser turret drag tuning + projectile rebase**
 
 **Goal.** `turret_guns.json` projectile values are rescaled from current ~150–250 SU/s × ~3–5 s lifetime (effective range ~750 m) to muzzle ~500–700 m/s with drag-driven effective range ~3–4 km. `dragK` and `expirationVelocityFraction` populated for cruiser-relevant turret types.
 
@@ -274,7 +274,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 4: Per-turret effective-range check (small AI behaviour addition)**
+- [x] **Unit 4: Per-turret effective-range check (small AI behaviour addition)**
 
 **Goal.** Turrets only fire when target is within their projectile's drag-aware effective range. Small *behaviour addition* — turrets currently fire at any distance regardless. Unit lands the range check using `ProjectileStats.effectiveRangeM()`.
 
@@ -306,7 +306,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 5: `enemy_heavy.json` cruiser physics rebase**
+- [x] **Unit 5: `enemy_heavy.json` cruiser physics rebase**
 
 **Goal.** Rebase cruiser-class movement constants (`forwardThrust`, `lateralThrust`, `reverseThrust`, `angularThrust`, system masses) to produce ~1 m/s² acceleration when fully loaded. Pure data tuning. **The pre-rebase values get captured first as a written baseline-feel reference (in-session subjective comparison; saved scenarios cannot serve as the baseline because they don't store ship stats).**
 
@@ -342,7 +342,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 6: `ShipNavigator` cruiser-class AI tuning**
+- [x] **Unit 6: `ShipNavigator` cruiser-class AI tuning**
 
 **Goal.** Tune cruiser-class navigation constants — `ARRIVAL_THRESHOLD`, `BRAKING_MARGIN`, `PROXIMITY_RADIUS_FACTOR`, etc. — so that a cruiser approaches a target at scale, brakes at a sensible distance proportional to its (rebased) mass and the new effective range, and orbits at a tactical engagement distance. Slice A's `stoppingDistanceUnderDrag` formula stays unchanged — only the input values change.
 
@@ -376,7 +376,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 7: Camera zoom bounds + initial centroid + initial zoom**
+- [x] **Unit 7: Camera zoom bounds + initial centroid + initial zoom**
 
 **Goal.** Wire `ViewportManager` constructor with explicit min/max zoom bounds (200 m–15 km visible *intent*; 0.05–20.0 absolute guard rails). Add post-spawn-loop call to centre the camera on the player-team centroid at ~3 km initial zoom. Bounds derived from actual window width via `LocalWindowInfo`.
 
@@ -412,7 +412,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 8: Debug overlay (distance rings, mouse readout, FPS)**
+- [x] **Unit 8: Debug overlay (distance rings, mouse readout, FPS)**
 
 **Goal.** Compose-side overlay above `KubrikoViewport` in `GameScreen`. Renders concentric distance rings at 1 km, 3 km, 5 km centred on the camera-view centre; mouse-cursor world-position readout in metres; FPS counter (frame-rate visibility for downstream perf-touching items). Gated on `DevToolsGate.isAvailable`.
 
@@ -449,7 +449,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 9: Demo scene rebuild — 2v2 cruiser at 3 km**
+- [x] **Unit 9: Demo scene rebuild — 2v2 cruiser at 3 km**
 
 **Goal.** Rewrite `DemoScenarioPreset.SLOTS` to a 2v2 `enemy_heavy` engagement with player team at x ≈ -1500 SU and enemy team at x ≈ +1500 SU. Re-baseline `DemoScenarioPresetParityTest` against the new positions + designs.
 

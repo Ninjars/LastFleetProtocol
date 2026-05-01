@@ -104,3 +104,36 @@ section.
 - inflicted by concussive explosions that defeat the armour of a target.
 - check for internal systems that overlap with the explosion's circle, and inflict the explosion's
   damage to each of the colliding systems.
+
+## Projectile drag (item C — battle-feel pass)
+
+Kinetic projectiles slow down in flight under exponential drag and expire when their velocity drops below a configurable fraction of the muzzle speed. Drag is configured per weapon in `turret_guns.json` via two new optional fields on `ProjectileStats`:
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `dragK` | Float | `0f` | Drag coefficient. Per-frame: `velocity *= exp(-dragK * dt_seconds)`. `0f` disables drag (legacy behaviour — projectile range governed by `lifetimeMs` only). |
+| `expirationVelocityFraction` | Float | `0f` | Fraction of muzzle speed at which the projectile expires. `0.3f` = expire when current speed drops to 30 % of muzzle. `0f` disables velocity-based expiration. |
+
+Both fields must be > 0 for drag-aware expiration to kick in; otherwise the projectile falls back to the legacy `lifetimeMs` countdown. `lifetimeMs` is retained as a safety cap regardless of drag — the projectile expires on whichever fires first.
+
+### Effective range — closed form
+
+Integrated distance from `v(t) = v0·exp(-k·t)`, between `t = 0` and `t = -ln(expirationFraction) / k`:
+
+```
+effectiveRangeM = (muzzleSpeed / dragK) * (1 - expirationVelocityFraction)
+```
+
+Inverse — picking `dragK` for a target effective range:
+
+```
+dragK = muzzleSpeed * (1 - expirationVelocityFraction) / desiredRange
+```
+
+Worked example: `muzzleSpeed = 600 m/s`, `expirationVelocityFraction = 0.3`, `desiredRange = 3500 m` → `dragK = 600 * 0.7 / 3500 ≈ 0.120`. The bullet reaches its target at ~30 % muzzle speed, then expires shortly after if it overshoots.
+
+The same calculation drives `ProjectileStats.effectiveRangeM()`, used by AI to decide when to fire (per-turret range gate) and to set orbit-engagement distance (`Ship.maxTurretEffectiveRangeM()` × `BasicAI.ORBIT_RANGE_FRACTION`).
+
+### Velocity-aware penetration
+
+`Bullet` computes `currentPenetration = armourPiercing * (currentSpeed / muzzleSpeed)` each frame and threads it into `KineticImpactResolver.resolve(...)`. At the muzzle, penetration equals the weapon's stated `armourPiercing`; at long range, it has decayed proportionally to current velocity. The penetration formula is linear; item E may revise the curve as a coordinated C+E change.

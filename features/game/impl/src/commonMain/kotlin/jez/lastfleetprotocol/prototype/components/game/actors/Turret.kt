@@ -10,6 +10,7 @@ import com.pandulapeter.kubriko.actor.body.BoxBody
 import com.pandulapeter.kubriko.helpers.extensions.angleTowards
 import com.pandulapeter.kubriko.helpers.extensions.deg
 import com.pandulapeter.kubriko.helpers.extensions.get
+import com.pandulapeter.kubriko.helpers.extensions.length
 import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.rotateTowards
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
@@ -20,6 +21,7 @@ import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.game.data.Gun
 import jez.lastfleetprotocol.prototype.components.gamecore.data.GunData
+import jez.lastfleetprotocol.prototype.components.gamecore.data.effectiveRangeM
 
 /**
  * Turret size in scene units (isoceles triangle half-dimensions).
@@ -45,6 +47,21 @@ class Turret(
     override val body = BoxBody()
 
     var target: Targetable? = null
+
+    /**
+     * Cached at construction from this turret's `gunData.projectileStats.effectiveRangeM()`.
+     * Item C unit 4: turrets only fire when target is within this range; outside,
+     * they still rotate-toward-target for visual feedback. `ProjectileStats` is an
+     * immutable `@Serializable` data class, so the cache is stable for the turret's
+     * lifetime.
+     *
+     * `internal` — read by `Ship.maxTurretEffectiveRangeM()` (same module) so AI
+     * modules can derive their orbit-engagement distance from the ship's actual
+     * weapon reach rather than a global hardcode (item C unit 6). External callers
+     * should go through `Ship.maxTurretEffectiveRangeM()` rather than reading this
+     * directly.
+     */
+    internal val effectiveRangeM: Float = gunData.projectileStats.effectiveRangeM()
 
     /**
      * When false, [update] short-circuits: target is dropped, aim angle is cleared,
@@ -130,7 +147,17 @@ class Turret(
                 targetRotation,
                 rotationSpeed / deltaTimeInMilliseconds
             )
-            gun.angleToTarget = angleToTarget - body.rotation - currentRotation
+
+            // Item C unit 4: per-turret effective-range gate. Track the target
+            // (rotation continues above) but only allow firing when target is
+            // within drag-aware effective range. `gun.angleToTarget = null` is
+            // the existing "no aim point — don't fire" pathway.
+            val targetDistance = (it.body.position - body.position).length().raw
+            gun.angleToTarget = if (targetDistance <= effectiveRangeM) {
+                angleToTarget - body.rotation - currentRotation
+            } else {
+                null
+            }
         }
 
         if (target == null) {

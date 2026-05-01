@@ -2,11 +2,13 @@ package jez.lastfleetprotocol.prototype.components.game.ui
 
 import androidx.lifecycle.viewModelScope
 import com.pandulapeter.kubriko.Kubriko
+import com.pandulapeter.kubriko.manager.ViewportManager
 import jez.lastfleetprotocol.prototype.components.game.GameStateHolder
 import jez.lastfleetprotocol.prototype.components.game.managers.GameStateManager
 import jez.lastfleetprotocol.prototype.components.game.managers.GameStateManager.GameResult
 import jez.lastfleetprotocol.prototype.components.gamecore.scenarios.PendingScenario
 import jez.lastfleetprotocol.prototype.ui.common.ViewModelContract
+import jez.lastfleetprotocol.prototype.utils.export.DevToolsGate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,8 +27,15 @@ sealed interface GameIntent {
 
 data class GameState(
     val kubriko: Kubriko,
+    val viewportManager: ViewportManager,
     val gameResult: GameResult? = null,
     val isPaused: Boolean = false,
+    /**
+     * Item C unit 8: gates the in-screen debug overlay. Frozen at VM init from
+     * `DevToolsGate.isAvailable` — true on Desktop with `lfp.repo.root` resolved,
+     * false on Android and packaged Desktop builds.
+     */
+    val canShowDebugOverlay: Boolean = false,
 )
 
 sealed interface GameSideEffect {
@@ -38,6 +47,8 @@ class GameVM(
     gameStateHolder: GameStateHolder,
     private val gameStateManager: GameStateManager,
     pendingScenario: PendingScenario,
+    private val viewportManager: ViewportManager,
+    devToolsGate: DevToolsGate,
 ) : ViewModelContract<GameIntent, GameState, GameSideEffect>() {
 
     /**
@@ -48,6 +59,14 @@ class GameVM(
      */
     private val initialSlots = pendingScenario.consume()
 
+    /**
+     * Item C unit 8: gate snapshot taken once at construction. The gate's
+     * underlying value (system property + filesystem) doesn't change at
+     * runtime, so a one-shot read is sufficient — mirrors LandingVM's
+     * `canShowDevTools` pattern from item B.
+     */
+    private val canShowDebugOverlay: Boolean = devToolsGate.isAvailable
+
     private val _isPaused = MutableStateFlow(false)
 
     override val state: StateFlow<GameState> = combine(
@@ -56,13 +75,19 @@ class GameVM(
     ) { result, paused ->
         GameState(
             kubriko = gameStateHolder.gameKubriko,
+            viewportManager = viewportManager,
             gameResult = result,
             isPaused = paused && result == null, // Don't show pause when game is over
+            canShowDebugOverlay = canShowDebugOverlay,
         )
     }.stateIn(
         viewModelScope,
         SharingStarted.Eagerly,
-        GameState(gameStateHolder.gameKubriko),
+        GameState(
+            kubriko = gameStateHolder.gameKubriko,
+            viewportManager = viewportManager,
+            canShowDebugOverlay = canShowDebugOverlay,
+        ),
     )
 
     override fun accept(intent: GameIntent) {

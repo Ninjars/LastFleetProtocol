@@ -46,8 +46,14 @@ object KineticImpactResolver {
     /**
      * Resolve the full kinetic impact chain.
      *
-     * @param projectile Stats of the incoming projectile.
-     * @param velocity Bullet velocity vector in world space.
+     * @param projectile Stats of the incoming projectile (damage, toHitModifier, etc.).
+     * @param currentPenetration The projectile's penetration value at impact time.
+     *        Item C unit 2 introduces drag-aware decay: at the muzzle this equals
+     *        [ProjectileStats.armourPiercing] (the brainstorm's `basePenetration`); at long
+     *        range it can drop to a fraction of that. The penetration check (step 3)
+     *        and the [ImpactOutcome.Penetrate.armourPiercing] passed to
+     *        downstream damage routing both use this decayed value.
+     * @param velocity Bullet velocity vector in world space (post-drag).
      * @param contactNormal Surface normal at the point of impact (unit vector pointing outward from the target hull).
      * @param armour Target ship's armour stats.
      * @param combatStats Target ship's combat stats (evasion).
@@ -55,6 +61,7 @@ object KineticImpactResolver {
      */
     fun resolve(
         projectile: ProjectileStats,
+        currentPenetration: Float,
         velocity: SceneOffset,
         contactNormal: SceneOffset,
         armour: ArmourStats,
@@ -73,16 +80,16 @@ object KineticImpactResolver {
             return ImpactOutcome.Ricochet
         }
 
-        // 3. Penetration check: AP + random variance vs hardness
-        val effectiveAP = projectile.armourPiercing + random.nextFloat() * AP_VARIANCE
+        // 3. Penetration check: drag-decayed AP + random variance vs hardness
+        val effectiveAP = currentPenetration + random.nextFloat() * AP_VARIANCE
         if (effectiveAP < armour.hardness) {
             return ImpactOutcome.Deflect
         }
 
-        // 4. Penetrating hit
+        // 4. Penetrating hit — pass the decayed penetration on to downstream damage routing
         return ImpactOutcome.Penetrate(
             damage = projectile.damage,
-            armourPiercing = projectile.armourPiercing,
+            armourPiercing = currentPenetration,
         )
     }
 

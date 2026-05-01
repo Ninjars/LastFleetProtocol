@@ -4,13 +4,23 @@ import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.types.SceneOffset
 
 /**
- * Single source of truth for the canonical demo combat scenario: 2 player
- * ships vs 3 enemies. Both `GameStateManager.startDemoScene` and the scenario
- * builder's "Use demo defaults" button read from [SLOTS]; `Unit 7`'s parity
- * test pins the exact shape so drift fails CI loudly.
+ * Single source of truth for the canonical demo combat scenario: a 2v2
+ * cruiser-class engagement at 3 km separation. Both
+ * `GameStateManager.startDemoScene` and the scenario builder's "Use demo
+ * defaults" button read from [SLOTS]; `DemoScenarioPresetParityTest` pins
+ * the exact shape so drift fails CI loudly.
  *
- * `teamId` values are inlined string literals because the `Ship.TEAM_PLAYER`
- * / `TEAM_ENEMY` constants live in `:features:game:impl` (downstream of this
+ * Item C unit 9 rebuilt this from the original 2-player + 3-enemy mixed-class
+ * layout into the cruiser-vs-cruiser engagement that matches the
+ * cruiser-only narrowed scope of item C. At 1 SU = 1 m, ±2500 SU on X
+ * places the teams 5 km apart — outside the AI's orbit-engagement distance
+ * (≈3.6 km at ORBIT_RANGE_FRACTION=0.8 × turret_heavy effective range)
+ * so the cruisers visibly approach and engage rather than retreating to
+ * orbit. The ±200 SU intra-team offset on Y produces a 400 m spacing
+ * between the two cruisers per side.
+ *
+ * `teamId` values are inlined string literals because `Ship.TEAM_PLAYER` /
+ * `TEAM_ENEMY` constants live in `:features:game:impl` (downstream of this
  * module). The parity test validates the literals match.
  *
  * `drawOrder` values mirror `DrawOrder.PLAYER_SHIP` (10f) and
@@ -20,36 +30,29 @@ object DemoScenarioPreset {
 
     val SLOTS: List<SpawnSlotConfig> = listOf(
         SpawnSlotConfig(
-            designName = "player_ship",
-            position = SceneOffset((-300f).sceneUnit, (-50f).sceneUnit),
+            designName = "enemy_heavy",
+            position = SceneOffset((-2500f).sceneUnit, (-200f).sceneUnit),
             teamId = "player",
             withAI = false,
             drawOrder = 10f,
         ),
         SpawnSlotConfig(
-            designName = "player_ship",
-            position = SceneOffset((-300f).sceneUnit, 50f.sceneUnit),
+            designName = "enemy_heavy",
+            position = SceneOffset((-2500f).sceneUnit, 200f.sceneUnit),
             teamId = "player",
             withAI = false,
             drawOrder = 10f,
         ),
         SpawnSlotConfig(
-            designName = "enemy_light",
-            position = SceneOffset(300f.sceneUnit, (-120f).sceneUnit),
-            teamId = "enemy",
-            withAI = true,
-            drawOrder = 20f,
-        ),
-        SpawnSlotConfig(
-            designName = "enemy_medium",
-            position = SceneOffset(350f.sceneUnit, 0f.sceneUnit),
+            designName = "enemy_heavy",
+            position = SceneOffset(2500f.sceneUnit, (-200f).sceneUnit),
             teamId = "enemy",
             withAI = true,
             drawOrder = 20f,
         ),
         SpawnSlotConfig(
             designName = "enemy_heavy",
-            position = SceneOffset(300f.sceneUnit, 120f.sceneUnit),
+            position = SceneOffset(2500f.sceneUnit, 200f.sceneUnit),
             teamId = "enemy",
             withAI = true,
             drawOrder = 20f,

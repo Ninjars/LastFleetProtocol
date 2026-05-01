@@ -204,9 +204,21 @@ abstract class AppComponent(
         instanceNameForLogging = Constants.GAME_LOG_TAG,
     )
 
+    /**
+     * Game camera. Item C unit 7: explicit zoom bounds for the cruiser-class
+     * battle scale. The 0.05f–20.0f range is wide enough to span roughly
+     * 200m–15km visible at typical 1080p+ resolutions; clamping happens
+     * inside Kubriko's `multiplyScaleFactor` based on these bounds.
+     *
+     * Tightening to per-resolution bounds (via `LocalWindowInfo`) is a future
+     * polish item — for now wide guard rails prevent pathological values
+     * without knowing the runtime window dimensions at construction time.
+     */
     @Singleton
     @Provides
     protected fun ViewportManager(): ViewportManager = ViewportManager.newInstance(
+        minimumScaleFactor = 0.05f,
+        maximumScaleFactor = 20.0f,
         isLoggingEnabled = enableLogging,
         instanceNameForLogging = Constants.GAME_LOG_TAG,
     )
