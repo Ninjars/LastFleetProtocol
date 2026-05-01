@@ -449,7 +449,7 @@ Bullet.onCollisionDetected(collidables):
 
 ---
 
-- [ ] **Unit 9: Demo scene rebuild — 2v2 cruiser at 3 km**
+- [x] **Unit 9: Demo scene rebuild — 2v2 cruiser at 3 km**
 
 **Goal.** Rewrite `DemoScenarioPreset.SLOTS` to a 2v2 `enemy_heavy` engagement with player team at x ≈ -1500 SU and enemy team at x ≈ +1500 SU. Re-baseline `DemoScenarioPresetParityTest` against the new positions + designs.
 
