@@ -25,6 +25,7 @@ import jez.lastfleetprotocol.prototype.components.game.combat.KineticImpactResol
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.gamecore.data.ProjectileStats
 import jez.lastfleetprotocol.prototype.components.game.managers.AudioManager
+import kotlin.math.exp
 import kotlin.math.sqrt
 import kotlin.reflect.KClass
 
@@ -35,7 +36,7 @@ data class BulletData(
 internal class Bullet(
     initialPosition: SceneOffset,
     initialRotation: AngleRadians,
-    private val velocity: SceneOffset,
+    initialVelocity: SceneOffset,
     private val bulletData: BulletData,
     val projectileStats: ProjectileStats,
     val teamId: String,
@@ -43,6 +44,27 @@ internal class Bullet(
 ) : Visible, Dynamic, CollisionDetector {
     override val isAlwaysActive: Boolean = true
     private var remainingLifetimeMs: Int = projectileStats.lifetimeMs
+
+    /**
+     * Mutable per-frame velocity. Item C unit 2: decays each frame under drag
+     * when [ProjectileStats.dragK] is positive. The constructor parameter
+     * [initialVelocity] is the muzzle vector; subsequent frames mutate this var.
+     */
+    private var velocity: SceneOffset = initialVelocity
+
+    /** Cached muzzle speed for drag math + currentPenetration scaling. */
+    private val muzzleSpeed: Float = sqrt(
+        initialVelocity.x.raw * initialVelocity.x.raw +
+            initialVelocity.y.raw * initialVelocity.y.raw,
+    )
+
+    /**
+     * Drag-aware penetration value. Item C unit 2: at the muzzle this equals
+     * [ProjectileStats.armourPiercing]; decays linearly with `currentSpeed / muzzleSpeed`.
+     * Threaded into [KineticImpactResolver.resolve] at hit time so drag-aware
+     * penetration reaches the hit path during C (not just E).
+     */
+    private var currentPenetration: Float = projectileStats.armourPiercing
     override val body = BoxBody(
         initialPosition = initialPosition,
         initialRotation = initialRotation,
@@ -68,15 +90,56 @@ internal class Bullet(
     }
 
     override fun update(deltaTimeInMilliseconds: Int) {
-        if (stateManager.isRunning.value) {
-            remainingLifetimeMs -= deltaTimeInMilliseconds
-            if (remainingLifetimeMs <= 0) {
-                actorManager.remove(this)
-                return
-            }
-            body.position += velocity * 0.001f * deltaTimeInMilliseconds
-            collisionMask.position = body.position
+        if (!stateManager.isRunning.value) return
+
+        val dtSeconds = deltaTimeInMilliseconds * 0.001f
+
+        // Item C unit 2 — apply exponential drag when configured. The exp form is
+        // numerically stable at any dt (never produces a negative-velocity sign flip
+        // that the naive `velocity *= (1 - k * dt)` form would on slow frames).
+        if (projectileStats.dragK > 0f) {
+            val decay = exp(-projectileStats.dragK * dtSeconds)
+            velocity = SceneOffset(
+                (velocity.x.raw * decay).sceneUnit,
+                (velocity.y.raw * decay).sceneUnit,
+            )
         }
+
+        // Compute current speed once; both penetration scaling and the
+        // velocity-threshold expiration check read it.
+        val currentSpeed = if (muzzleSpeed > 0f) {
+            sqrt(velocity.x.raw * velocity.x.raw + velocity.y.raw * velocity.y.raw)
+        } else {
+            0f
+        }
+
+        // currentPenetration tracks the velocity ratio. At the muzzle this equals
+        // projectileStats.armourPiercing; decays linearly with speed.
+        currentPenetration = if (muzzleSpeed > 0f) {
+            projectileStats.armourPiercing * (currentSpeed / muzzleSpeed)
+        } else {
+            projectileStats.armourPiercing
+        }
+
+        // Velocity-threshold expiration is the *primary* mechanism when drag is configured.
+        if (projectileStats.expirationVelocityFraction > 0f &&
+            currentSpeed < projectileStats.expirationVelocityFraction * muzzleSpeed
+        ) {
+            actorManager.remove(this)
+            return
+        }
+
+        // lifetimeMs as the *secondary* safety cap — fires for legacy projectiles
+        // (dragK = 0) or as a defensive ceiling for drag-aware ones that never quite
+        // reach the velocity threshold.
+        remainingLifetimeMs -= deltaTimeInMilliseconds
+        if (remainingLifetimeMs <= 0) {
+            actorManager.remove(this)
+            return
+        }
+
+        body.position += velocity * 0.001f * deltaTimeInMilliseconds
+        collisionMask.position = body.position
     }
 
     override fun onCollisionDetected(collidables: List<Collidable>) {
@@ -99,9 +162,13 @@ internal class Bullet(
 
             val contactPoint = body.position
 
-            // Use the struck hull's armour for impact resolution
+            // Use the struck hull's armour for impact resolution. Pass the
+            // drag-decayed `currentPenetration` (item C unit 2) so the resolver's
+            // penetration check + Penetrate.armourPiercing reflect velocity-at-impact,
+            // not the muzzle value.
             val outcome = KineticImpactResolver.resolve(
                 projectile = projectileStats,
+                currentPenetration = currentPenetration,
                 velocity = velocity,
                 contactNormal = contactNormal,
                 armour = hullCollider.hullDefinition.armour,

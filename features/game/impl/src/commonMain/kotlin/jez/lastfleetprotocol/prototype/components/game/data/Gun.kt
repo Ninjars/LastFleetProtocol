@@ -45,7 +45,7 @@ class Gun(
         val bullet = Bullet(
             initialPosition = turretBody.getRelativePoint(muzzleOffset),
             initialRotation = turretBody.rotation,
-            velocity = SceneOffset(
+            initialVelocity = SceneOffset(
                 gunData.projectileStats.speed.sceneUnit,
                 0.sceneUnit
             ).rotate(turretBody.rotation),

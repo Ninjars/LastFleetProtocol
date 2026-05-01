@@ -166,7 +166,7 @@ None. Codebase patterns + Slice A precedent cover the work.
 
 ---
 
-- [ ] **Unit 2: `Bullet` drag integration + velocity-based expiration + `currentPenetration` threading**
+- [x] **Unit 2: `Bullet` drag integration + velocity-based expiration + `currentPenetration` threading**
 
 **Goal.** Bullet projectile decays its velocity each frame, exposes a `currentPenetration` value derived from current speed, expires on velocity-threshold (primary) or lifetime (secondary), AND **threads `currentPenetration` through the existing `KineticImpactResolver.resolve` call** so drag-aware penetration actually reaches the hit path during C. Backward-compatible: bullets with `dragK = 0f` behave exactly as today.
 

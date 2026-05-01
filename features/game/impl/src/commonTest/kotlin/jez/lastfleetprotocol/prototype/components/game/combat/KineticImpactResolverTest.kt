@@ -55,8 +55,10 @@ class KineticImpactResolverTest {
     @Test
     fun highToHit_lowEvasion_hits() {
         // random=0.5 + toHit=0.3 = 0.8 >= evasion=0.2 → hit
+        val projectile = defaultProjectile(toHitModifier = 0.3f, armourPiercing = 10f)
         val result = KineticImpactResolver.resolve(
-            projectile = defaultProjectile(toHitModifier = 0.3f, armourPiercing = 10f),
+            projectile = projectile,
+            currentPenetration = projectile.armourPiercing,
             velocity = headOnVelocity,
             contactNormal = headOnNormal,
             armour = defaultArmour(hardness = 3f),
@@ -69,8 +71,10 @@ class KineticImpactResolverTest {
     @Test
     fun toHitJustBelowEvasion_misses() {
         // random=0.1 + toHit=0.1 = 0.2 < evasion=0.5 → miss
+        val projectile = defaultProjectile(toHitModifier = 0.1f)
         val result = KineticImpactResolver.resolve(
-            projectile = defaultProjectile(toHitModifier = 0.1f),
+            projectile = projectile,
+            currentPenetration = projectile.armourPiercing,
             velocity = headOnVelocity,
             contactNormal = headOnNormal,
             armour = defaultArmour(),
@@ -85,13 +89,14 @@ class KineticImpactResolverTest {
     @Test
     fun shallowAngle_highHardness_ricochets() {
         // Velocity nearly parallel to hull surface → very low cos(angle) with normal
-        // Velocity along X, normal along Y → dot product ≈ 0
         val grazingVelocity = SceneOffset(100f.sceneUnit, 0.1f.sceneUnit)
         val surfaceNormal = SceneOffset(0f.sceneUnit, 1f.sceneUnit)
 
         // cos(angle) ≈ 0.001, threshold = hardness(10) * 0.05 = 0.5 → ricochet
+        val projectile = defaultProjectile(toHitModifier = 0.5f)
         val result = KineticImpactResolver.resolve(
-            projectile = defaultProjectile(toHitModifier = 0.5f),
+            projectile = projectile,
+            currentPenetration = projectile.armourPiercing,
             velocity = grazingVelocity,
             contactNormal = surfaceNormal,
             armour = ArmourStats(hardness = 10f, density = 5f),
@@ -106,11 +111,10 @@ class KineticImpactResolverTest {
     @Test
     fun lowAP_highHardness_deflects() {
         // AP=1 + random(0.0)*0.2 = 1.0 < hardness=3.0 → deflect
+        val projectile = defaultProjectile(toHitModifier = 0.5f, armourPiercing = 1f)
         val result = KineticImpactResolver.resolve(
-            projectile = defaultProjectile(
-                toHitModifier = 0.5f,
-                armourPiercing = 1f,
-            ),
+            projectile = projectile,
+            currentPenetration = projectile.armourPiercing,
             velocity = headOnVelocity,
             contactNormal = headOnNormal,
             armour = defaultArmour(hardness = 3f),
@@ -127,12 +131,10 @@ class KineticImpactResolverTest {
         // random=0.5 + toHit=0.3 = 0.8 >= evasion=0.2 → hit
         // Head-on: cos(angle) ≈ 1.0 >= hardness(3)*0.05=0.15 → no ricochet
         // AP=10 + random(0.5)*0.2 = 10.1 >= hardness=3 → penetrate
+        val projectile = defaultProjectile(damage = 25f, armourPiercing = 10f, toHitModifier = 0.3f)
         val result = KineticImpactResolver.resolve(
-            projectile = defaultProjectile(
-                damage = 25f,
-                armourPiercing = 10f,
-                toHitModifier = 0.3f,
-            ),
+            projectile = projectile,
+            currentPenetration = projectile.armourPiercing,
             velocity = headOnVelocity,
             contactNormal = headOnNormal,
             armour = defaultArmour(hardness = 3f),
@@ -149,8 +151,10 @@ class KineticImpactResolverTest {
     @Test
     fun hitRoll_exactlyEqualsEvasion_hits() {
         // random=0.2 + toHit=0.3 = 0.5 >= evasion=0.5 → hit (not miss)
+        val projectile = defaultProjectile(toHitModifier = 0.3f, armourPiercing = 10f)
         val result = KineticImpactResolver.resolve(
-            projectile = defaultProjectile(toHitModifier = 0.3f, armourPiercing = 10f),
+            projectile = projectile,
+            currentPenetration = projectile.armourPiercing,
             velocity = headOnVelocity,
             contactNormal = headOnNormal,
             armour = defaultArmour(hardness = 3f),
@@ -159,5 +163,67 @@ class KineticImpactResolverTest {
         )
         // Should not be a miss
         assertIs<ImpactOutcome.Penetrate>(result)
+    }
+
+    // --- Drag-aware penetration tests (Item C, unit 2) ---
+
+    @Test
+    fun decayedPenetration_dropsBelowHardness_deflects() {
+        // Item C unit 2: drag-aware penetration. Bullet's muzzle armourPiercing = 10
+        // is well above hardness=5, but after drag decay currentPenetration = 4
+        // (60% of muzzle). With AP variance random=0.0, effectiveAP = 4 < hardness
+        // → deflect, not penetrate. Pins the C/E semantic that drag-aware penetration
+        // reaches the resolver during C, not just E.
+        val projectile = defaultProjectile(toHitModifier = 0.5f, armourPiercing = 10f)
+        val result = KineticImpactResolver.resolve(
+            projectile = projectile,
+            currentPenetration = 4f, // decayed from 10
+            velocity = headOnVelocity,
+            contactNormal = headOnNormal,
+            armour = defaultArmour(hardness = 5f),
+            combatStats = CombatStats(evasionModifier = 0.1f),
+            random = FixedRandom(listOf(0.5f, 0.0f)), // hit, AP variance 0
+        )
+        assertIs<ImpactOutcome.Deflect>(result)
+    }
+
+    @Test
+    fun decayedPenetration_aboveHardness_stillPenetrates_butWithDecayedAp() {
+        // Same scenario, but currentPenetration=6 (60% of muzzle 10) is still
+        // above hardness=3. Pins that the Penetrate outcome's armourPiercing
+        // reflects the decayed value, not the muzzle value.
+        val projectile = defaultProjectile(damage = 25f, armourPiercing = 10f, toHitModifier = 0.3f)
+        val result = KineticImpactResolver.resolve(
+            projectile = projectile,
+            currentPenetration = 6f, // 60% of muzzle
+            velocity = headOnVelocity,
+            contactNormal = headOnNormal,
+            armour = defaultArmour(hardness = 3f),
+            combatStats = CombatStats(evasionModifier = 0.2f),
+            random = FixedRandom(listOf(0.5f, 0.5f)),
+        )
+        assertIs<ImpactOutcome.Penetrate>(result)
+        assertEquals(25f, result.damage, "damage is unaffected by drag decay")
+        assertEquals(6f, result.armourPiercing, "Penetrate outcome carries the decayed currentPenetration, not muzzle armourPiercing")
+    }
+
+    @Test
+    fun fullPenetration_atMuzzle_matchesPreItemCBehavior() {
+        // Regression check: when currentPenetration == projectile.armourPiercing
+        // (i.e. bullet just left the muzzle, no drag decay), the outcome matches
+        // pre-item-C behaviour exactly.
+        val projectile = defaultProjectile(damage = 25f, armourPiercing = 10f, toHitModifier = 0.3f)
+        val result = KineticImpactResolver.resolve(
+            projectile = projectile,
+            currentPenetration = 10f, // == projectile.armourPiercing
+            velocity = headOnVelocity,
+            contactNormal = headOnNormal,
+            armour = defaultArmour(hardness = 3f),
+            combatStats = CombatStats(evasionModifier = 0.2f),
+            random = FixedRandom(listOf(0.5f, 0.5f)),
+        )
+        assertIs<ImpactOutcome.Penetrate>(result)
+        assertEquals(25f, result.damage)
+        assertEquals(10f, result.armourPiercing)
     }
 }
