@@ -1,6 +1,5 @@
 package jez.lastfleetprotocol.prototype.components.game.ui
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -18,23 +17,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pandulapeter.kubriko.manager.ViewportManager
 import com.pandulapeter.kubriko.pointerInput.PointerInputManager
 
 /**
- * Debug overlay rendered on top of the game viewport. Item C unit 8 — gated on
- * `state.canShowDebugOverlay` (DevToolsGate.isAvailable). Renders three
- * components:
+ * Compose-side debug HUD rendered on top of the game viewport. Item C unit 8 —
+ * gated on `state.canShowDebugOverlay` (DevToolsGate.isAvailable). Renders:
  *
- * 1. **Distance rings** at 1 km, 3 km, and 5 km centred on the camera-view
- *    centre. Helps the dev visually verify weapon-range tuning during
- *    empirical playtest sessions.
- * 2. **Mouse-cursor world position** in metres (e.g. `(1234, -567) m`),
+ * 1. **Mouse-cursor world position** in metres (e.g. `(1234, -567) m`),
  *    sourced from `pointerInputManager.hoveringPointerPosition`.
- * 3. **FPS counter** averaged over the last [FPS_SAMPLE_WINDOW] frames.
+ * 2. **FPS counter** averaged over the last [FPS_SAMPLE_WINDOW] frames.
+ *
+ * Per-ship range rings live in `DebugVisualiser` (a Kubriko actor) so they
+ * track ship positions in world space rather than the camera centre.
  *
  * **Pointer input.** The overlay does **not** install its own
  * `Modifier.pointerInput`. Doing so on a fillMaxSize sibling of
@@ -63,26 +60,6 @@ internal fun DebugOverlay(
     val hoveringPointerPosition by pointerInputManager.hoveringPointerPosition.collectAsStateWithLifecycle()
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Distance rings — radii expressed in metres, drawn in screen px via
-        // scaleFactor. Centred at the canvas centre (which is the camera
-        // viewport centre in screen coords).
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val centreX = size.width / 2f
-            val centreY = size.height / 2f
-            val pxPerMetre = scaleFactor.horizontal
-            for (rangeM in DISTANCE_RING_METRES) {
-                val radiusPx = rangeM * pxPerMetre
-                if (radiusPx > 0f && radiusPx < maxOf(size.width, size.height) * 2f) {
-                    drawCircle(
-                        color = RING_COLOR,
-                        radius = radiusPx,
-                        center = Offset(centreX, centreY),
-                        style = Stroke(width = 1.5f),
-                    )
-                }
-            }
-        }
-
         // Mouse world-position readout — bottom-left corner. Sourced from
         // Kubriko's already-tracked hovering pointer state; no competing
         // pointerInput modifier here.
@@ -158,7 +135,5 @@ private fun screenToWorld(
     return cameraPosition + Offset(deltaPx.x / scaleFactor, deltaPx.y / scaleFactor)
 }
 
-private val RING_COLOR = Color(0.5f, 0.9f, 0.5f, 0.5f) // semi-transparent green
 private val OVERLAY_TEXT_COLOR = Color(0.9f, 0.9f, 0.9f, 0.85f)
-private val DISTANCE_RING_METRES = listOf(1000f, 3000f, 5000f)
 private const val FPS_SAMPLE_WINDOW = 30

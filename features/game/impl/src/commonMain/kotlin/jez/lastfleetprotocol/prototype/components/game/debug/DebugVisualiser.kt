@@ -29,6 +29,8 @@ import kotlin.math.sin
  * - Red line from ship origin: normalised velocity vector
  * - Blue line from ship origin: normalised acceleration vector
  * - White outline: hull collision polygon edges (armour segments)
+ * - Faint outer ring: largest turret effective range (drag-aware firing reach)
+ * - Faint inner ring: AI orbit-engagement distance ([RANGE_RING_ORBIT_FRACTION] × max effective range)
  */
 class DebugVisualiser : Visible, Dynamic {
 
@@ -67,6 +69,10 @@ class DebugVisualiser : Visible, Dynamic {
         val shipPos = ship.body.position
         val shipX = shipPos.x.raw
         val shipY = shipPos.y.raw
+
+        // Range rings: faint concentric circles centred on the ship showing
+        // its turret reach. Drawn first so other debug elements layer on top.
+        drawShipRangeRings(ship, shipX, shipY)
 
         // White outline: hull collision polygon edges (armour segments) — one per hull collider
         for (hullCollider in ship.hullColliders) {
@@ -156,11 +162,51 @@ class DebugVisualiser : Visible, Dynamic {
         }
     }
 
+    /**
+     * Draws two concentric circles per ship at scene-unit (= metres) radii:
+     * the outer at the ship's largest turret effective range, the inner at
+     * the AI orbit-engagement distance ([RANGE_RING_ORBIT_FRACTION] × outer).
+     * Mirrors the firing-range gate ([Turret.effectiveRangeM]) and the
+     * BasicAI orbit-distance derivation. No-op for ships without turrets
+     * ([Ship.maxTurretEffectiveRangeM] returns 0 → guard skips the draws).
+     *
+     * `RANGE_RING_ORBIT_FRACTION` mirrors `BasicAI.ORBIT_RANGE_FRACTION`. The
+     * value is duplicated here rather than referenced because the BasicAI
+     * constant is module-private and the two debug elements are intentionally
+     * tied to that single ratio — if the orbit fraction changes, both move
+     * together.
+     */
+    private fun DrawScope.drawShipRangeRings(ship: Ship, shipX: Float, shipY: Float) {
+        val maxRange = ship.maxTurretEffectiveRangeM()
+        if (maxRange <= 0f) return
+
+        val color = if (ship.teamId == Ship.TEAM_PLAYER) Color.White else Color.Red
+        val centre = Offset(shipX, shipY)
+
+        drawCircle(
+            color = color,
+            radius = maxRange,
+            center = centre,
+            style = Stroke(width = 1.5f),
+            alpha = RANGE_RING_OUTER_ALPHA,
+        )
+        drawCircle(
+            color = color,
+            radius = maxRange * RANGE_RING_ORBIT_FRACTION,
+            center = centre,
+            style = Stroke(width = 1f),
+            alpha = RANGE_RING_INNER_ALPHA,
+        )
+    }
+
     companion object {
         private const val DEST_CIRCLE_RADIUS = 15f
         private const val FACING_LINE_LENGTH = 80f
         private const val VECTOR_LINE_LENGTH = 300f
         private const val MAX_DISPLAY_SPEED = 200f
         private const val MAX_DISPLAY_ACCEL = 25f
+        private const val RANGE_RING_ORBIT_FRACTION = 0.8f
+        private const val RANGE_RING_OUTER_ALPHA = 0.25f
+        private const val RANGE_RING_INNER_ALPHA = 0.18f
     }
 }
