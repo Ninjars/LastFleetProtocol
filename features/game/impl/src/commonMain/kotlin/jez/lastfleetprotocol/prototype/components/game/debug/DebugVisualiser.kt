@@ -16,6 +16,7 @@ import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.actors.ShipLifecycle
+import jez.lastfleetprotocol.prototype.components.game.debug.DebugVisualiser.Companion.RANGE_RING_ORBIT_FRACTION
 import jez.lastfleetprotocol.prototype.components.game.utils.rotate
 import kotlin.math.cos
 import kotlin.math.sin
@@ -187,14 +188,14 @@ class DebugVisualiser : Visible, Dynamic {
             color = color,
             radius = maxRange,
             center = centre,
-            style = Stroke(width = 1.5f),
+            style = Stroke(width = 6f),
             alpha = RANGE_RING_OUTER_ALPHA,
         )
         drawCircle(
             color = color,
             radius = maxRange * RANGE_RING_ORBIT_FRACTION,
             center = centre,
-            style = Stroke(width = 1f),
+            style = Stroke(width = 4f),
             alpha = RANGE_RING_INNER_ALPHA,
         )
     }

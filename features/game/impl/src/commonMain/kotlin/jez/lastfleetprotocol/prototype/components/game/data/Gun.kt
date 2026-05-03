@@ -20,6 +20,13 @@ class Gun(
     private val muzzleOffset: SceneOffset,
     private val gunData: GunData,
     private val teamId: String,
+    /**
+     * Returns the shooter rig's current world velocity at spawn time. Bullets
+     * inherit it so the lead-aim solver in [Turret] (which works in the
+     * shooter's frame) stays consistent with the absolute-frame bullet
+     * trajectory. Stationary platforms can pass `{ SceneOffset.Zero }`.
+     */
+    private val shooterVelocity: () -> SceneOffset,
 ) {
 
     enum class Condition {
@@ -42,13 +49,17 @@ class Gun(
     private fun spawnBullet(
         actorManager: ActorManager,
     ) {
+        val muzzleVelocity = SceneOffset(
+            gunData.projectileStats.speed.sceneUnit,
+            0.sceneUnit
+        ).rotate(turretBody.rotation)
+        // Bullets inherit shooter velocity. Pairs with the shooter-frame
+        // lead-aim solver in Turret — without inheritance, the muzzle vector
+        // would be a frame mismatch and shots would lag the firing ship.
         val bullet = Bullet(
             initialPosition = turretBody.getRelativePoint(muzzleOffset),
             initialRotation = turretBody.rotation,
-            initialVelocity = SceneOffset(
-                gunData.projectileStats.speed.sceneUnit,
-                0.sceneUnit
-            ).rotate(turretBody.rotation),
+            initialVelocity = muzzleVelocity + shooterVelocity(),
             bulletData = BulletData(
                 bulletSize = SceneSize(10.sceneUnit, 10.sceneUnit)
             ),

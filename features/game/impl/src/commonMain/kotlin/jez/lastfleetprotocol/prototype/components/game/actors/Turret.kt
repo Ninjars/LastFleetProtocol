@@ -18,6 +18,7 @@ import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
+import jez.lastfleetprotocol.prototype.components.game.combat.LeadAim
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.game.data.Gun
 import jez.lastfleetprotocol.prototype.components.gamecore.data.GunData
@@ -40,6 +41,13 @@ class Turret(
     parent = parent,
     offsetFromParentPivot = offsetFromParentPivot,
 ) {
+    /**
+     * Shooter rig — read for velocity (lead-aim relative motion + bullet
+     * inheritance at spawn). Same instance the [Child] base captures privately;
+     * we keep our own reference because [Child.parent] isn't exposed.
+     */
+    private val shooter: Parent = parent
+
     private lateinit var actorManager: ActorManager
 
     private var currentRotation: AngleRadians = AngleRadians.Zero
@@ -88,6 +96,7 @@ class Turret(
             muzzleOffset = SceneOffset(TURRET_HALF_LENGTH.sceneUnit, 0f.sceneUnit),
             gunData = gunData,
             teamId = teamId,
+            shooterVelocity = { shooter.velocity },
         )
     }
 
@@ -139,8 +148,18 @@ class Turret(
                 return@let
             }
 
-            // TODO: create aim point based on target velocity, projectile velocity, and distance
-            val angleToTarget = body.position.angleTowards(it.body.position)
+            // Lead-aim point accounts for the target's motion, the shooter's motion
+            // (bullets inherit it at spawn), and the projectile's drag-aware
+            // time-of-flight. See [LeadAim] for the derivation.
+            val aimPoint = LeadAim.computeAimPoint(
+                turretPos = body.position,
+                shooterVelocity = shooter.velocity,
+                targetPos = it.body.position,
+                targetVelocity = it.velocity,
+                muzzleSpeed = gunData.projectileStats.speed,
+                dragK = gunData.projectileStats.dragK,
+            )
+            val angleToTarget = body.position.angleTowards(aimPoint)
 
             val targetRotation = angleToTarget - body.rotation
             currentRotation = currentRotation.rotateTowards(
@@ -151,7 +170,9 @@ class Turret(
             // Item C unit 4: per-turret effective-range gate. Track the target
             // (rotation continues above) but only allow firing when target is
             // within drag-aware effective range. `gun.angleToTarget = null` is
-            // the existing "no aim point — don't fire" pathway.
+            // the existing "no aim point — don't fire" pathway. Range is
+            // measured to the target itself (not the lead aim point) — that
+            // mirrors the bullet's drag-aware reach in the world frame.
             val targetDistance = (it.body.position - body.position).length().raw
             gun.angleToTarget = if (targetDistance <= effectiveRangeM) {
                 angleToTarget - body.rotation - currentRotation
