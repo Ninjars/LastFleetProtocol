@@ -102,7 +102,7 @@ class Ship(
         offsetFromParentPivot = computeNoseOffset(),
     )
 
-    private val turrets = turretsConfig.map { tc ->
+    internal val turrets: List<Turret> = turretsConfig.map { tc ->
         Turret(
             parent = this,
             offsetFromParentPivot = SceneOffset(Offset(tc.offsetX, tc.offsetY)),
@@ -127,6 +127,42 @@ class Ship(
         set(value) {
             physics.velocity = value
         }
+
+    /**
+     * Rolling-mean velocity over the last [VELOCITY_HISTORY_FRAMES] frames.
+     * Read by lead-aim solvers (via [Targetable.smoothedVelocity]) to reject
+     * per-frame steering jitter without lagging behind sustained motion. Stored
+     * as raw floats in a fixed-size ring to avoid per-frame allocation. Updated
+     * once per [update] in the Active and LiftFailed paths.
+     */
+    private val velocityHistoryX = FloatArray(VELOCITY_HISTORY_FRAMES)
+    private val velocityHistoryY = FloatArray(VELOCITY_HISTORY_FRAMES)
+    private var velocityHistoryIndex = 0
+    private var velocityHistoryFilled = 0
+    private var smoothedVelocityCache: SceneOffset = initialVelocity
+
+    override val smoothedVelocity: SceneOffset
+        get() = smoothedVelocityCache
+
+    private fun pushVelocityHistory() {
+        val v = physics.velocity
+        velocityHistoryX[velocityHistoryIndex] = v.x.raw
+        velocityHistoryY[velocityHistoryIndex] = v.y.raw
+        velocityHistoryIndex = (velocityHistoryIndex + 1) % VELOCITY_HISTORY_FRAMES
+        if (velocityHistoryFilled < VELOCITY_HISTORY_FRAMES) velocityHistoryFilled++
+
+        var sumX = 0f
+        var sumY = 0f
+        for (i in 0 until velocityHistoryFilled) {
+            sumX += velocityHistoryX[i]
+            sumY += velocityHistoryY[i]
+        }
+        val invN = 1f / velocityHistoryFilled
+        smoothedVelocityCache = SceneOffset(
+            (sumX * invN).sceneUnit,
+            (sumY * invN).sceneUnit,
+        )
+    }
 
     /** Current movement destination, exposed for debug visualisation. */
     var destination: SceneOffset? = null
@@ -246,6 +282,7 @@ class Ship(
                 val result = physics.integrate(deltaTimeInMilliseconds)
                 body.position += result.positionDelta
                 // Rotation handled by navigator via turn-rate model (not physics-integrated)
+                pushVelocityHistory()
             }
 
             is ShipLifecycle.LiftFailed -> {
@@ -255,6 +292,7 @@ class Ship(
                 physics.applyDrag(spec.movementConfig, body.rotation)
                 val result = physics.integrate(deltaTimeInMilliseconds)
                 body.position += result.positionDelta
+                pushVelocityHistory()
             }
 
             is ShipLifecycle.Destroyed -> Unit // Actor is being / has been removed.
@@ -384,5 +422,14 @@ class Ship(
          * Tuneable in playtest — starting value per Slice B plan's Deferred to Implementation.
          */
         const val DRIFT_WINDOW_MS = 3000
+
+        /**
+         * Frames included in the rolling-mean for [smoothedVelocity]. At ~60fps this
+         * spans ~133ms — short enough to track sustained motion (real bullet flight
+         * times run several seconds, so the lag is negligible) and long enough to
+         * smooth out the per-frame thrust spikes that AI orbit-chase steering
+         * produces. Tunable; not exposed because lead-aim is the only consumer.
+         */
+        private const val VELOCITY_HISTORY_FRAMES = 8
     }
 }

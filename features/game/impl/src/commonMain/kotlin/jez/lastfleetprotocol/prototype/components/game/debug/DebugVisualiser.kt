@@ -32,6 +32,9 @@ import kotlin.math.sin
  * - White outline: hull collision polygon edges (armour segments)
  * - Faint outer ring: largest turret effective range (drag-aware firing reach)
  * - Faint inner ring: AI orbit-engagement distance ([RANGE_RING_ORBIT_FRACTION] × max effective range)
+ * - Faint grey line + cross: per-turret current lead-aim point — tail anchored
+ *   at the turret position, cross marking the world-space point the turret has
+ *   solved for. Drawn only while a turret has a valid target.
  */
 class DebugVisualiser : Visible, Dynamic {
 
@@ -161,6 +164,49 @@ class DebugVisualiser : Visible, Dynamic {
                 strokeWidth = 2f,
             )
         }
+
+        // Per-turret lead-aim visualisation: faint line from turret to its
+        // current aim point, cross at the aim point. Skipped when the turret
+        // has no valid target.
+        for (turret in ship.turrets) {
+            val aim = turret.currentAimPoint ?: continue
+            val turretPos = turret.body.position
+            drawAimMarker(
+                turretX = turretPos.x.raw,
+                turretY = turretPos.y.raw,
+                aimX = aim.x.raw,
+                aimY = aim.y.raw,
+            )
+        }
+    }
+
+    private fun DrawScope.drawAimMarker(
+        turretX: Float,
+        turretY: Float,
+        aimX: Float,
+        aimY: Float,
+    ) {
+        drawLine(
+            color = AIM_MARKER_COLOR,
+            start = Offset(turretX, turretY),
+            end = Offset(aimX, aimY),
+            strokeWidth = 1f,
+            alpha = AIM_MARKER_LINE_ALPHA,
+        )
+        drawLine(
+            color = AIM_MARKER_COLOR,
+            start = Offset(aimX - AIM_MARKER_HALF_SIZE, aimY),
+            end = Offset(aimX + AIM_MARKER_HALF_SIZE, aimY),
+            strokeWidth = 1.5f,
+            alpha = AIM_MARKER_CROSS_ALPHA,
+        )
+        drawLine(
+            color = AIM_MARKER_COLOR,
+            start = Offset(aimX, aimY - AIM_MARKER_HALF_SIZE),
+            end = Offset(aimX, aimY + AIM_MARKER_HALF_SIZE),
+            strokeWidth = 1.5f,
+            alpha = AIM_MARKER_CROSS_ALPHA,
+        )
     }
 
     /**
@@ -209,5 +255,9 @@ class DebugVisualiser : Visible, Dynamic {
         private const val RANGE_RING_ORBIT_FRACTION = 0.8f
         private const val RANGE_RING_OUTER_ALPHA = 0.25f
         private const val RANGE_RING_INNER_ALPHA = 0.18f
+        private val AIM_MARKER_COLOR = Color(0.85f, 0.85f, 0.85f, 1f)
+        private const val AIM_MARKER_LINE_ALPHA = 0.25f
+        private const val AIM_MARKER_CROSS_ALPHA = 0.7f
+        private const val AIM_MARKER_HALF_SIZE = 12f
     }
 }

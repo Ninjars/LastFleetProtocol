@@ -98,6 +98,31 @@ class LeadAimTest {
     }
 
     @Test
+    fun dragAware_shooterMoving_intercept_matchesNumerically() {
+        // Cruiser-class engagement: shooter moves +X at 80 m/s while target at
+        // (3000, 0) crosses at +Y 50 m/s. Bullet inherits shooter velocity, then
+        // drag scales the *full* vector — the older formulation (without the
+        // shooterVel·(t - f(t)) correction) under-leads here. Intercept must
+        // hold under the corrected math.
+        val result = aim(
+            shooterVel = 80f to 0f,
+            target = 3000f to 0f,
+            targetVel = 0f to 50f,
+            muzzleSpeed = 600f,
+            dragK = 0.12f,
+        )
+        assertInterceptHolds(
+            turret = 0f to 0f,
+            shooterVel = 80f to 0f,
+            target = 3000f to 0f,
+            targetVel = 0f to 50f,
+            muzzleSpeed = 600f,
+            dragK = 0.12f,
+            aim = result,
+        )
+    }
+
+    @Test
     fun dragAware_intercept_matchesNumerically() {
         // Drag-aware: muzzleSpeed=600, dragK=0.12 (standard cruiser turret).
         // Target at (2000, 0) moving +Y at 30. Verify intercept holds under

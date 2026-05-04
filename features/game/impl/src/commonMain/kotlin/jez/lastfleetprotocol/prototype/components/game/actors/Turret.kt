@@ -86,9 +86,18 @@ class Turret(
         firingEnabled = enabled
         if (!enabled) {
             target = null
+            currentAimPoint = null
             gun.angleToTarget = null
         }
     }
+
+    /**
+     * Last lead-aim point computed in [update]. Null when the turret has no
+     * valid target. Read by `DebugVisualiser` to draw a cross + line per
+     * turret without re-running the lead solver.
+     */
+    internal var currentAimPoint: SceneOffset? = null
+        private set
 
     private val gun: Gun by lazy {
         Gun(
@@ -145,20 +154,25 @@ class Turret(
         target?.let {
             if (!it.isValidTarget()) {
                 target = null
+                currentAimPoint = null
                 return@let
             }
 
-            // Lead-aim point accounts for the target's motion, the shooter's motion
-            // (bullets inherit it at spawn), and the projectile's drag-aware
-            // time-of-flight. See [LeadAim] for the derivation.
+            // Lead-aim point accounts for the target's smoothed motion, the
+            // shooter's instantaneous motion (bullets inherit it verbatim at
+            // spawn), and the projectile's drag-aware time-of-flight. See
+            // [LeadAim] for the derivation. Target uses smoothedVelocity to
+            // dampen AI-steering jitter; shooter uses instantaneous velocity
+            // because that is literally what the spawned bullet inherits.
             val aimPoint = LeadAim.computeAimPoint(
                 turretPos = body.position,
                 shooterVelocity = shooter.velocity,
                 targetPos = it.body.position,
-                targetVelocity = it.velocity,
+                targetVelocity = it.smoothedVelocity,
                 muzzleSpeed = gunData.projectileStats.speed,
                 dragK = gunData.projectileStats.dragK,
             )
+            currentAimPoint = aimPoint
             val angleToTarget = body.position.angleTowards(aimPoint)
 
             val targetRotation = angleToTarget - body.rotation
@@ -182,6 +196,7 @@ class Turret(
         }
 
         if (target == null) {
+            currentAimPoint = null
             gun.angleToTarget = null
             currentRotation =
                 currentRotation.rotateTowards(0.rad, rotationSpeed / deltaTimeInMilliseconds)
