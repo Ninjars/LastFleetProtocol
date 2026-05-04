@@ -15,6 +15,7 @@ import com.pandulapeter.kubriko.helpers.extensions.length
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.ViewportManager
+import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.ai.AIModule
@@ -43,6 +44,7 @@ class Ship(
     val targetProvider: () -> List<Ship> = { emptyList() },
     private val aiModules: List<AIModule> = emptyList(),
     initialVelocity: SceneOffset = SceneOffset.Zero,
+    initialRotation: AngleRadians = AngleRadians.Zero,
     private val turretsConfig: List<TurretConfig> = emptyList(),
     val shipSystems: ShipSystems = ShipSystems(emptyList()),
     override val drawingOrder: Float = 0f,
@@ -141,6 +143,7 @@ class Ship(
 
     override val body: BoxBody = BoxBody(
         initialPosition = initialPosition,
+        initialRotation = initialRotation,
     )
 
     override val isAlwaysActive: Boolean = true

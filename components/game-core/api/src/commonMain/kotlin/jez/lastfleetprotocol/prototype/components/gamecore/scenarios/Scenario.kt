@@ -47,6 +47,14 @@ data class SpawnSlotConfig(
     val teamId: String,
     val withAI: Boolean,
     val drawOrder: Float,
+    /**
+     * Initial facing of the spawned ship in degrees. 0° points the hull's nose
+     * toward +X (the design-local forward axis); positive rotates the hull
+     * counter-clockwise in scene space. Default 0 keeps existing scenario JSON
+     * back-compatible — the field is omitted from serialised output when at
+     * the default and decoded as 0 when missing.
+     */
+    val rotationDegrees: Float = 0f,
 )
 
 /**

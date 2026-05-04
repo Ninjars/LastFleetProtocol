@@ -49,6 +49,7 @@ object DemoScenarioPreset {
             teamId = "enemy",
             withAI = true,
             drawOrder = 20f,
+            rotationDegrees = 180f,
         ),
         SpawnSlotConfig(
             designName = "enemy_heavy",
@@ -56,6 +57,7 @@ object DemoScenarioPreset {
             teamId = "enemy",
             withAI = true,
             drawOrder = 20f,
+            rotationDegrees = 180f,
         ),
     )
 }
