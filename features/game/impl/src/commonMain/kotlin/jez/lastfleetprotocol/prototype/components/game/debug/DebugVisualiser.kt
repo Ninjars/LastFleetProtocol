@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.actor.body.BoxBody
 import com.pandulapeter.kubriko.actor.traits.Dynamic
@@ -12,7 +13,6 @@ import com.pandulapeter.kubriko.helpers.extensions.get
 import com.pandulapeter.kubriko.helpers.extensions.length
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
-import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.actors.ShipLifecycle
@@ -37,12 +37,13 @@ import kotlin.math.sin
  *   solved for. Drawn only while a turret has a valid target.
  */
 class DebugVisualiser : Visible, Dynamic {
-
+    private val size = 100000f.sceneUnit
     override val body: BoxBody = BoxBody(
-        initialPosition = SceneOffset.Zero,
+        initialSize = SceneSize(size, size)
     )
 
     override val isAlwaysActive: Boolean = true
+    override val isVisible: Boolean = true
     override val drawingOrder: Float = -10f
     override val shouldClip: Boolean = false
 
@@ -55,15 +56,13 @@ class DebugVisualiser : Visible, Dynamic {
     override fun update(deltaTimeInMilliseconds: Int) {
     }
 
-    init {
-        body.size = SceneSize(1f.sceneUnit, 1f.sceneUnit)
-    }
-
     override fun DrawScope.draw() {
-        for (actor in actorManager.allActors.value) {
-            if (actor is Ship) {
-                if (actor.lifecycle !is ShipLifecycle.Destroyed) {
-                    drawShipDebug(actor)
+        translate(left = body.size.center.x.raw, top = body.size.center.y.raw) {
+            for (actor in actorManager.allActors.value) {
+                if (actor is Ship) {
+                    if (actor.lifecycle !is ShipLifecycle.Destroyed) {
+                        drawShipDebug(actor)
+                    }
                 }
             }
         }
