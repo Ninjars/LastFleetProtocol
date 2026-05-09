@@ -15,7 +15,6 @@ import jez.lastfleetprotocol.prototype.components.gamecore.data.MovementConfig
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ln
-import kotlin.math.sqrt
 
 /**
  * Resolves navigation for a ship under the atmospheric drag model.
@@ -117,13 +116,13 @@ class ShipNavigator(
             )
         }
 
-        // Rotate: face toward destination when cruising, toward combat target when close
-        val terminalVel = terminalVelocity(movementConfig.forwardThrust, movementConfig.forwardDragCoeff)
-        if (speed > terminalVel * 0.5f && combatTarget != null) {
-            rotateToCombatTarget(body, physics, combatTarget, turnRate, dt)
-        } else {
-            rotateToward(body, targetAngle, turnRate, dt)
-        }
+        // Rotate: always face the destination during cruise. Turrets rotate
+        // freely so they track the combat target without any help from hull
+        // orientation; previously the hull would slew to face the combat target
+        // once up to speed, which forced orbit-tangent motion onto the much
+        // weaker lateral thrusters and made cruisers feel sluggish in
+        // engagement.
+        rotateToward(body, targetAngle, turnRate, dt)
 
         return destination
     }
@@ -214,11 +213,6 @@ class ShipNavigator(
         return movementConfig.angularThrust / mass * TURN_RATE_SCALE
     }
 
-    private fun terminalVelocity(thrust: Float, dragCoeff: Float): Float {
-        if (dragCoeff <= DRAG_EPSILON) return thrust * MAX_SPEED_FALLBACK_FACTOR
-        return sqrt(thrust / dragCoeff)
-    }
-
     private fun normalizeAngle(rawDelta: AngleRadians): AngleRadians {
         return if (rawDelta > AngleRadians.Pi) {
             rawDelta - AngleRadians.TwoPi
@@ -243,8 +237,16 @@ class ShipNavigator(
         private const val PROXIMITY_RADIUS_FACTOR = 1.5f
         private const val SLOW_SPEED_FACTOR = 1.0f
         private const val LOW_SPEED_BRAKE_FACTOR = 0.3f
-        private const val MAX_SPEED_FALLBACK_FACTOR = 0.1f
         private const val THRUST_ALIGNMENT_THRESHOLD = 0.1f
-        private const val TURN_RATE_SCALE = 50f
+
+        /**
+         * Multiplier on `angularThrust / mass` to produce a turn rate in
+         * degrees-per-second. Bumped from 50 (~4°/s on the standard cruiser —
+         * a 90° turn took 21s, sluggish for combat) to 250 (~22°/s, ~4s for
+         * 90°). The formula has no physical units, so the constant is purely
+         * a feel-tuning lever; cruisers stay clearly slower than corvettes
+         * via their lower angularThrust:mass ratio.
+         */
+        private const val TURN_RATE_SCALE = 250f
     }
 }
