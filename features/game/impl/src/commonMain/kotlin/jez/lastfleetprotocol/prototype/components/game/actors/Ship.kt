@@ -172,9 +172,7 @@ class Ship(
         initialVelocity = initialVelocity,
     )
 
-    private val navigator: ShipNavigator = ShipNavigator(
-        hullRadius = computeHullRadius(),
-    )
+    private val navigator: ShipNavigator = ShipNavigator()
 
     override val body: BoxBody = BoxBody(
         initialPosition = initialPosition,
@@ -396,19 +394,6 @@ class Ship(
             allVertices.maxBy { it.x.raw }
         } else {
             SceneOffset.Zero
-        }
-    }
-
-    /**
-     * Compute the average vertex distance across all hulls, used as a
-     * bounding radius for the navigator's arrival/braking calculations.
-     */
-    private fun computeHullRadius(): Float {
-        val allVertices = spec.hulls.flatMap { it.vertices }
-        return if (allVertices.isNotEmpty()) {
-            allVertices.map { it.length().raw }.average().toFloat()
-        } else {
-            5f // fallback matching ARRIVAL_THRESHOLD
         }
     }
 

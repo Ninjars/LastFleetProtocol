@@ -19,16 +19,21 @@ import kotlin.math.ln
 /**
  * Resolves navigation for a ship under the atmospheric drag model.
  *
- * Key principle: thrust is applied toward the destination and drag naturally
- * caps speed at terminal velocity. The navigator does NOT try to match a precise
- * desired velocity — that causes oscillation under drag. Instead:
- * - **Cruising:** apply forward thrust toward target. Drag caps speed.
- * - **Braking:** stop thrusting. Drag + optional braking thrust decelerates.
- * - **Rotation:** rate-limited turn toward heading target (degrees/sec).
+ * Three distinct phases, picked per-frame from current state:
+ * - **Cruise:** rotate hull toward destination, apply forward thrust scaled by
+ *   alignment. Lateral and reverse thrusters stay quiet here — using them
+ *   diverts the resultant thrust off the destination axis and produces curved
+ *   approach paths. With the bumped turn rate the rotation completes in a few
+ *   seconds, so the ship spends almost all its travel time aligned and
+ *   accelerating straight at the destination.
+ * - **Brake:** apply full anti-velocity thrust on whichever ship-local axes
+ *   match (forward / reverse / lateral). Engaged whenever the realistic
+ *   stopping distance — computed against `reverseThrust`, since that's what
+ *   the navigator actually uses to brake — exceeds the remaining travel.
+ * - **Arrived:** hold near destination. Cleared once we're inside the arrival
+ *   threshold *and* slow enough that residual brake bleeds the rest off.
  */
-class ShipNavigator(
-    private val hullRadius: Float,
-) {
+class ShipNavigator {
     fun navigate(
         movementConfig: MovementConfig,
         physics: ShipPhysics,
@@ -46,83 +51,55 @@ class ShipNavigator(
         physics.applyDrag(movementConfig, facing)
 
         if (destination == null) {
-            applyLowSpeedBrake(physics, movementConfig, facing, speed)
+            applyBrakeThrust(physics, movementConfig, facing, speed)
             rotateToCombatTarget(body, physics, combatTarget, turnRate, dt)
             return null
         }
 
         val toTarget = destination - body.position
         val distanceToTarget = toTarget.length().raw
+        val targetAngle = kotlin.math.atan2(toTarget.y.raw, toTarget.x.raw).rad
 
-        // Snap-to-stop: close and slow
-        if (distanceToTarget < hullRadius * PROXIMITY_RADIUS_FACTOR && speed < hullRadius * SLOW_SPEED_FACTOR) {
-            applyLowSpeedBrake(physics, movementConfig, facing, speed)
+        // Truly arrived: near destination AND slow enough for residual brake to
+        // settle the rest. Clears destination so the AI / player can issue a new
+        // one without the navigator continuing to brake against an old target.
+        if (distanceToTarget < ARRIVAL_THRESHOLD && speed < ARRIVAL_SPEED) {
+            applyBrakeThrust(physics, movementConfig, facing, speed)
             rotateToCombatTarget(body, physics, combatTarget, turnRate, dt)
             return null
         }
 
-        // Hard arrival
-        if (distanceToTarget < ARRIVAL_THRESHOLD) {
-            applyLowSpeedBrake(physics, movementConfig, facing, speed)
-            rotateToCombatTarget(body, physics, combatTarget, turnRate, dt)
-            return null
-        }
-
-        // Should we be braking?
-        val effectiveDrag = movementConfig.forwardDragCoeff
-        val stoppingDist = stoppingDistanceUnderDrag(speed, movementConfig.forwardThrust, effectiveDrag, physics.mass)
+        // Realistic brake estimate: reverseThrust is what `applyBrakeThrust`
+        // actually uses when the ship faces the destination (the common case).
+        // Using `forwardThrust` here — as the prior code did — over-promised
+        // braking by ~2.4× on the standard cruiser, so the navigator started
+        // braking too late and the ship sailed straight through arrival.
+        val brakeThrust = movementConfig.reverseThrust.coerceAtLeast(MIN_BRAKE_THRUST)
+        val stoppingDist = stoppingDistanceUnderDrag(speed, brakeThrust, movementConfig.forwardDragCoeff, physics.mass)
         val isBraking = stoppingDist >= distanceToTarget * BRAKING_MARGIN
 
-        if (isBraking) {
-            // Braking: don't apply forward thrust. Drag decelerates naturally.
-            // Apply low-speed brake for the final approach where drag vanishes.
-            applyLowSpeedBrake(physics, movementConfig, facing, speed)
-            rotateToCombatTarget(body, physics, combatTarget, turnRate, dt)
+        // Inside arrival threshold but still moving fast, OR outside but stopping
+        // distance has caught up: brake hard, keep rotating toward destination so
+        // reverse thrust stays the brake axis.
+        if (isBraking || distanceToTarget < ARRIVAL_THRESHOLD) {
+            applyBrakeThrust(physics, movementConfig, facing, speed)
+            rotateToward(body, targetAngle, turnRate, dt)
             return destination
         }
 
-        // Cruising: apply thrust toward the destination. Drag caps speed at terminal velocity.
-        // Decompose the target direction into ship-local axes and apply appropriate thrust.
-        val targetAngle = kotlin.math.atan2(toTarget.y.raw, toTarget.x.raw).rad
+        // Cruise: rotate hull toward destination and apply forward thrust scaled
+        // by alignment. Lateral and reverse stay off — see class KDoc for why.
+        rotateToward(body, targetAngle, turnRate, dt)
         val facingCos = facing.cos
         val facingSin = facing.sin
-        val targetDirX = toTarget.x.raw / distanceToTarget
-        val targetDirY = toTarget.y.raw / distanceToTarget
-        val forwardComponent = targetDirX * facingCos + targetDirY * facingSin
-        val lateralComponent = -targetDirX * facingSin + targetDirY * facingCos
-
-        // Apply thrust proportional to the alignment with each axis.
-        // Full thrust when well-aligned, reduced when at an angle.
+        val forwardComponent = (toTarget.x.raw * facingCos + toTarget.y.raw * facingSin) / distanceToTarget
         if (forwardComponent > THRUST_ALIGNMENT_THRESHOLD) {
             physics.applyThrust(
                 SceneOffset(1f.sceneUnit, 0f.sceneUnit),
                 movementConfig.forwardThrust * forwardComponent,
                 facing,
             )
-        } else if (forwardComponent < -THRUST_ALIGNMENT_THRESHOLD) {
-            physics.applyThrust(
-                SceneOffset((-1f).sceneUnit, 0f.sceneUnit),
-                movementConfig.reverseThrust * (-forwardComponent),
-                facing,
-            )
         }
-
-        if (abs(lateralComponent) > THRUST_ALIGNMENT_THRESHOLD && movementConfig.lateralThrust > 0f) {
-            val lateralSign = if (lateralComponent > 0f) 1f else -1f
-            physics.applyThrust(
-                SceneOffset(0f.sceneUnit, lateralSign.sceneUnit),
-                movementConfig.lateralThrust * abs(lateralComponent),
-                facing,
-            )
-        }
-
-        // Rotate: always face the destination during cruise. Turrets rotate
-        // freely so they track the combat target without any help from hull
-        // orientation; previously the hull would slew to face the combat target
-        // once up to speed, which forced orbit-tangent motion onto the much
-        // weaker lateral thrusters and made cruisers feel sluggish in
-        // engagement.
-        rotateToward(body, targetAngle, turnRate, dt)
 
         return destination
     }
@@ -174,7 +151,23 @@ class ShipNavigator(
         return (mass / (2f * dragCoeff)) * ln((thrust + kv2) / thrust)
     }
 
-    private fun applyLowSpeedBrake(
+    /**
+     * Apply full anti-velocity thrust on whichever ship-local axes are aligned
+     * with `-velocity`. Decomposes anti-velocity into forward / lateral
+     * components in the ship's frame and fires the matching thrusters
+     * (`forwardThrust`, `reverseThrust`, or `lateralThrust`) at a magnitude
+     * scaled by alignment. Replaces the prior 30%-factor low-speed brake,
+     * which was the proximate cause of "ships don't stop" — quadratic drag at
+     * the cruiser's tuned `dragCoeff` is essentially zero at cruise speeds, so
+     * the brake thrust is the only thing actually decelerating the ship. At
+     * 30% it couldn't keep up with the navigator's cruise output.
+     *
+     * Lateral thrust does fire here even though it's the weakest axis — when
+     * the ship is rotating mid-brake, velocity becomes lateral relative to
+     * facing, and the previous "no lateral brake" choice meant the ship
+     * coasted on residual sideways motion that drag couldn't bleed.
+     */
+    private fun applyBrakeThrust(
         physics: ShipPhysics,
         movementConfig: MovementConfig,
         facing: AngleRadians,
@@ -182,28 +175,35 @@ class ShipNavigator(
     ) {
         if (speed < CORRECTION_EPSILON) return
 
-        // Apply thrust opposing velocity to bring ship to rest
         val facingCos = facing.cos
         val facingSin = facing.sin
         val antiVelX = -physics.velocity.x.raw / speed
         val antiVelY = -physics.velocity.y.raw / speed
-        val fwdDot = facingCos * antiVelX + facingSin * antiVelY
+        val fwdAxisDot = facingCos * antiVelX + facingSin * antiVelY
+        val latAxisDot = -facingSin * antiVelX + facingCos * antiVelY
 
-        if (fwdDot > 0.3f) {
+        if (fwdAxisDot > THRUST_ALIGNMENT_THRESHOLD) {
             physics.applyThrust(
                 SceneOffset(1f.sceneUnit, 0f.sceneUnit),
-                movementConfig.forwardThrust * LOW_SPEED_BRAKE_FACTOR,
+                movementConfig.forwardThrust * fwdAxisDot,
                 facing,
             )
-        } else if (fwdDot < -0.3f) {
+        } else if (fwdAxisDot < -THRUST_ALIGNMENT_THRESHOLD) {
             physics.applyThrust(
                 SceneOffset((-1f).sceneUnit, 0f.sceneUnit),
-                movementConfig.reverseThrust * LOW_SPEED_BRAKE_FACTOR,
+                movementConfig.reverseThrust * (-fwdAxisDot),
                 facing,
             )
         }
-        // If velocity is roughly perpendicular to facing, lateral thrust would help
-        // but for simplicity we let drag handle it
+
+        if (movementConfig.lateralThrust > 0f && abs(latAxisDot) > THRUST_ALIGNMENT_THRESHOLD) {
+            val latSign = if (latAxisDot > 0f) 1f else -1f
+            physics.applyThrust(
+                SceneOffset(0f.sceneUnit, latSign.sceneUnit),
+                movementConfig.lateralThrust * abs(latAxisDot),
+                facing,
+            )
+        }
     }
 
     // -- Utilities --
@@ -224,19 +224,42 @@ class ShipNavigator(
     }
 
     companion object {
-        // Item C unit 6: ARRIVAL_THRESHOLD bumped from 5m to 50m for cruiser-class
-        // scale. At 1 SU = 1 m and a 100m cruiser, 5m was too tight — any drift
-        // past the orbit point would loop into oscillation. 50m gives the
-        // navigator a sensible "we've arrived" tolerance proportional to ship size.
-        // Other constants remain proportional to hullRadius / speed and don't need
-        // class-specific rebasing — they scale automatically with the rebased ship.
+        /**
+         * Arrival tolerance — the radius around the destination at which we
+         * declare the ship "close enough" and stop counting position error.
+         * 50m for cruiser-class; smaller hulls would want it tighter, larger
+         * hulls looser, but no consumer needs class-specific tuning yet.
+         */
         private const val ARRIVAL_THRESHOLD = 50f
+
+        /**
+         * Speed (m/s) below which the ship is considered "settled" inside the
+         * arrival threshold and the destination clears. Tuned so that at this
+         * speed, brake thrust + drag bleed the residual motion within a few
+         * frames — picking too high a value lets the ship drift clean through
+         * arrival, too low keeps the ship in brake-mode forever for AI
+         * destinations that drift slightly each frame.
+         */
+        private const val ARRIVAL_SPEED = 2f
+
+        /**
+         * Lower bound on the brake-thrust used in the stopping-distance
+         * estimate, to avoid divide-by-zero / huge stopping distance when a
+         * design has no reverse thruster. 1 N is purely defensive — real
+         * configs have several kN reverse.
+         */
+        private const val MIN_BRAKE_THRUST = 1f
+
         private const val CORRECTION_EPSILON = 0.1f
         private const val DRAG_EPSILON = 0.0001f
+
+        /**
+         * Safety margin on the brake decision — engage braking when stopping
+         * distance reaches 80% of remaining distance, not 100%. Buys the
+         * navigator a slack frame for the brake to ramp up.
+         */
         private const val BRAKING_MARGIN = 0.8f
-        private const val PROXIMITY_RADIUS_FACTOR = 1.5f
-        private const val SLOW_SPEED_FACTOR = 1.0f
-        private const val LOW_SPEED_BRAKE_FACTOR = 0.3f
+
         private const val THRUST_ALIGNMENT_THRESHOLD = 0.1f
 
         /**
