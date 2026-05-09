@@ -158,17 +158,19 @@ class Turret(
                 return@let
             }
 
-            // Lead-aim point accounts for the target's smoothed motion, the
-            // shooter's instantaneous motion (bullets inherit it verbatim at
-            // spawn), and the projectile's drag-aware time-of-flight. See
-            // [LeadAim] for the derivation. Target uses smoothedVelocity to
-            // dampen AI-steering jitter; shooter uses instantaneous velocity
-            // because that is literally what the spawned bullet inherits.
+            // Lead-aim point accounts for the target's constant-acceleration
+            // motion, the shooter's instantaneous motion (bullets inherit it
+            // verbatim at spawn), and the projectile's drag-aware time-of-flight.
+            // See [LeadAim] for the derivation. Velocity is read instantaneously
+            // for both rigs — physics-integrated velocity is already smooth
+            // frame-to-frame, so further smoothing only adds lag — but
+            // acceleration is smoothed to absorb per-frame AI thrust toggling.
             val aimPoint = LeadAim.computeAimPoint(
                 turretPos = body.position,
                 shooterVelocity = shooter.velocity,
                 targetPos = it.body.position,
-                targetVelocity = it.smoothedVelocity,
+                targetVelocity = it.velocity,
+                targetAcceleration = it.smoothedAcceleration,
                 muzzleSpeed = gunData.projectileStats.speed,
                 dragK = gunData.projectileStats.dragK,
             )

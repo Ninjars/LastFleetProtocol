@@ -21,6 +21,7 @@ class LeadAimTest {
         shooterVel: Pair<Float, Float> = 0f to 0f,
         target: Pair<Float, Float>,
         targetVel: Pair<Float, Float> = 0f to 0f,
+        targetAcc: Pair<Float, Float> = 0f to 0f,
         muzzleSpeed: Float = 100f,
         dragK: Float = 0f,
     ): SceneOffset = LeadAim.computeAimPoint(
@@ -28,6 +29,7 @@ class LeadAimTest {
         shooterVelocity = SceneOffset(shooterVel.first.sceneUnit, shooterVel.second.sceneUnit),
         targetPos = SceneOffset(target.first.sceneUnit, target.second.sceneUnit),
         targetVelocity = SceneOffset(targetVel.first.sceneUnit, targetVel.second.sceneUnit),
+        targetAcceleration = SceneOffset(targetAcc.first.sceneUnit, targetAcc.second.sceneUnit),
         muzzleSpeed = muzzleSpeed,
         dragK = dragK,
     )
@@ -145,6 +147,54 @@ class LeadAimTest {
     }
 
     @Test
+    fun acceleratingTarget_intercept_matchesNumerically() {
+        // Cruiser pushing thrust: target at (3000, 0) moving +Y at 30 m/s and
+        // accelerating +Y at 5 m/s². Over a ~7.6s drag-aware flight, the
+        // 0.5·a·t² contribution alone is ~144m — a constant-velocity solver
+        // misses by that much. Intercept must hold under the constant-accel
+        // model.
+        val result = aim(
+            target = 3000f to 0f,
+            targetVel = 0f to 30f,
+            targetAcc = 0f to 5f,
+            muzzleSpeed = 600f,
+            dragK = 0.12f,
+        )
+        assertInterceptHolds(
+            turret = 0f to 0f,
+            shooterVel = 0f to 0f,
+            target = 3000f to 0f,
+            targetVel = 0f to 30f,
+            targetAcc = 0f to 5f,
+            muzzleSpeed = 600f,
+            dragK = 0.12f,
+            aim = result,
+        )
+    }
+
+    @Test
+    fun zeroAcceleration_collapsesToConstantVelocity() {
+        // Default targetAcc = 0 should give the same aim as the constant-velocity
+        // path (within iteration noise). Pinning this prevents future refactors
+        // from introducing a hidden bias when no acceleration is supplied.
+        val withZero = aim(
+            target = 2000f to 0f,
+            targetVel = 0f to 30f,
+            muzzleSpeed = 600f,
+            dragK = 0.12f,
+        )
+        val explicitZero = aim(
+            target = 2000f to 0f,
+            targetVel = 0f to 30f,
+            targetAcc = 0f to 0f,
+            muzzleSpeed = 600f,
+            dragK = 0.12f,
+        )
+        assertEquals(withZero.x.raw, explicitZero.x.raw, absoluteTolerance = 0.01f)
+        assertEquals(withZero.y.raw, explicitZero.y.raw, absoluteTolerance = 0.01f)
+    }
+
+    @Test
     fun zeroMuzzleSpeed_returnsTargetPosition() {
         // Degenerate guard: no projectile speed → fall back to "aim at target".
         val result = aim(
@@ -168,6 +218,7 @@ class LeadAimTest {
         shooterVel: Pair<Float, Float>,
         target: Pair<Float, Float>,
         targetVel: Pair<Float, Float>,
+        targetAcc: Pair<Float, Float> = 0f to 0f,
         muzzleSpeed: Float,
         dragK: Float,
         aim: SceneOffset,
@@ -193,8 +244,10 @@ class LeadAimTest {
             val factor = if (dragK > 0f) (1f - kotlin.math.exp(-dragK * t)) / dragK else t
             val bx = turret.first + v0x * factor
             val by = turret.second + v0y * factor
-            val tx = target.first + targetVel.first * t
-            val ty = target.second + targetVel.second * t
+            // Constant-acceleration target: pos(t) = pos + vel*t + 0.5*acc*t²
+            val halfTSquared = 0.5f * t * t
+            val tx = target.first + targetVel.first * t + targetAcc.first * halfTSquared
+            val ty = target.second + targetVel.second * t + targetAcc.second * halfTSquared
             val miss = sqrt((bx - tx) * (bx - tx) + (by - ty) * (by - ty))
             if (miss < bestMiss) {
                 bestMiss = miss

@@ -129,39 +129,38 @@ class Ship(
         }
 
     /**
-     * Rolling-mean velocity over the last [VELOCITY_HISTORY_FRAMES] frames.
-     * Read by lead-aim solvers (via [Targetable.smoothedVelocity]) to reject
-     * per-frame steering jitter without lagging behind sustained motion. Stored
-     * as raw floats in a fixed-size ring to avoid per-frame allocation. Updated
-     * once per [update] in the Active and LiftFailed paths.
+     * Smoothed acceleration estimate in scene-units per second². Updated each
+     * frame from a single-frame velocity derivative passed through an EMA — the
+     * derivative would otherwise track AI thrust toggling at frame resolution,
+     * producing wildly oscillating lead points. EMA constant balances reactivity
+     * (small ALPHA = lazy follow-on, ignores brief thrust pulses) against noise
+     * rejection (large ALPHA = chase every frame's accel sample).
+     *
+     * Lead-aim reads this via [Targetable.smoothedAcceleration] for the
+     * constant-acceleration motion model. The constant-velocity model that
+     * preceded it consistently under-led under sustained thrust — at cruiser
+     * scale, ~29m of lead-shortfall per `m/s²` of unmodeled accel.
      */
-    private val velocityHistoryX = FloatArray(VELOCITY_HISTORY_FRAMES)
-    private val velocityHistoryY = FloatArray(VELOCITY_HISTORY_FRAMES)
-    private var velocityHistoryIndex = 0
-    private var velocityHistoryFilled = 0
-    private var smoothedVelocityCache: SceneOffset = initialVelocity
+    private var prevVelocity: SceneOffset = initialVelocity
+    private var smoothedAccelerationCache: SceneOffset = SceneOffset.Zero
 
-    override val smoothedVelocity: SceneOffset
-        get() = smoothedVelocityCache
+    override val smoothedAcceleration: SceneOffset
+        get() = smoothedAccelerationCache
 
-    private fun pushVelocityHistory() {
+    private fun updateAccelerationEstimate(deltaTimeInMs: Int) {
+        if (deltaTimeInMs <= 0) return
+        val dtSeconds = deltaTimeInMs * 0.001f
         val v = physics.velocity
-        velocityHistoryX[velocityHistoryIndex] = v.x.raw
-        velocityHistoryY[velocityHistoryIndex] = v.y.raw
-        velocityHistoryIndex = (velocityHistoryIndex + 1) % VELOCITY_HISTORY_FRAMES
-        if (velocityHistoryFilled < VELOCITY_HISTORY_FRAMES) velocityHistoryFilled++
-
-        var sumX = 0f
-        var sumY = 0f
-        for (i in 0 until velocityHistoryFilled) {
-            sumX += velocityHistoryX[i]
-            sumY += velocityHistoryY[i]
-        }
-        val invN = 1f / velocityHistoryFilled
-        smoothedVelocityCache = SceneOffset(
-            (sumX * invN).sceneUnit,
-            (sumY * invN).sceneUnit,
+        val instAccelX = (v.x.raw - prevVelocity.x.raw) / dtSeconds
+        val instAccelY = (v.y.raw - prevVelocity.y.raw) / dtSeconds
+        val cacheX = smoothedAccelerationCache.x.raw
+        val cacheY = smoothedAccelerationCache.y.raw
+        val keep = 1f - ACCELERATION_EMA_ALPHA
+        smoothedAccelerationCache = SceneOffset(
+            (cacheX * keep + instAccelX * ACCELERATION_EMA_ALPHA).sceneUnit,
+            (cacheY * keep + instAccelY * ACCELERATION_EMA_ALPHA).sceneUnit,
         )
+        prevVelocity = v
     }
 
     /** Current movement destination, exposed for debug visualisation. */
@@ -282,7 +281,7 @@ class Ship(
                 val result = physics.integrate(deltaTimeInMilliseconds)
                 body.position += result.positionDelta
                 // Rotation handled by navigator via turn-rate model (not physics-integrated)
-                pushVelocityHistory()
+                updateAccelerationEstimate(deltaTimeInMilliseconds)
             }
 
             is ShipLifecycle.LiftFailed -> {
@@ -292,7 +291,7 @@ class Ship(
                 physics.applyDrag(spec.movementConfig, body.rotation)
                 val result = physics.integrate(deltaTimeInMilliseconds)
                 body.position += result.positionDelta
-                pushVelocityHistory()
+                updateAccelerationEstimate(deltaTimeInMilliseconds)
             }
 
             is ShipLifecycle.Destroyed -> Unit // Actor is being / has been removed.
@@ -424,12 +423,12 @@ class Ship(
         const val DRIFT_WINDOW_MS = 3000
 
         /**
-         * Frames included in the rolling-mean for [smoothedVelocity]. At ~60fps this
-         * spans ~133ms — short enough to track sustained motion (real bullet flight
-         * times run several seconds, so the lag is negligible) and long enough to
-         * smooth out the per-frame thrust spikes that AI orbit-chase steering
-         * produces. Tunable; not exposed because lead-aim is the only consumer.
+         * Smoothing factor applied to single-frame acceleration samples to feed
+         * [smoothedAcceleration]. ~0.15 means the EMA half-life is ~5 frames
+         * (~80ms at 60fps): fast enough that the estimate tracks sustained
+         * thrust within a fraction of a typical bullet flight, slow enough to
+         * absorb the per-frame oscillation from AI control toggling.
          */
-        private const val VELOCITY_HISTORY_FRAMES = 8
+        private const val ACCELERATION_EMA_ALPHA = 0.15f
     }
 }
