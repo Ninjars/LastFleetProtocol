@@ -183,14 +183,15 @@ class Turret(
                 rotationSpeed / deltaTimeInMilliseconds
             )
 
-            // Item C unit 4: per-turret effective-range gate. Track the target
-            // (rotation continues above) but only allow firing when target is
-            // within drag-aware effective range. `gun.angleToTarget = null` is
-            // the existing "no aim point — don't fire" pathway. Range is
-            // measured to the target itself (not the lead aim point) — that
-            // mirrors the bullet's drag-aware reach in the world frame.
-            val targetDistance = (it.body.position - body.position).length().raw
-            gun.angleToTarget = if (targetDistance <= effectiveRangeM) {
+            // Per-turret effective-range gate. Measured to the *aim point*, not
+            // the target — when ships approach or recede the lead point can
+            // sit meaningfully closer or further than the target itself. World
+            // distance from turret to aim point equals the bullet's required
+            // shooter-frame travel (the shooter-frame translation cancels with
+            // the lead-aim correction terms — see [LeadAim]'s derivation), so
+            // it's directly comparable to [effectiveRangeM].
+            val aimDistance = (aimPoint - body.position).length().raw
+            gun.angleToTarget = if (aimDistance <= effectiveRangeM) {
                 angleToTarget - body.rotation - currentRotation
             } else {
                 null
