@@ -18,6 +18,7 @@ import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
+import jez.lastfleetprotocol.prototype.components.game.combat.LeadAim
 import jez.lastfleetprotocol.prototype.components.game.data.DrawOrder
 import jez.lastfleetprotocol.prototype.components.game.data.Gun
 import jez.lastfleetprotocol.prototype.components.gamecore.data.GunData
@@ -40,6 +41,13 @@ class Turret(
     parent = parent,
     offsetFromParentPivot = offsetFromParentPivot,
 ) {
+    /**
+     * Shooter rig — read for velocity (lead-aim relative motion + bullet
+     * inheritance at spawn). Same instance the [Child] base captures privately;
+     * we keep our own reference because [Child.parent] isn't exposed.
+     */
+    private val shooter: Parent = parent
+
     private lateinit var actorManager: ActorManager
 
     private var currentRotation: AngleRadians = AngleRadians.Zero
@@ -78,9 +86,18 @@ class Turret(
         firingEnabled = enabled
         if (!enabled) {
             target = null
+            currentAimPoint = null
             gun.angleToTarget = null
         }
     }
+
+    /**
+     * Last lead-aim point computed in [update]. Null when the turret has no
+     * valid target. Read by `DebugVisualiser` to draw a cross + line per
+     * turret without re-running the lead solver.
+     */
+    internal var currentAimPoint: SceneOffset? = null
+        private set
 
     private val gun: Gun by lazy {
         Gun(
@@ -88,6 +105,7 @@ class Turret(
             muzzleOffset = SceneOffset(TURRET_HALF_LENGTH.sceneUnit, 0f.sceneUnit),
             gunData = gunData,
             teamId = teamId,
+            shooterVelocity = { shooter.velocity },
         )
     }
 
@@ -136,11 +154,28 @@ class Turret(
         target?.let {
             if (!it.isValidTarget()) {
                 target = null
+                currentAimPoint = null
                 return@let
             }
 
-            // TODO: create aim point based on target velocity, projectile velocity, and distance
-            val angleToTarget = body.position.angleTowards(it.body.position)
+            // Lead-aim point accounts for the target's constant-acceleration
+            // motion, the shooter's instantaneous motion (bullets inherit it
+            // verbatim at spawn), and the projectile's drag-aware time-of-flight.
+            // See [LeadAim] for the derivation. Velocity is read instantaneously
+            // for both rigs — physics-integrated velocity is already smooth
+            // frame-to-frame, so further smoothing only adds lag — but
+            // acceleration is smoothed to absorb per-frame AI thrust toggling.
+            val aimPoint = LeadAim.computeAimPoint(
+                turretPos = body.position,
+                shooterVelocity = shooter.velocity,
+                targetPos = it.body.position,
+                targetVelocity = it.velocity,
+                targetAcceleration = it.smoothedAcceleration,
+                muzzleSpeed = gunData.projectileStats.speed,
+                dragK = gunData.projectileStats.dragK,
+            )
+            currentAimPoint = aimPoint
+            val angleToTarget = body.position.angleTowards(aimPoint)
 
             val targetRotation = angleToTarget - body.rotation
             currentRotation = currentRotation.rotateTowards(
@@ -148,12 +183,15 @@ class Turret(
                 rotationSpeed / deltaTimeInMilliseconds
             )
 
-            // Item C unit 4: per-turret effective-range gate. Track the target
-            // (rotation continues above) but only allow firing when target is
-            // within drag-aware effective range. `gun.angleToTarget = null` is
-            // the existing "no aim point — don't fire" pathway.
-            val targetDistance = (it.body.position - body.position).length().raw
-            gun.angleToTarget = if (targetDistance <= effectiveRangeM) {
+            // Per-turret effective-range gate. Measured to the *aim point*, not
+            // the target — when ships approach or recede the lead point can
+            // sit meaningfully closer or further than the target itself. World
+            // distance from turret to aim point equals the bullet's required
+            // shooter-frame travel (the shooter-frame translation cancels with
+            // the lead-aim correction terms — see [LeadAim]'s derivation), so
+            // it's directly comparable to [effectiveRangeM].
+            val aimDistance = (aimPoint - body.position).length().raw
+            gun.angleToTarget = if (aimDistance <= effectiveRangeM) {
                 angleToTarget - body.rotation - currentRotation
             } else {
                 null
@@ -161,6 +199,7 @@ class Turret(
         }
 
         if (target == null) {
+            currentAimPoint = null
             gun.angleToTarget = null
             currentRotation =
                 currentRotation.rotateTowards(0.rad, rotationSpeed / deltaTimeInMilliseconds)

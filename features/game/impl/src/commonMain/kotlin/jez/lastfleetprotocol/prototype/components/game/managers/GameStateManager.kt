@@ -1,11 +1,14 @@
 package jez.lastfleetprotocol.prototype.components.game.managers
 
 import com.pandulapeter.kubriko.actor.traits.Unique
+import com.pandulapeter.kubriko.helpers.extensions.deg
+import com.pandulapeter.kubriko.helpers.extensions.rad
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.Manager
 import com.pandulapeter.kubriko.manager.StateManager
 import com.pandulapeter.kubriko.manager.ViewportManager
+import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import jez.lastfleetprotocol.prototype.components.game.actors.Ship
 import jez.lastfleetprotocol.prototype.components.game.actors.ShipLifecycle
@@ -115,6 +118,7 @@ class GameStateManager(
                 is SpawnGateResult.Ready -> createShip(
                     config = gate.config,
                     position = slot.position,
+                    rotation = slot.rotationDegrees.deg.rad,
                     teamId = slot.teamId,
                     targetProvider = if (slot.teamId == Ship.TEAM_PLAYER) {
                         { enemyShips }
@@ -186,6 +190,7 @@ class GameStateManager(
     private fun createShip(
         config: ShipConfig,
         position: SceneOffset,
+        rotation: AngleRadians,
         teamId: String,
         targetProvider: () -> List<Ship>,
         aiModules: List<AIModule>,
@@ -197,6 +202,7 @@ class GameStateManager(
         val ship = Ship(
             spec = spec,
             initialPosition = position,
+            initialRotation = rotation,
             teamId = teamId,
             targetProvider = targetProvider,
             aiModules = aiModules,

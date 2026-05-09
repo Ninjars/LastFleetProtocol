@@ -93,10 +93,14 @@ private fun GameScreen(
         )
 
         // Debug overlay (Item C unit 8) — gated on DevToolsGate. Sits above the
-        // viewport but below the pause / result overlays. Mouse pointerInput
-        // does not consume events, so KubrikoViewport's pan/zoom keeps working.
+        // viewport but below the pause / result overlays. Reads pointer state
+        // from Kubriko's PointerInputManager rather than installing its own
+        // Modifier.pointerInput, so KubrikoViewport's pan/zoom is unaffected.
         if (state.canShowDebugOverlay && !state.isPaused && state.gameResult == null) {
-            DebugOverlay(viewportManager = state.viewportManager)
+            DebugOverlay(
+                viewportManager = state.viewportManager,
+                pointerInputManager = state.pointerInputManager,
+            )
         }
 
         // HUD: menu button (only when not paused and no result)

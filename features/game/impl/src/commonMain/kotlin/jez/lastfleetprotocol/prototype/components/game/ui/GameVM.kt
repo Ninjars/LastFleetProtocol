@@ -3,6 +3,7 @@ package jez.lastfleetprotocol.prototype.components.game.ui
 import androidx.lifecycle.viewModelScope
 import com.pandulapeter.kubriko.Kubriko
 import com.pandulapeter.kubriko.manager.ViewportManager
+import com.pandulapeter.kubriko.pointerInput.PointerInputManager
 import jez.lastfleetprotocol.prototype.components.game.GameStateHolder
 import jez.lastfleetprotocol.prototype.components.game.managers.GameStateManager
 import jez.lastfleetprotocol.prototype.components.game.managers.GameStateManager.GameResult
@@ -28,6 +29,7 @@ sealed interface GameIntent {
 data class GameState(
     val kubriko: Kubriko,
     val viewportManager: ViewportManager,
+    val pointerInputManager: PointerInputManager,
     val gameResult: GameResult? = null,
     val isPaused: Boolean = false,
     /**
@@ -48,6 +50,7 @@ class GameVM(
     private val gameStateManager: GameStateManager,
     pendingScenario: PendingScenario,
     private val viewportManager: ViewportManager,
+    private val pointerInputManager: PointerInputManager,
     devToolsGate: DevToolsGate,
 ) : ViewModelContract<GameIntent, GameState, GameSideEffect>() {
 
@@ -76,6 +79,7 @@ class GameVM(
         GameState(
             kubriko = gameStateHolder.gameKubriko,
             viewportManager = viewportManager,
+            pointerInputManager = pointerInputManager,
             gameResult = result,
             isPaused = paused && result == null, // Don't show pause when game is over
             canShowDebugOverlay = canShowDebugOverlay,
@@ -86,6 +90,7 @@ class GameVM(
         GameState(
             kubriko = gameStateHolder.gameKubriko,
             viewportManager = viewportManager,
+            pointerInputManager = pointerInputManager,
             canShowDebugOverlay = canShowDebugOverlay,
         ),
     )

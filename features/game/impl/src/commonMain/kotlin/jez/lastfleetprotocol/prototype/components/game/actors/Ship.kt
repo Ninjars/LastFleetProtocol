@@ -15,6 +15,7 @@ import com.pandulapeter.kubriko.helpers.extensions.length
 import com.pandulapeter.kubriko.helpers.extensions.sceneUnit
 import com.pandulapeter.kubriko.manager.ActorManager
 import com.pandulapeter.kubriko.manager.ViewportManager
+import com.pandulapeter.kubriko.types.AngleRadians
 import com.pandulapeter.kubriko.types.SceneOffset
 import com.pandulapeter.kubriko.types.SceneSize
 import jez.lastfleetprotocol.prototype.components.game.ai.AIModule
@@ -43,6 +44,7 @@ class Ship(
     val targetProvider: () -> List<Ship> = { emptyList() },
     private val aiModules: List<AIModule> = emptyList(),
     initialVelocity: SceneOffset = SceneOffset.Zero,
+    initialRotation: AngleRadians = AngleRadians.Zero,
     private val turretsConfig: List<TurretConfig> = emptyList(),
     val shipSystems: ShipSystems = ShipSystems(emptyList()),
     override val drawingOrder: Float = 0f,
@@ -100,7 +102,7 @@ class Ship(
         offsetFromParentPivot = computeNoseOffset(),
     )
 
-    private val turrets = turretsConfig.map { tc ->
+    internal val turrets: List<Turret> = turretsConfig.map { tc ->
         Turret(
             parent = this,
             offsetFromParentPivot = SceneOffset(Offset(tc.offsetX, tc.offsetY)),
@@ -126,6 +128,41 @@ class Ship(
             physics.velocity = value
         }
 
+    /**
+     * Smoothed acceleration estimate in scene-units per second². Updated each
+     * frame from a single-frame velocity derivative passed through an EMA — the
+     * derivative would otherwise track AI thrust toggling at frame resolution,
+     * producing wildly oscillating lead points. EMA constant balances reactivity
+     * (small ALPHA = lazy follow-on, ignores brief thrust pulses) against noise
+     * rejection (large ALPHA = chase every frame's accel sample).
+     *
+     * Lead-aim reads this via [Targetable.smoothedAcceleration] for the
+     * constant-acceleration motion model. The constant-velocity model that
+     * preceded it consistently under-led under sustained thrust — at cruiser
+     * scale, ~29m of lead-shortfall per `m/s²` of unmodeled accel.
+     */
+    private var prevVelocity: SceneOffset = initialVelocity
+    private var smoothedAccelerationCache: SceneOffset = SceneOffset.Zero
+
+    override val smoothedAcceleration: SceneOffset
+        get() = smoothedAccelerationCache
+
+    private fun updateAccelerationEstimate(deltaTimeInMs: Int) {
+        if (deltaTimeInMs <= 0) return
+        val dtSeconds = deltaTimeInMs * 0.001f
+        val v = physics.velocity
+        val instAccelX = (v.x.raw - prevVelocity.x.raw) / dtSeconds
+        val instAccelY = (v.y.raw - prevVelocity.y.raw) / dtSeconds
+        val cacheX = smoothedAccelerationCache.x.raw
+        val cacheY = smoothedAccelerationCache.y.raw
+        val keep = 1f - ACCELERATION_EMA_ALPHA
+        smoothedAccelerationCache = SceneOffset(
+            (cacheX * keep + instAccelX * ACCELERATION_EMA_ALPHA).sceneUnit,
+            (cacheY * keep + instAccelY * ACCELERATION_EMA_ALPHA).sceneUnit,
+        )
+        prevVelocity = v
+    }
+
     /** Current movement destination, exposed for debug visualisation. */
     var destination: SceneOffset? = null
         private set
@@ -135,12 +172,11 @@ class Ship(
         initialVelocity = initialVelocity,
     )
 
-    private val navigator: ShipNavigator = ShipNavigator(
-        hullRadius = computeHullRadius(),
-    )
+    private val navigator: ShipNavigator = ShipNavigator()
 
     override val body: BoxBody = BoxBody(
         initialPosition = initialPosition,
+        initialRotation = initialRotation,
     )
 
     override val isAlwaysActive: Boolean = true
@@ -243,6 +279,7 @@ class Ship(
                 val result = physics.integrate(deltaTimeInMilliseconds)
                 body.position += result.positionDelta
                 // Rotation handled by navigator via turn-rate model (not physics-integrated)
+                updateAccelerationEstimate(deltaTimeInMilliseconds)
             }
 
             is ShipLifecycle.LiftFailed -> {
@@ -252,6 +289,7 @@ class Ship(
                 physics.applyDrag(spec.movementConfig, body.rotation)
                 val result = physics.integrate(deltaTimeInMilliseconds)
                 body.position += result.positionDelta
+                updateAccelerationEstimate(deltaTimeInMilliseconds)
             }
 
             is ShipLifecycle.Destroyed -> Unit // Actor is being / has been removed.
@@ -359,19 +397,6 @@ class Ship(
         }
     }
 
-    /**
-     * Compute the average vertex distance across all hulls, used as a
-     * bounding radius for the navigator's arrival/braking calculations.
-     */
-    private fun computeHullRadius(): Float {
-        val allVertices = spec.hulls.flatMap { it.vertices }
-        return if (allVertices.isNotEmpty()) {
-            allVertices.map { it.length().raw }.average().toFloat()
-        } else {
-            5f // fallback matching ARRIVAL_THRESHOLD
-        }
-    }
-
     companion object {
         const val TEAM_PLAYER = "player"
         const val TEAM_ENEMY = "enemy"
@@ -381,5 +406,18 @@ class Ship(
          * Tuneable in playtest — starting value per Slice B plan's Deferred to Implementation.
          */
         const val DRIFT_WINDOW_MS = 3000
+
+        /**
+         * Smoothing factor applied to single-frame acceleration samples to feed
+         * [smoothedAcceleration]. 0.05 puts the EMA half-life around 14 frames
+         * (~230ms at 60fps). Tuned conservatively because the lead-aim model
+         * scales acceleration into aim-point shift via `0.5·a·t²` — at typical
+         * cruiser flight times (~5s) a single-frame accel spike of `Δa` shows
+         * up as a `12.5·α·Δa` aim wobble, so cutting `α` proportionally
+         * reduces visible aim-cross jitter when the navigator transitions
+         * between cruise and brake. Real sustained acceleration changes still
+         * track within ~250ms — well under typical engagement timescales.
+         */
+        private const val ACCELERATION_EMA_ALPHA = 0.05f
     }
 }

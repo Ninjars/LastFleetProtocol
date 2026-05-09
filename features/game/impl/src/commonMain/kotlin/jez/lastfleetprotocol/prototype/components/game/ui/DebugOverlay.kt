@@ -1,6 +1,5 @@
 package jez.lastfleetprotocol.prototype.components.game.ui
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,91 +15,55 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pandulapeter.kubriko.manager.ViewportManager
+import com.pandulapeter.kubriko.pointerInput.PointerInputManager
 
 /**
- * Debug overlay rendered on top of the game viewport. Item C unit 8 — gated on
- * `state.canShowDebugOverlay` (DevToolsGate.isAvailable). Renders three
- * components:
+ * Compose-side debug HUD rendered on top of the game viewport. Item C unit 8 —
+ * gated on `state.canShowDebugOverlay` (DevToolsGate.isAvailable). Renders:
  *
- * 1. **Distance rings** at 1 km, 3 km, and 5 km centred on the camera-view
- *    centre. Helps the dev visually verify weapon-range tuning during
- *    empirical playtest sessions.
- * 2. **Mouse-cursor world position** in metres (e.g. `(1234, -567) m`),
- *    captured via `pointerInput` *without* calling `consume()` so events still
- *    propagate to `KubrikoViewport`'s pan/zoom handler.
- * 3. **FPS counter** averaged over the last [FPS_SAMPLE_WINDOW] frames.
+ * 1. **Mouse-cursor world position** in metres (e.g. `(1234, -567) m`),
+ *    sourced from `pointerInputManager.hoveringPointerPosition`.
+ * 2. **FPS counter** averaged over the last [FPS_SAMPLE_WINDOW] frames.
  *
- * Reads `viewportManager.cameraPosition` and `viewportManager.scaleFactor` via
- * `collectAsStateWithLifecycle` — recomposition-safe; no writes to viewport
- * state from inside the recompose. The mouse-position `pointerInput` does
- * NOT consume events, so the underlying `KubrikoViewport` continues to
- * receive pan + zoom gestures unchanged.
+ * Per-ship range rings live in `DebugVisualiser` (a Kubriko actor) so they
+ * track ship positions in world space rather than the camera centre.
+ *
+ * **Pointer input.** The overlay does **not** install its own
+ * `Modifier.pointerInput`. Doing so on a fillMaxSize sibling of
+ * `KubrikoViewport` intercepts pointer events at the modifier level — even
+ * when the inner `awaitPointerEventScope` does not call `consume()`,
+ * KubrikoViewport's pan / zoom never fires. Instead, this composable
+ * subscribes to `PointerInputManager.hoveringPointerPosition`, which Kubriko
+ * already tracks internally for all input-aware actors. The mouse position
+ * displayed here is the same position the engine sees — no competing
+ * gesture detector at the Compose layer, no event interception.
+ *
+ * Reads three state flows: `viewportManager.cameraPosition`,
+ * `viewportManager.scaleFactor`, and `pointerInputManager.hoveringPointerPosition`.
+ * All are read via `collectAsStateWithLifecycle` — recomposition-safe; no
+ * writes to engine state from inside the recompose.
  */
 @Composable
 internal fun DebugOverlay(
     viewportManager: ViewportManager,
+    pointerInputManager: PointerInputManager,
     modifier: Modifier = Modifier,
 ) {
     val cameraPosition by viewportManager.cameraPosition.collectAsStateWithLifecycle()
     val scaleFactor by viewportManager.scaleFactor.collectAsStateWithLifecycle()
     val viewportSize by viewportManager.size.collectAsStateWithLifecycle()
+    val hoveringPointerPosition by pointerInputManager.hoveringPointerPosition.collectAsStateWithLifecycle()
 
-    // Mouse position captured without consuming the event — KubrikoViewport
-    // still receives pan/zoom gestures.
-    var mouseScreenPx by remember { mutableStateOf<Offset?>(null) }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        // Track Move + Enter only; do NOT observe Press events
-                        // (they can interfere with KubrikoViewport gesture
-                        // detection on Android). Explicitly do NOT call
-                        // event.changes.forEach { it.consume() } — events
-                        // propagate to children (KubrikoViewport) unchanged.
-                        if (event.type == PointerEventType.Move ||
-                            event.type == PointerEventType.Enter
-                        ) {
-                            mouseScreenPx = event.changes.firstOrNull()?.position
-                        } else if (event.type == PointerEventType.Exit) {
-                            mouseScreenPx = null
-                        }
-                    }
-                }
-            },
-    ) {
-        // Distance rings — radii expressed in metres, drawn in screen px via
-        // scaleFactor. Centred at the canvas centre (which is the camera
-        // viewport centre in screen coords).
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val centreX = size.width / 2f
-            val centreY = size.height / 2f
-            val pxPerMetre = scaleFactor.horizontal
-            for (rangeM in DISTANCE_RING_METRES) {
-                val radiusPx = rangeM * pxPerMetre
-                if (radiusPx > 0f && radiusPx < maxOf(size.width, size.height) * 2f) {
-                    drawCircle(
-                        color = RING_COLOR,
-                        radius = radiusPx,
-                        center = Offset(centreX, centreY),
-                        style = Stroke(width = 1.5f),
-                    )
-                }
-            }
-        }
-
-        // Mouse world-position readout — bottom-left corner.
-        val mouseWorld = mouseScreenPx?.let { px ->
+    Box(modifier = modifier.fillMaxSize()) {
+        // Mouse world-position readout — bottom-left corner. Sourced from
+        // Kubriko's already-tracked hovering pointer state; no competing
+        // pointerInput modifier here.
+        val mouseWorld = hoveringPointerPosition?.let { px ->
             screenToWorld(
                 screenPx = px,
                 viewportSize = viewportSize,
@@ -162,7 +125,7 @@ private fun FpsCounter(modifier: Modifier = Modifier) {
  */
 private fun screenToWorld(
     screenPx: Offset,
-    viewportSize: androidx.compose.ui.geometry.Size,
+    viewportSize: Size,
     cameraPosition: Offset,
     scaleFactor: Float,
 ): Offset {
@@ -172,7 +135,5 @@ private fun screenToWorld(
     return cameraPosition + Offset(deltaPx.x / scaleFactor, deltaPx.y / scaleFactor)
 }
 
-private val RING_COLOR = Color(0.5f, 0.9f, 0.5f, 0.5f) // semi-transparent green
 private val OVERLAY_TEXT_COLOR = Color(0.9f, 0.9f, 0.9f, 0.85f)
-private val DISTANCE_RING_METRES = listOf(1000f, 3000f, 5000f)
 private const val FPS_SAMPLE_WINDOW = 30
