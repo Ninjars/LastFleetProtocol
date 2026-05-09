@@ -13,7 +13,6 @@ import jez.lastfleetprotocol.prototype.components.game.actors.Targetable
 import jez.lastfleetprotocol.prototype.components.game.physics.ShipPhysics
 import jez.lastfleetprotocol.prototype.components.gamecore.data.MovementConfig
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.ln
 
 /**
@@ -152,20 +151,32 @@ class ShipNavigator {
     }
 
     /**
-     * Apply full anti-velocity thrust on whichever ship-local axes are aligned
-     * with `-velocity`. Decomposes anti-velocity into forward / lateral
-     * components in the ship's frame and fires the matching thrusters
-     * (`forwardThrust`, `reverseThrust`, or `lateralThrust`) at a magnitude
-     * scaled by alignment. Replaces the prior 30%-factor low-speed brake,
-     * which was the proximate cause of "ships don't stop" — quadratic drag at
-     * the cruiser's tuned `dragCoeff` is essentially zero at cruise speeds, so
-     * the brake thrust is the only thing actually decelerating the ship. At
-     * 30% it couldn't keep up with the navigator's cruise output.
+     * Apply anti-velocity thrust on the ship's forward axis only — forward
+     * thrust when anti-velocity points forward, reverse thrust when it points
+     * backward, nothing when it's near-perpendicular. Stronger than the prior
+     * 30%-factor brake (cruiser drag at tuned `dragCoeff` is essentially zero
+     * at cruise speeds, so brake thrust is the *only* thing actually
+     * decelerating the ship), but deliberately does not also fire on the
+     * lateral axis.
      *
-     * Lateral thrust does fire here even though it's the weakest axis — when
-     * the ship is rotating mid-brake, velocity becomes lateral relative to
-     * facing, and the previous "no lateral brake" choice meant the ship
-     * coasted on residual sideways motion that drag couldn't bleed.
+     * The earlier all-axis variant gave more total brake force but combined
+     * `forwardThrust * fwdDot * facing` with `lateralThrust * latDot * left`,
+     * which — because `forwardThrust ≠ lateralThrust` — produced a thrust
+     * direction up to ~20° off true anti-velocity. As the hull rotated
+     * during brake, that off-axis component swept around in a way that
+     * showed up as frame-to-frame jitter in the target's acceleration
+     * estimate, which the constant-acceleration lead-aim model then
+     * amplified at `0.5·a·t²` into visible aim-point wobble. Forward-only
+     * brake stays within a single ship-local axis — the world-frame thrust
+     * direction stays exactly along that axis as the ship rotates, so the
+     * target's measured acceleration stays clean.
+     *
+     * Tradeoff: when the ship is rotating mid-brake and velocity ends up
+     * roughly perpendicular to facing, neither branch fires and the ship
+     * coasts on residual sideways motion until rotation realigns. In
+     * practice that window is brief — the bumped turn rate finishes most
+     * realignments in a few seconds, and brake mode normally engages with
+     * the ship already pointed at the destination.
      */
     private fun applyBrakeThrust(
         physics: ShipPhysics,
@@ -180,7 +191,6 @@ class ShipNavigator {
         val antiVelX = -physics.velocity.x.raw / speed
         val antiVelY = -physics.velocity.y.raw / speed
         val fwdAxisDot = facingCos * antiVelX + facingSin * antiVelY
-        val latAxisDot = -facingSin * antiVelX + facingCos * antiVelY
 
         if (fwdAxisDot > THRUST_ALIGNMENT_THRESHOLD) {
             physics.applyThrust(
@@ -192,15 +202,6 @@ class ShipNavigator {
             physics.applyThrust(
                 SceneOffset((-1f).sceneUnit, 0f.sceneUnit),
                 movementConfig.reverseThrust * (-fwdAxisDot),
-                facing,
-            )
-        }
-
-        if (movementConfig.lateralThrust > 0f && abs(latAxisDot) > THRUST_ALIGNMENT_THRESHOLD) {
-            val latSign = if (latAxisDot > 0f) 1f else -1f
-            physics.applyThrust(
-                SceneOffset(0f.sceneUnit, latSign.sceneUnit),
-                movementConfig.lateralThrust * abs(latAxisDot),
                 facing,
             )
         }

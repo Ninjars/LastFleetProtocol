@@ -409,11 +409,15 @@ class Ship(
 
         /**
          * Smoothing factor applied to single-frame acceleration samples to feed
-         * [smoothedAcceleration]. ~0.15 means the EMA half-life is ~5 frames
-         * (~80ms at 60fps): fast enough that the estimate tracks sustained
-         * thrust within a fraction of a typical bullet flight, slow enough to
-         * absorb the per-frame oscillation from AI control toggling.
+         * [smoothedAcceleration]. 0.05 puts the EMA half-life around 14 frames
+         * (~230ms at 60fps). Tuned conservatively because the lead-aim model
+         * scales acceleration into aim-point shift via `0.5·a·t²` — at typical
+         * cruiser flight times (~5s) a single-frame accel spike of `Δa` shows
+         * up as a `12.5·α·Δa` aim wobble, so cutting `α` proportionally
+         * reduces visible aim-cross jitter when the navigator transitions
+         * between cruise and brake. Real sustained acceleration changes still
+         * track within ~250ms — well under typical engagement timescales.
          */
-        private const val ACCELERATION_EMA_ALPHA = 0.15f
+        private const val ACCELERATION_EMA_ALPHA = 0.05f
     }
 }
