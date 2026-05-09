@@ -14,6 +14,7 @@ import jez.lastfleetprotocol.prototype.components.game.physics.ShipPhysics
 import jez.lastfleetprotocol.prototype.components.gamecore.data.MovementConfig
 import kotlin.math.PI
 import kotlin.math.ln
+import kotlin.math.sqrt
 
 /**
  * Resolves navigation for a ship under the atmospheric drag model.
@@ -86,12 +87,42 @@ class ShipNavigator {
             return destination
         }
 
-        // Cruise: rotate hull toward destination and apply forward thrust scaled
-        // by alignment. Lateral and reverse stay off — see class KDoc for why.
-        rotateToward(body, targetAngle, turnRate, dt)
+        // Cruise: aim at the destination *from the ship's projected position*
+        // [COURSE_CORRECT_LOOKAHEAD] seconds ahead at current velocity, not from
+        // the ship's current position. When velocity points at the destination
+        // this collapses to plain destination-direction; when there's a lateral
+        // component, the aim tilts so forward thrust contributes a component
+        // opposing the lateral drift. Without this correction, lateral velocity
+        // carries the hull past the destination while the rotation lags behind,
+        // producing a visible orbit around the position marker.
+        val velX = physics.velocity.x.raw
+        val velY = physics.velocity.y.raw
+        val lookaheadX = body.position.x.raw + velX * COURSE_CORRECT_LOOKAHEAD
+        val lookaheadY = body.position.y.raw + velY * COURSE_CORRECT_LOOKAHEAD
+        val correctedDx = destination.x.raw - lookaheadX
+        val correctedDy = destination.y.raw - lookaheadY
+        val correctedLen = sqrt(correctedDx * correctedDx + correctedDy * correctedDy)
+
+        val cruiseAngle: AngleRadians
+        val cruiseDirX: Float
+        val cruiseDirY: Float
+        if (correctedLen > CORRECTION_EPSILON) {
+            cruiseAngle = kotlin.math.atan2(correctedDy, correctedDx).rad
+            cruiseDirX = correctedDx / correctedLen
+            cruiseDirY = correctedDy / correctedLen
+        } else {
+            // Predicted future position lies on the destination — use the
+            // uncorrected direction to avoid an undefined aim.
+            cruiseAngle = targetAngle
+            cruiseDirX = toTarget.x.raw / distanceToTarget
+            cruiseDirY = toTarget.y.raw / distanceToTarget
+        }
+
+        rotateToward(body, cruiseAngle, turnRate, dt)
+
         val facingCos = facing.cos
         val facingSin = facing.sin
-        val forwardComponent = (toTarget.x.raw * facingCos + toTarget.y.raw * facingSin) / distanceToTarget
+        val forwardComponent = cruiseDirX * facingCos + cruiseDirY * facingSin
         if (forwardComponent > THRUST_ALIGNMENT_THRESHOLD) {
             physics.applyThrust(
                 SceneOffset(1f.sceneUnit, 0f.sceneUnit),
@@ -262,6 +293,16 @@ class ShipNavigator {
         private const val BRAKING_MARGIN = 0.8f
 
         private const val THRUST_ALIGNMENT_THRESHOLD = 0.1f
+
+        /**
+         * Cruise aim is computed against the ship's projected position this
+         * many seconds ahead at current velocity. Sized to roughly the
+         * ~45° hull-rotation time at the cruiser's bumped turn rate (~22°/s);
+         * smaller values under-correct and the orbit-around-destination
+         * symptom returns, larger values over-correct at close range and can
+         * flip the aim past the destination on slow approaches.
+         */
+        private const val COURSE_CORRECT_LOOKAHEAD = 2f
 
         /**
          * Multiplier on `angularThrust / mass` to produce a turn rate in
